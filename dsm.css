@@ -1,0 +1,325 @@
+/* ── DSM VIEW ── */
+.dsm-layout {
+  display: flex; flex-direction: column;
+  height: 100%; overflow: hidden; gap: 0;
+}
+
+/* ── TOOLBAR ── */
+.dsm-toolbar {
+  display: flex; align-items: center;
+  padding: 10px 16px; background: var(--bg-card);
+  border-bottom: 1px solid var(--border-card);
+  flex-shrink: 0; gap: 8px;
+  position: relative; z-index: 10; overflow: visible;
+}
+.dsm-toolbar > * { flex-shrink: 0; }
+.dsm-search-wrap {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-hover); border-radius: 8px;
+  padding: 6px 10px; font-size: 12px; color: var(--text-muted);
+  flex: 1; min-width: 0;
+}
+.dsm-search-wrap input {
+  border: none; background: none; outline: none;
+  font-family: 'Poppins', sans-serif; font-size: 12px;
+  color: var(--text-primary); flex: 1; min-width: 0;
+}
+.dsm-search-wrap input::placeholder { color: var(--text-muted); }
+
+/* ── PAGINATION ── */
+.dsm-pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; padding: 8px 16px;
+  background: var(--bg-page); border-bottom: 1px solid var(--border-card);
+  flex-shrink: 0;
+}
+.dsm-page-btn {
+  width: 28px; height: 28px; border: none;
+  background: var(--bg-hover); border-radius: 8px;
+  color: var(--text-muted); font-size: 11px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.dsm-page-btn:hover:not(:disabled) { background: var(--brand-pale); color: var(--brand-primary); }
+.dsm-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.dsm-page-info {
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+  min-width: 80px; text-align: center;
+}
+
+/* ── TABLE WRAP ── */
+.dsm-table-wrap {
+  flex: 1; overflow: auto; scrollbar-width: thin;
+  scrollbar-color: var(--border-card) transparent;
+  cursor: grab;
+}
+.dsm-table-wrap.dragging { cursor: grabbing; user-select: none; }
+.dsm-table-wrap::-webkit-scrollbar { width: 4px; height: 4px; }
+.dsm-table-wrap::-webkit-scrollbar-track { background: transparent; }
+.dsm-table-wrap::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 4px; }
+
+/* ── TABLE INNER ── */
+.dsm-table-inner { display: inline-block; min-width: 100%; }
+.dsm-table-rekap {
+  border-top: 2px solid var(--border-card);
+  width: 100%;
+}
+
+/* ── TABLE BASE ── */
+.dsm-table {
+  border-collapse: collapse; font-size: 11px;
+  white-space: nowrap; table-layout: fixed;
+  width: 100%;
+}
+.dsm-table th, .dsm-table td {
+  border: 1px solid rgba(0,0,0,0.25);
+  padding: 6px 4px; text-align: center;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.dsm-table thead tr:nth-child(1) th {
+  position: sticky; top: 0; z-index: 2;
+}
+.dsm-table thead tr:nth-child(2) th {
+  position: sticky; top: 28px; z-index: 2;
+}
+.dsm-table td { color: var(--text-primary); font-weight: 700; }
+.dsm-table tbody tr:hover td { background: var(--brand-pale) !important; }
+
+/* kolom no dan nama sticky — desktop only */
+@media (min-width: 769px) {
+  .dsm-table th:nth-child(1),
+  .dsm-table td:nth-child(1) {
+    position: sticky; left: 0; z-index: 3;
+  }
+  .dsm-table th:nth-child(2),
+  .dsm-table td:nth-child(2) {
+    position: sticky; left: 36px; z-index: 3;
+    text-align: left;
+  }
+}
+
+/* footer total */
+.dsm-table tfoot td {
+  position: sticky; bottom: 0; z-index: 2;
+  border-top: 2px solid var(--border-card);
+  font-size: 11px; color: #fff;
+}
+
+/* ── GROUP COLOR CLASSES (ganti inline style) ── */
+.dsm-th-base   { background:#1a5fb4; color:#fff; }
+.dsm-td-base   { background: var(--bg-hover); }
+.dsm-td-total  { text-align:left; font-weight:700; background:#1a5fb4; color:#fff; }
+.dsm-td-totalval { font-weight:700; color:#fff; }
+.dsm-td-nama   { background: var(--bg-card); }
+.dsm-nama-empty { background: #ffcccc !important; }
+.dsm-highlight { background: #ffeb3b80 !important; border: 2px solid #f5a623 !important; }
+
+/* total sum — warna kontras */
+tfoot td.dsm-col-kemarin    { background:#1a5fb4; color:#fff; }
+tfoot td.dsm-col-return     { background:#b02020; color:#fff; }
+tfoot td.dsm-col-expired    { background:#c05020; color:#fff; }
+tfoot td.dsm-col-konsinyasi { background:#6123a8; color:#fff; }
+tfoot td.dsm-col-cash       { background:#1a7080; color:#fff; }
+tfoot td.dsm-col-lainnya    { background:#2d6b2d; color:#fff; }
+tfoot td.dsm-col-pay        { background:#b05c00; color:#fff; }
+
+td.dsm-rk-order    { background:rgba(26,95,180,0.10); }
+td.dsm-rk-fee      { background:rgba(97,35,168,0.10); }
+td.dsm-rk-disable  { background:rgba(176,32,32,0.10); }
+td.dsm-rk-output   { background:rgba(30,122,69,0.10); }
+td.dsm-rk-saldo    { background:rgba(176,92,0,0.10); }
+td.dsm-rk-pay      { background:rgba(26,112,128,0.10); }
+td.dsm-rk-customer { background:rgba(112,64,192,0.13); }
+td.dsm-rk-omset    { background:rgba(45,107,45,0.10); font-weight:700; color:#2d6b2d; }
+
+/* header th — warna solid */
+th.dsm-th-group, th.dsm-th-sub { color:#fff; }
+th.dsm-th-group { font-size:10px; text-transform:uppercase; letter-spacing:0.5px; }
+th.dsm-th-sub   { font-weight:700; opacity:0.85; }
+
+th.dsm-col-kemarin    { background:#1a5fb4; }
+th.dsm-col-return     { background:#b02020; }
+th.dsm-col-expired    { background:#c05020; }
+th.dsm-col-konsinyasi { background:#6123a8; }
+th.dsm-col-cash       { background:#1a7080; }
+th.dsm-col-lainnya    { background:#2d6b2d; }
+th.dsm-col-pay        { background:#b05c00; }
+
+th.dsm-rk-order    { background:#1a5fb4; }
+th.dsm-rk-fee      { background:#6123a8; }
+th.dsm-rk-disable  { background:#b02020; }
+th.dsm-rk-output   { background:#1e7a45; }
+th.dsm-rk-saldo    { background:#b05c00; }
+th.dsm-rk-pay      { background:#1a7080; }
+th.dsm-rk-customer { background:#7040c0; }
+th.dsm-rk-omset    { background:#2d6b2d; }
+
+/* aksi btn */
+.dsm-btn-aksi {
+  width: 22px; height: 22px; border: none;
+  background: var(--brand-pale); border-radius: 6px;
+  color: var(--brand-primary); font-size: 10px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.dsm-btn-aksi:hover { background: var(--brand-light); color: #fff; }
+
+/* nilai kosong */
+.dsm-td-empty { color: var(--text-muted) !important; }
+
+/* ── STATUS BADGE ── */
+.dsm-status-badge {
+  display: inline-block; margin-left: 6px;
+  font-size: 9px; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+  cursor: pointer; vertical-align: middle;
+}
+.dsm-badge-tutup   { background: rgba(208,80,80,0.15); color: #d05050; }
+.dsm-badge-pending { background: rgba(245,166,35,0.15); color: #f5a623; }
+.dsm-badge-putus   { background: rgba(112,64,192,0.15); color: #7040c0; }
+
+/* ── FOTO POPUP ── */
+.dsm-foto-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.dsm-foto-box {
+  background: var(--bg-card); border-radius: 16px;
+  padding: 16px; max-width: 480px; width: 100%;
+}
+.dsm-foto-title {
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 12px; text-align: center;
+}
+.dsm-foto-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.dsm-foto-item { display: flex; flex-direction: column; gap: 6px; }
+.dsm-foto-item-label {
+  font-size: 10px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; text-align: center;
+}
+.dsm-foto-item img {
+  width: 100%; aspect-ratio: 1; object-fit: cover;
+  border-radius: 10px; background: var(--bg-hover);
+}
+.dsm-foto-item-empty {
+  width: 100%; aspect-ratio: 1; border-radius: 10px;
+  background: var(--bg-hover); display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 11px;
+}
+.dsm-foto-close {
+  margin-top: 14px; width: 100%; height: 38px; border: none;
+  background: var(--brand-pale); color: var(--brand-primary);
+  border-radius: 10px; font-family: 'Poppins', sans-serif;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+}
+
+/* ── ANALISA TRIKOTOMI POPUP ── */
+.dsm-analisa-overlay {
+  display: none; position: fixed; inset: 0; z-index: 5000;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.dsm-analisa-overlay.show { display: flex; }
+.dsm-analisa-box {
+  background: var(--bg-page); border-radius: 16px;
+  width: 100%; max-width: 100%; height: 100%;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.dsm-analisa-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px; background: var(--bg-card);
+  border-bottom: 1px solid var(--border-card); flex-shrink: 0;
+}
+.dsm-analisa-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.dsm-analisa-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.dsm-analisa-close {
+  width: 32px; height: 32px; border: none; background: var(--bg-hover);
+  border-radius: 8px; color: var(--text-muted); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.dsm-analisa-toolbar {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  background: var(--bg-card); border-bottom: 1px solid var(--border-card);
+  flex-shrink: 0; overflow: visible;
+  position: relative; z-index: 10;
+}
+.dsm-analisa-filter-chips {
+  display: flex; gap: 6px; flex: 1;
+  overflow-x: auto; scrollbar-width: none;
+}
+.dsm-analisa-filter-chips::-webkit-scrollbar { display: none; }
+.dsm-analisa-chip {
+  padding: 6px 12px; border: 1px solid var(--border-card);
+  background: var(--bg-page); border-radius: 20px;
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; white-space: nowrap; transition: all .15s;
+}
+.dsm-analisa-chip.active {
+  background: var(--brand-primary); color: #fff; border-color: var(--brand-primary);
+}
+.dsm-analisa-summary {
+  display: flex; gap: 8px; padding: 12px 16px;
+  background: var(--bg-page); flex-shrink: 0;
+}
+.dsm-analisa-sum-card {
+  flex: 1; border-radius: 12px; padding: 10px; text-align: center;
+}
+.dsm-analisa-sum-card.green  { background: rgba(58,154,98,0.12); }
+.dsm-analisa-sum-card.yellow { background: rgba(245,166,35,0.12); }
+.dsm-analisa-sum-card.red    { background: rgba(208,80,80,0.12); }
+.dsm-analisa-sum-card.grey   { background: rgba(120,120,120,0.12); }
+.dsm-analisa-sum-val { font-size: 18px; font-weight: 800; }
+.dsm-analisa-sum-card.green  .dsm-analisa-sum-val { color: #3a9a62; }
+.dsm-analisa-sum-card.yellow .dsm-analisa-sum-val { color: #f5a623; }
+.dsm-analisa-sum-card.red    .dsm-analisa-sum-val { color: #d05050; }
+.dsm-analisa-sum-card.grey   .dsm-analisa-sum-val { color: #787878; }
+.dsm-analisa-sum-label { font-size: 9px; color: var(--text-muted); margin-top: 2px; }
+.dsm-analisa-groups { flex: 1; overflow-y: auto; padding: 12px 16px; }
+.dsm-analisa-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+  height: 100%;
+}
+.dsm-analisa-col {
+  display: flex; flex-direction: column;
+  background: var(--bg-card); border-radius: 12px;
+  overflow: hidden; min-height: 0;
+}
+.dsm-analisa-col-header {
+  font-size: 12px; font-weight: 700; padding: 10px 12px;
+  border-bottom: 1px solid var(--border-card); flex-shrink: 0;
+}
+.dsm-analisa-col-list {
+  flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px;
+}
+.dsm-analisa-col-empty {
+  font-size: 11px; color: var(--text-muted); text-align: center; padding: 20px 0;
+}
+.dsm-analisa-item {
+  background: var(--bg-card); border-radius: 10px;
+  padding: 10px 12px;
+}
+.dsm-analisa-item-nama { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.dsm-analisa-item-info { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.dsm-analisa-item-badge {
+  font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: 20px;
+}
+.dsm-analisa-item-detail { font-size: 11px; color: var(--text-muted); }
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .dsm-toolbar {
+    flex-wrap: wrap; padding: 8px 10px;
+    overflow: visible;
+  }
+  .dsm-search-wrap {
+    order: 99; width: 100%; flex: 1 1 100%;
+  }
+  .dsm-search-wrap input { width: 100%; }
+  .dsm-analisa-overlay { padding: 0; }
+  .dsm-analisa-box { border-radius: 0; }
+  .dsm-analisa-grid { grid-template-columns: 1fr; gap: 8px; }
+}
