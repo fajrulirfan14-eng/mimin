@@ -66,6 +66,7 @@ const VIEW_TITLES = {
   dsm:          "DSM",
   laporan:      "Laporan",
   customerbaru: "Customer Baru",
+  amplop:       "Amplop",
   akun:         "Akun"
 };
 
@@ -191,6 +192,10 @@ function lazyInitView(viewName) {
       _inited.customerbaru = true;
       window.initCustomerBaruView?.();
       break;
+    case "amplop":
+      _inited.amplop = true;
+      window.initAmplopView?.();
+      break;
     case "akun":
       _inited.akun = true;
       window.initAkunView?.();
@@ -313,6 +318,270 @@ function setTopbarAvatar() {
 }
 
 /* ── RUMUS PANEL ── */
+let rumusUnsubscribe = null;
+let rumusPengeluaranUnsubscribe = null;
+let rumusSetoranUnsubscribe = null;
+let rumusLaporanData = null;
+let rumusPengeluaranData = null;
+
+function formatRupiah(num) {
+  return "Rp " + (num || 0).toLocaleString("id-ID");
+}
+window.formatRupiah = formatRupiah;
+function buildDistribusiPayload() {
+  const omset = [];
+  const lainnya = [];
+  let totalOmset = 0, totalLainnya = 0, totalPengeluaran = 0;
+
+  if (rumusLaporanData) {
+    Object.keys(rumusLaporanData).forEach((key) => {
+      if (key === "tanggal" || key === "createdBy") return;
+      const kurir = rumusLaporanData[key];
+      const keuangan = kurir?.distribusi?.keuangan;
+      if (!keuangan) return;
+
+      const nilaiOmset = keuangan.grossMargin || 0;
+      const bonusPay = keuangan.bonus?.bonusPay || 0;
+      const klaimInsentif = keuangan.klaimInsentif || 0;
+      const kasbon = keuangan.kasbon || 0;
+      const totalKurirLainnya = bonusPay + klaimInsentif + kasbon;
+
+      omset.push({ uid: key, nama: kurir?.nama || "", nilai: nilaiOmset });
+      lainnya.push({
+        uid: key,
+        nama: kurir?.nama || "",
+        bonusPay,
+        klaimInsentif,
+        kasbon,
+        total: totalKurirLainnya
+      });
+
+      totalOmset += nilaiOmset;
+      totalLainnya += totalKurirLainnya;
+    });
+  }
+
+  const pengeluaran = (rumusPengeluaranData?.distribusi || []).map((item) => ({
+    nama: item.nama || "",
+    qty: item.qty || 0,
+    nominal: item.nominal || 0
+  }));
+  totalPengeluaran = pengeluaran.reduce((sum, item) => sum + (item.nominal || 0), 0);
+
+  return {
+    omset,
+    lainnya,
+    pengeluaranDistribusi: { pengeluaran },
+    amplop: totalOmset - totalLainnya - totalPengeluaran
+  };
+}
+function buildProduksiPayload() {
+  const omset = [];
+  let totalOmset = 0, totalPengeluaran = 0;
+
+  if (rumusLaporanData) {
+    Object.keys(rumusLaporanData).forEach((key) => {
+      if (key === "tanggal" || key === "createdBy") return;
+      const kurir = rumusLaporanData[key];
+      const nilaiOmset = kurir?.pembayaran?.nota?.bayar || 0;
+
+      omset.push({ uid: key, nama: kurir?.nama || "", nilai: nilaiOmset });
+      totalOmset += nilaiOmset;
+    });
+  }
+
+  const pengeluaran = (rumusPengeluaranData?.produksi || []).map((item) => ({
+    nama: item.nama || "",
+    qty: item.qty || 0,
+    nominal: item.nominal || 0
+  }));
+  totalPengeluaran = pengeluaran.reduce((sum, item) => sum + (item.nominal || 0), 0);
+
+  return {
+    omset,
+    lainnya: [],
+    pengeluaranProduksi: { pengeluaran },
+    amplop: totalOmset - totalPengeluaran
+  };
+}
+async function simpanSetoranAmplop() {
+  const tanggal = document.getElementById("rumusTanggal")?.value;
+  const catatan = document.getElementById("rumusCatatan")?.value || "";
+  const btn = document.getElementById("rumusSaveBtn");
+
+  if (!tanggal) {
+    showToast("Tanggal belum diisi", "error");
+    return;
+  }
+
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = "Menyimpan..."; }
+
+    const users = await window.idb.getUsers();
+    const adminCabang = users.find(u => u.role === "adminCabang");
+    if (!adminCabang) {
+      showToast("Data admin cabang tidak ditemukan", "error");
+      return;
+    }
+
+    const payload = {
+      createdBy: adminCabang.uid,
+      createdAt: serverTimestamp(),
+      idCabang: adminCabang.idCabang || "",
+      tanggal,
+      catatan,
+      diterima: false,
+      distribusi: buildDistribusiPayload(),
+      produksi: buildProduksiPayload()
+    };
+
+    const ref = doc(db, "users", adminCabang.uid, "setoranAmplop", tanggal);
+    await setDoc(ref, payload);
+
+    showToast("Setoran amplop berhasil disimpan", "");
+  } catch (err) {
+    showToast("Gagal menyimpan setoran amplop", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Simpan"; }
+  }
+}
+function updateProduksiUI() {
+  let omset = 0;
+  let lainnya = 0; // belum ada rumus, dikosongkan dulu
+
+  if (rumusLaporanData) {
+    Object.keys(rumusLaporanData).forEach((key) => {
+      if (key === "tanggal" || key === "createdBy") return; // skip field level dokumen
+      const kurir = rumusLaporanData[key];
+      omset += kurir?.pembayaran?.nota?.bayar || 0;
+    });
+  }
+
+  let pengeluaran = 0;
+  if (rumusPengeluaranData?.produksi) {
+    pengeluaran = rumusPengeluaranData.produksi.reduce((sum, item) => sum + (item.nominal || 0), 0);
+  }
+
+  const amplop = omset - lainnya - pengeluaran;
+
+  const elOmset = document.getElementById("rumusOmsetProduksi");
+  const elLainnya = document.getElementById("rumusLainnyaProduksi");
+  const elPengeluaran = document.getElementById("rumusPengeluaranProduksi");
+  const elAmplop = document.getElementById("rumusAmplopProduksi");
+  if (elOmset) elOmset.textContent = formatRupiah(omset);
+  if (elLainnya) elLainnya.textContent = formatRupiah(lainnya);
+  if (elPengeluaran) elPengeluaran.textContent = formatRupiah(pengeluaran);
+  if (elAmplop) elAmplop.textContent = formatRupiah(amplop);
+}
+function toggleRumusTanggalCheck(show) {
+  const el = document.getElementById("rumusTanggalCheck");
+  if (el) el.style.display = show ? "" : "none";
+}
+function updateDistribusiUI() {
+  let omset = 0;
+  let lainnya = 0;
+
+  if (rumusLaporanData) {
+    Object.keys(rumusLaporanData).forEach((key) => {
+      if (key === "tanggal" || key === "createdBy") return; // skip field level dokumen
+      const kurir = rumusLaporanData[key];
+      const keuangan = kurir?.distribusi?.keuangan;
+      if (!keuangan) return;
+
+      omset += keuangan.grossMargin || 0;
+      lainnya += (keuangan.bonus?.bonusPay || 0) + (keuangan.klaimInsentif || 0) + (keuangan.kasbon || 0);
+    });
+  }
+
+  let pengeluaran = 0;
+  if (rumusPengeluaranData?.distribusi) {
+    pengeluaran = rumusPengeluaranData.distribusi.reduce((sum, item) => sum + (item.nominal || 0), 0);
+  }
+
+  const amplop = omset - lainnya - pengeluaran;
+
+  const elOmset = document.getElementById("rumusOmsetDistribusi");
+  const elLainnya = document.getElementById("rumusLainnyaDistribusi");
+  const elPengeluaran = document.getElementById("rumusPengeluaranDistribusi");
+  const elAmplop = document.getElementById("rumusAmplopDistribusi");
+  if (elOmset) elOmset.textContent = formatRupiah(omset);
+  if (elLainnya) elLainnya.textContent = formatRupiah(lainnya);
+  if (elPengeluaran) elPengeluaran.textContent = formatRupiah(pengeluaran);
+  if (elAmplop) elAmplop.textContent = formatRupiah(amplop);
+}
+async function getUidAdminCabang() {
+  try {
+    const users = await window.idb.getUsers();
+    const adminCabang = users.find(u => u.role === "adminCabang");
+    if (!adminCabang) {
+      return null;
+    }
+    return adminCabang.uid;
+  } catch (err) {
+    return null;
+  }
+}
+window.getUidAdminCabang = getUidAdminCabang;
+async function loadRumusData(tanggal) {
+  // matikan listener lama dulu biar gak numpuk
+  if (rumusUnsubscribe) {
+    rumusUnsubscribe();
+    rumusUnsubscribe = null;
+  }
+  if (rumusPengeluaranUnsubscribe) {
+    rumusPengeluaranUnsubscribe();
+    rumusPengeluaranUnsubscribe = null;
+  }
+  if (!tanggal) return;
+
+  const uidAdminCabang = await getUidAdminCabang();
+  if (!uidAdminCabang) return;
+
+  // reset dulu biar gak nampilin data tanggal sebelumnya sekilas
+  rumusLaporanData = null;
+  rumusPengeluaranData = null;
+  updateDistribusiUI();
+  updateProduksiUI();
+  toggleRumusTanggalCheck(false);
+
+  // ── laporanAdmin ──
+  const ref = doc(db, "users", uidAdminCabang, "laporanAdmin", tanggal);
+  rumusUnsubscribe = onSnapshot(
+    ref,
+    (snap) => {
+      rumusLaporanData = snap.exists() ? snap.data() : null;
+      updateDistribusiUI();
+      updateProduksiUI();
+    },
+    (err) => {}
+  );
+
+  // ── pengeluaran ──
+  const refPengeluaran = doc(db, "users", uidAdminCabang, "pengeluaran", tanggal);
+  rumusPengeluaranUnsubscribe = onSnapshot(
+    refPengeluaran,
+    (snap) => {
+      rumusPengeluaranData = snap.exists() ? snap.data() : null;
+      updateDistribusiUI();
+      updateProduksiUI();
+    },
+    (err) => {}
+  );
+
+  // ── setoranAmplop (cek sudah disetor atau belum) ──
+  const refSetoran = doc(db, "users", uidAdminCabang, "setoranAmplop", tanggal);
+  rumusSetoranUnsubscribe = onSnapshot(
+    refSetoran,
+    (snap) => {
+      toggleRumusTanggalCheck(snap.exists());
+      const catatanInput = document.getElementById("rumusCatatan");
+      if (catatanInput) {
+        catatanInput.value = snap.exists() ? (snap.data().catatan || "") : "";
+      }
+    },
+    (err) => {}
+  );
+}
 function openRumusPanel() {
   document.getElementById("rumusOverlay")?.classList.add("show");
   document.getElementById("rumusPanel")?.classList.add("show");
@@ -325,83 +594,138 @@ function openRumusPanel() {
     const dd = String(today.getDate()).padStart(2, "0");
     tanggalInput.value = `${yyyy}-${mm}-${dd}`;
   }
+
+  loadRumusData(tanggalInput?.value);
 }
 function closeRumusPanel() {
   document.getElementById("rumusOverlay")?.classList.remove("show");
   document.getElementById("rumusPanel")?.classList.remove("show");
+
+  if (rumusUnsubscribe) {
+    rumusUnsubscribe();
+    rumusUnsubscribe = null;
+  }
+  if (rumusPengeluaranUnsubscribe) {
+    rumusPengeluaranUnsubscribe();
+    rumusPengeluaranUnsubscribe = null;
+  }
+  if (rumusSetoranUnsubscribe) {
+    rumusSetoranUnsubscribe();
+    rumusSetoranUnsubscribe = null;
+  }
 }
 window.openRumusPanel = openRumusPanel;
 window.closeRumusPanel = closeRumusPanel;
 document.getElementById("rumusPanelClose")?.addEventListener("click", closeRumusPanel);
 document.getElementById("rumusOverlay")?.addEventListener("click", closeRumusPanel);
 document.getElementById("rumusTanggal")?.addEventListener("change", (e) => {
+  loadRumusData(e.target.value);
   window.onRumusTanggalChange?.(e.target.value); // hook buat trigger query nanti
 });
 document.getElementById("rumusSaveBtn")?.addEventListener("click", () => {
-  window.onRumusSimpan?.(document.getElementById("rumusTanggal")?.value); // hook buat simpan nanti
+  simpanSetoranAmplop();
 });
 
 /* ── SWIPE TO CLOSE ── */
 (function initRumusSwipe() {
   const panel = document.getElementById("rumusPanel");
   if (!panel) return;
+  const body = panel.querySelector(".rumus-panel-body");
 
-  let startX = 0, startY = 0;
-  let deltaX = 0, deltaY = 0;
-  let dragging = false;
-  let isDesktop = window.matchMedia("(min-width: 769px)").matches;
+  // ── MOBILE: swipe ke bawah (scroll body dihandle manual biar gak rebutan sama native scroll) ──
+  let startY = 0, lastY = 0, dy = 0, dragging = false, tracking = false;
 
-  window.addEventListener("resize", () => {
-    isDesktop = window.matchMedia("(min-width: 769px)").matches;
-  });
-
-  panel.addEventListener("pointerdown", (e) => {
-    // hindari drag kalau mulai dari area yang bisa discroll teksnya, kecuali handle/header
-    const isHandle = e.target.closest(".rumus-panel-handle, .rumus-panel-header");
-    if (!isHandle && !isDesktop) return; // di mobile, batasi drag mulai dari handle/header
-    dragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    deltaX = 0;
-    deltaY = 0;
+  panel.addEventListener("touchstart", (e) => {
+    if (window.innerWidth > 768) return;
+    tracking = true;
+    dragging = false;
+    startY = lastY = e.touches[0].clientY;
+    dy = 0;
     panel.style.transition = "none";
-    panel.setPointerCapture?.(e.pointerId);
-  });
+  }, { passive: true });
 
-  panel.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    deltaX = e.clientX - startX;
-    deltaY = e.clientY - startY;
+  panel.addEventListener("touchmove", (e) => {
+    if (!tracking) return;
+    const y = e.touches[0].clientY;
+    const stepY = y - lastY; // gerakan sejak event terakhir
+    lastY = y;
+    dy = y - startY;
 
-    if (isDesktop) {
-      // hanya boleh geser ke kanan (menutup)
-      const move = Math.max(0, deltaX);
-      panel.style.transform = `translateX(${move}px)`;
-    } else {
-      // hanya boleh geser ke bawah (menutup)
-      const move = Math.max(0, deltaY);
-      panel.style.transform = `translateY(${move}px)`;
+    if (!dragging) {
+      const atTop = !body || body.scrollTop <= 0;
+      if (atTop && stepY > 0) {
+        dragging = true;
+      } else if (body) {
+        e.preventDefault();
+        body.scrollTop -= stepY;
+        return;
+      }
     }
-  });
 
-  function endDrag() {
+    if (dragging) {
+      e.preventDefault();
+      panel.style.transform = `translateY(${Math.max(0, dy)}px)`;
+    }
+  }, { passive: false });
+
+  panel.addEventListener("touchend", () => {
+    tracking = false;
     if (!dragging) return;
     dragging = false;
-    panel.style.transition = "";
-    panel.style.transform = "";
 
-    const threshold = isDesktop ? 120 : 100;
-    const moved = isDesktop ? deltaX : deltaY;
+    panel.style.transition = "transform .3s cubic-bezier(.32,1,.23,1)";
 
-    if (moved > threshold) {
-      closeRumusPanel();
+    if (dy > 120) {
+      // lanjutkan animasi turun sampai bener-bener hilang, baru beneran tutup
+      panel.style.transform = "translateY(100%)";
+      setTimeout(() => {
+        closeRumusPanel();
+        panel.style.transform = "";
+        panel.style.transition = "";
+      }, 300);
+    } else {
+      // batal, balik ke posisi terbuka
+      panel.style.transform = "";
+      setTimeout(() => { panel.style.transition = ""; }, 300);
     }
-    deltaX = 0;
-    deltaY = 0;
-  }
+  });
 
-  panel.addEventListener("pointerup", endDrag);
-  panel.addEventListener("pointercancel", endDrag);
+  // ── DESKTOP: swipe ke kanan (mouse drag) ──
+  let startX = 0, curX = 0, draggingDesktop = false;
+
+  panel.addEventListener("mousedown", (e) => {
+    if (window.innerWidth <= 768) return;
+    startX = curX = e.clientX;
+    draggingDesktop = true;
+    panel.style.transition = "none";
+  });
+
+  window.addEventListener("mousemove", (e) => {
+    if (!draggingDesktop) return;
+    curX = e.clientX;
+    const dx = curX - startX;
+    if (dx < 0) return;
+    panel.style.transform = `translateX(${dx}px)`;
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (!draggingDesktop) return;
+    draggingDesktop = false;
+
+    panel.style.transition = "transform .3s cubic-bezier(.32,1,.23,1)";
+
+    if (curX - startX > 120) {
+      panel.style.transform = "translateX(100%)";
+      setTimeout(() => {
+        closeRumusPanel();
+        panel.style.transform = "";
+        panel.style.transition = "";
+      }, 300);
+    } else {
+      panel.style.transform = "";
+      setTimeout(() => { panel.style.transition = ""; }, 300);
+    }
+  });
 })();
 
 /* ── TOAST ── */

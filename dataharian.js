@@ -22,6 +22,7 @@ window.initDataharianView = async function() {
 
 let activeKurirUid  = null;
 let activeKurirUser = null;
+let dhOmsetAktif = 0;
 
 /* ── LOAD KURIR LIST ── */
 async function loadDhKurirList() {
@@ -129,8 +130,8 @@ async function selectDhKurir(user) {
   const dateEl = document.getElementById("dhDetailDate");
   if (dateEl && !dateEl.value) dateEl.value = getTanggalLocal();
 
-  await renderDhForm();
   await renderDhRingkasan();
+  await renderDhForm();
 
   const reloadBtn = document.getElementById("dhReloadBtn");
   if (reloadBtn) {
@@ -151,8 +152,8 @@ async function selectDhKurir(user) {
     const newDate = dateInput.cloneNode(true);
     dateInput.parentNode.replaceChild(newDate, dateInput);
     newDate.addEventListener("change", async () => {
-      await renderDhForm();
       await renderDhRingkasan();
+      await renderDhForm();
     });
   }
 }
@@ -226,6 +227,10 @@ async function renderDhForm() {
         <span class="dh-tagihan-value" id="dhTagihanValue">Rp 0</span>
       </div>
       <div class="dh-tagihan-ket" id="dhTagihanKet"></div>
+      <div class="dh-tagihan-row" style="margin-top:6px">
+        <span class="dh-tagihan-label">Distribusi</span>
+        <span class="dh-tagihan-value" id="dhDistribusiValue">Rp 0</span>
+      </div>
     </div>
     <div class="dh-harga-wrap">
       <div class="dh-harga-title">Keterangan Harga Varian</div>
@@ -386,8 +391,9 @@ async function renderDhForm() {
 
 /* ── HITUNG TAGIHAN ── */
 function hitungTagihan() {
-  const tagihanEl = document.getElementById("dhTagihanValue");
-  const ketEl     = document.getElementById("dhTagihanKet");
+  const tagihanEl    = document.getElementById("dhTagihanValue");
+  const ketEl        = document.getElementById("dhTagihanKet");
+  const distribusiEl = document.getElementById("dhDistribusiValue");
   if (!tagihanEl || !ketEl) return;
 
   const hargaMap = {};
@@ -416,6 +422,11 @@ function hitungTagihan() {
   } else {
     ketEl.textContent = `Lebih Rp ${selisih.toLocaleString("id-ID")}`;
     ketEl.className = "dh-tagihan-ket dh-ket-lebih";
+  }
+  if (distribusiEl) {
+    const distribusi = dhOmsetAktif - totalTagihan;
+    distribusiEl.textContent = `Rp ${distribusi.toLocaleString("id-ID")}`;
+    distribusiEl.style.color = distribusi < 0 ? "#d05050" : distribusi === 0 ? "var(--text-primary)" : "#3a9a62";
   }
 }
 
@@ -450,9 +461,10 @@ async function renderDhRingkasan(forceReload = false) {
 
   if (!data) {
     body.innerHTML = `<div class="dh-ringkasan-empty">Belum ada data</div>`;
+    dhOmsetAktif = 0;
     return;
   }
-
+  dhOmsetAktif = Number(data?.pembayaran?.bayarKonsumen || 0);
   renderRingkasanUI(body, data);
 }
 

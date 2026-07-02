@@ -16,8 +16,16 @@ let pengTahun = new Date().getFullYear();
 let pengCustomFrom = "";
 let pengCustomTo = "";
 
+function getPengTanggalHariIni() {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 window.initPengeluaranView = async function() {
-  document.getElementById("pengInputTanggal").value = new Date().toISOString().slice(0,10);
+  document.getElementById("pengInputTanggal").value = getPengTanggalHariIni();
 
   initPengFilters();
   initPengPeriodeFilter();
@@ -331,7 +339,8 @@ function renderPengItemRow(nama, hargaSatuan, isPreset, existing) {
         <div class="peng-item-row peng-item-row-saved" data-preset="true" data-nama="${nama}" data-harga-satuan="${hs}">
           <div class="peng-item-nama-label">${nama} <span class="peng-item-saved-badge">Tersimpan</span></div>
           <input type="number" min="0" class="peng-item-qty-input" value="${qty}">
-          <input type="number" min="0" class="peng-item-harga-input" value="${qty * hs}">
+          <input type="number" min="0" class="peng-item-harga-input" value="${hs}">
+          <div class="peng-item-total-label">${fmtRupiah(qty * hs)}</div>
         </div>
       `;
     }
@@ -339,7 +348,8 @@ function renderPengItemRow(nama, hargaSatuan, isPreset, existing) {
       <div class="peng-item-row" data-preset="true" data-nama="${nama}" data-harga-satuan="${Number(hargaSatuan)||0}">
         <div class="peng-item-nama-label">${nama}</div>
         <input type="number" min="0" class="peng-item-qty-input" placeholder="0">
-        <input type="number" min="0" class="peng-item-harga-input" placeholder="0">
+        <input type="number" min="0" class="peng-item-harga-input" value="${Number(hargaSatuan)||""}" placeholder="0">
+        <div class="peng-item-total-label">Rp0</div>
       </div>
     `;
   }
@@ -348,6 +358,7 @@ function renderPengItemRow(nama, hargaSatuan, isPreset, existing) {
       <input type="text" class="peng-item-nama-input" placeholder="Nama item">
       <input type="number" min="0" class="peng-item-qty-input" placeholder="0">
       <input type="number" min="0" class="peng-item-harga-input" placeholder="0">
+      <div class="peng-item-total-label">Rp0</div>
       <button type="button" class="peng-item-remove-btn"><i class="fa-solid fa-xmark"></i></button>
     </div>
   `;
@@ -362,12 +373,18 @@ function attachPengNominalListeners() {
   document.querySelectorAll("#pengItemList .peng-item-row").forEach(row => {
     const qtyInput = row.querySelector(".peng-item-qty-input");
     const hargaInput = row.querySelector(".peng-item-harga-input");
-    const hargaSatuan = Number(row.dataset.hargaSatuan) || 0;
-    if (!qtyInput || !hargaInput || !hargaSatuan) return;
+    const totalEl = row.querySelector(".peng-item-total-label");
+    if (!qtyInput || !hargaInput || !totalEl) return;
 
-    qtyInput.oninput = () => {
-      hargaInput.value = (Number(qtyInput.value) || 0) * hargaSatuan;
+    const updateTotal = () => {
+      const qty = Number(qtyInput.value) || 0;
+      const harga = Number(hargaInput.value) || 0;
+      totalEl.textContent = fmtRupiah(qty * harga);
     };
+
+    qtyInput.oninput = updateTotal;
+    hargaInput.oninput = updateTotal;
+    updateTotal();
   });
 }
 let pengExistingDocCache = { tanggal: null, data: null };
