@@ -1,6 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
-  getAuth, onAuthStateChanged
+  getAuth, onAuthStateChanged,
+  createUserWithEmailAndPassword, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore,
@@ -32,6 +33,12 @@ export const storage = getStorage(app);
 
 /* ── GLOBALS ── */
 window.auth            = auth;
+window.initializeApp                 = initializeApp;
+window.deleteApp                     = deleteApp;
+window.getAuth                       = getAuth;
+window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+window.signOut                       = signOut;
+window.firebaseConfig                = firebaseConfig;
 window.db              = db;
 window.storage         = storage;
 window.doc             = doc;

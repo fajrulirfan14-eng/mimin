@@ -30,6 +30,7 @@
 <link rel="stylesheet" href="stockopname.css">
 <link rel="stylesheet" href="pengeluaran.css">
 <link rel="stylesheet" href="amplop.css">
+<link rel="stylesheet" href="akun.css">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1407,11 +1408,148 @@
 
         <!-- AKUN -->
         <div class="view" id="view-akun">
-          <div class="view-scroll">
-            <div class="placeholder-view">
-              <i class="fa-solid fa-user-gear"></i>
-              <p>Akun</p>
-              <span>Coming soon</span>
+          <div class="akun-layout">
+
+            <!-- PANEL KIRI -->
+            <div class="akun-panel-left" id="akunPanelLeft">
+              <div class="akun-toolbar">
+                <div class="akun-search-wrap">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" id="akunSearchInput" placeholder="Cari nama...">
+                </div>
+                <button class="cust-reload-btn" id="akunTambahBtn">
+                  <i class="fa-solid fa-plus"></i>
+                </button>
+              </div>
+              <div class="akun-tabs" id="akunTabs">
+                <button class="akun-tab active" data-role="semua">Semua</button>
+                <button class="akun-tab" data-role="kurir">Kurir</button>
+                <button class="akun-tab" data-role="hunter">Hunter</button>
+                <button class="akun-tab" data-role="sales">Sales</button>
+                <button class="akun-tab" data-role="produksi">Produksi</button>
+              </div>
+              <div class="akun-list" id="akunList">
+                <div class="dh-ringkasan-empty">Memuat...</div>
+              </div>
+            </div>
+
+            <!-- PANEL KANAN -->
+            <div class="akun-panel-right" id="akunPanelRight">
+              <div class="akun-empty-state" id="akunEmptyState">
+                <i class="fa-solid fa-user-gear"></i>
+                <div>Pilih akun untuk melihat detail</div>
+              </div>
+              <div class="akun-detail" id="akunDetail" style="display:none">
+
+                <!-- HEADER DETAIL -->
+                <div class="akun-detail-header">
+                  <button class="akun-back-btn" id="akunBackBtn">
+                    <i class="fa-solid fa-arrow-left"></i>
+                  </button>
+                  <div class="akun-detail-foto-wrap">
+                    <img class="akun-detail-foto" id="akunDetailFoto" src="" alt="">
+                    <button class="akun-foto-change" id="akunFotoChangeBtn">
+                      <i class="fa-solid fa-camera"></i>
+                    </button>
+                    <input type="file" id="akunFotoInput" accept="image/*" style="display:none">
+                  </div>
+                  <div class="akun-detail-nama" id="akunDetailNama">-</div>
+                  <div class="akun-detail-role" id="akunDetailRole">-</div>
+                  <div class="akun-detail-status" id="akunDetailStatus"></div>
+                </div>
+
+                <!-- BODY DETAIL -->
+                <div class="akun-detail-body">
+                  <div class="akun-form-group">
+                    <div class="akun-form-label">Nama</div>
+                    <input type="text" class="akun-form-input" id="akunInputNama" placeholder="Nama lengkap">
+                  </div>
+                  <div class="akun-form-group">
+                    <div class="akun-form-label">Email</div>
+                    <input type="email" class="akun-form-input" id="akunInputEmail" placeholder="Email" readonly>
+                  </div>
+                  <div class="akun-form-group">
+                    <div class="akun-form-label">No Telpon</div>
+                    <input type="tel" class="akun-form-input" id="akunInputTelpon" placeholder="No telpon">
+                  </div>
+                  <div class="akun-form-group">
+                    <div class="akun-form-label">NIK</div>
+                    <input type="text" class="akun-form-input" id="akunInputNik" placeholder="NIK">
+                  </div>
+                  <div class="akun-form-group">
+                    <div class="akun-form-label">Alamat</div>
+                    <input type="text" class="akun-form-input" id="akunInputAlamat" placeholder="Alamat">
+                  </div>
+                  <div class="akun-form-group">
+                    <div class="akun-form-label">Motivasi</div>
+                    <input type="text" class="akun-form-input" id="akunInputMotivasi" placeholder="Motivasi">
+                  </div>
+                </div>
+
+                <!-- FOOTER DETAIL -->
+                <div class="akun-detail-footer">
+                  <button class="akun-btn-toggle" id="akunToggleStatusBtn">Nonaktifkan</button>
+                  <button class="akun-btn-reset" id="akunResetPasswordBtn">Reset Password</button>
+                  <button class="akun-btn-save" id="akunSaveBtn">Simpan</button>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+          <!-- POPUP TAMBAH AKUN -->
+          <div class="akun-tambah-overlay" id="akunTambahOverlay">
+            <div class="akun-tambah-box">
+              <div class="akun-tambah-header">
+                <div class="akun-tambah-title">Tambah Akun</div>
+                <button class="akun-tambah-close" id="akunTambahClose">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div class="akun-tambah-body">
+                <div class="akun-form-group">
+                  <div class="akun-form-label">Nama</div>
+                  <input type="text" class="akun-form-input" id="akunTambahNama" placeholder="Nama lengkap">
+                </div>
+                <div class="akun-form-group">
+                  <div class="akun-form-label">Email</div>
+                  <input type="email" class="akun-form-input" id="akunTambahEmail" placeholder="Email">
+                </div>
+                <div class="akun-form-group">
+                  <div class="akun-form-label">Password</div>
+                  <input type="password" class="akun-form-input" id="akunTambahPassword" placeholder="Password">
+                </div>
+                <div class="akun-form-group">
+                  <div class="akun-form-label">Role</div>
+                  <div class="akun-select-wrap">
+                    <button class="akun-select-btn" id="akunTambahRoleBtn">
+                      <span id="akunTambahRoleLabel">Pilih role</span>
+                      <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="akun-select-dropdown" id="akunTambahRoleDropdown" style="display:none">
+                      <div class="akun-select-option" data-role="kurir">Kurir</div>
+                      <div class="akun-select-option" data-role="hunter">Hunter</div>
+                      <div class="akun-select-option" data-role="sales">Sales</div>
+                      <div class="akun-select-option" data-role="produksi">Produksi</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="akun-form-group">
+                  <div class="akun-form-label">No Telpon</div>
+                  <input type="tel" class="akun-form-input" id="akunTambahTelpon" placeholder="No telpon">
+                </div>
+                <div class="akun-form-group">
+                  <div class="akun-form-label">NIK</div>
+                  <input type="text" class="akun-form-input" id="akunTambahNik" placeholder="NIK">
+                </div>
+                <div class="akun-form-group">
+                  <div class="akun-form-label">Alamat</div>
+                  <input type="text" class="akun-form-input" id="akunTambahAlamat" placeholder="Alamat">
+                </div>
+              </div>
+              <div class="akun-tambah-footer">
+                <button class="akun-tambah-save" id="akunTambahSave">Buat Akun</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1550,6 +1688,7 @@
 <script src="stockopname.js"></script>
 <script src="pengeluaran.js"></script>
 <script src="amplop.js"></script>
+<script src="akun.js"></script>
 <script type="module" src="index.js"></script>
 
 <div id="devConsoleMount"></div>
