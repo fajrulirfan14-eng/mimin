@@ -589,7 +589,13 @@ async function simpanKeuangan() {
       if (k) hargaMap[k] = Number(v[k]?.hargaProduksi) || 0;
     });
     // closing dari IDB
-    const closingData = data?.closing || {};
+    // ambil closing dari UI admin (form input), bukan dari IDB
+    const closingData = {};
+    document.querySelectorAll(".dh-form-closing").forEach(el => {
+      const varian = el.dataset.varian;
+      const val    = Number(el.textContent) || 0;
+      if (varian && val > 0) closingData[varian] = val;
+    });
     const jumlahUangClosing = Object.entries(closingData).reduce((acc, [k, v]) => acc + (Number(v) || 0) * (hargaMap[k] || 0), 0);
     const grossMargin = inputOmset - jumlahUangClosing;
 

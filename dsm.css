@@ -234,6 +234,8 @@ th.dsm-rk-omset    { background:#2d6b2d; }
   padding: 16px; background: var(--bg-card);
   border-bottom: 1px solid var(--border-card); flex-shrink: 0;
 }
+.dsm-badge-fee { background: rgba(26,95,180,0.15); color: #1a5fb4; }
+.dsm-badge-disable { background: rgba(176,32,32,0.15); color: #b02020; }
 .dsm-analisa-title { font-size: 15px; font-weight: 700; color: var(--text-primary); }
 .dsm-analisa-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .dsm-analisa-close {

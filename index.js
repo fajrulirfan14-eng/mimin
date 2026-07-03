@@ -116,8 +116,13 @@ function initApp() {
 /* ── SHOW VIEW ── */
 window.showView = function(viewName) {
   if (!document.getElementById(`view-${viewName}`)) viewName = "home";
+  // cleanup view lama sebelum ganti
+  if (currentView === "amplop") window.onAmplopViewHide?.();
   currentView = viewName;
-
+  // restart listener kalau balik ke amplop
+  if (viewName === "amplop" && _inited.amplop) {
+    window.loadAmplopList?.();
+  }
   // switch view
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.getElementById(`view-${viewName}`)?.classList.add("active");
@@ -155,7 +160,6 @@ window.showView = function(viewName) {
   // lazy init view
   lazyInitView(viewName);
 };
-
 function lazyInitView(viewName) {
   if (_inited[viewName]) return;
 
@@ -226,7 +230,6 @@ function initSidebar() {
     }
   }
 }
-
 function toggleSidebar() {
   const sidebar   = document.getElementById("sidebar");
   const hamburger = document.getElementById("hamburger");
@@ -239,7 +242,6 @@ function toggleSidebar() {
   }
   localStorage.setItem("sidebarOpen", isOpen);
 }
-
 function closeSidebar() {
   const sidebar   = document.getElementById("sidebar");
   const hamburger = document.getElementById("hamburger");
@@ -294,7 +296,6 @@ function initTopbar() {
     showView("akun");
   });
 }
-
 /* ── BOTTOM NAV ── */
 function initBottomNav() {
   document.querySelectorAll(".bottom-nav-item").forEach(item => {
@@ -304,7 +305,6 @@ function initBottomNav() {
     });
   });
 }
-
 /* ── TOPBAR AVATAR ── */
 function setTopbarAvatar() {
   const user    = window.currentUser;
@@ -446,31 +446,43 @@ async function simpanSetoranAmplop() {
   }
 }
 function updateProduksiUI() {
-  let omset = 0;
-  let lainnya = 0; // belum ada rumus, dikosongkan dulu
+  let totalOmset = 0, totalPengeluaran = 0;
+  let omsetRows = "", pengeluaranRows = "";
 
   if (rumusLaporanData) {
-    Object.keys(rumusLaporanData).forEach((key) => {
-      if (key === "tanggal" || key === "createdBy") return; // skip field level dokumen
+    Object.keys(rumusLaporanData).forEach(key => {
+      if (key === "tanggal" || key === "createdBy") return;
       const kurir = rumusLaporanData[key];
-      omset += kurir?.pembayaran?.nota?.bayar || 0;
+      const nilai = kurir?.pembayaran?.nota?.bayar || 0;
+      totalOmset += nilai;
+      omsetRows  += `<div class="amplop-detail-row"><span class="label">${kurir?.nama||""}</span><span class="value">${formatRupiah(nilai)}</span></div>`;
     });
   }
 
-  let pengeluaran = 0;
   if (rumusPengeluaranData?.produksi) {
-    pengeluaran = rumusPengeluaranData.produksi.reduce((sum, item) => sum + (item.nominal || 0), 0);
+    rumusPengeluaranData.produksi.forEach(item => {
+      totalPengeluaran += Number(item.nominal) || 0;
+      pengeluaranRows  += `<div class="amplop-detail-row"><span class="label">${item.nama||""} (x${item.qty||1})</span><span class="value">- ${formatRupiah(item.nominal)}</span></div>`;
+    });
   }
 
-  const amplop = omset - lainnya - pengeluaran;
+  const amplop = totalOmset - totalPengeluaran;
 
-  const elOmset = document.getElementById("rumusOmsetProduksi");
-  const elLainnya = document.getElementById("rumusLainnyaProduksi");
-  const elPengeluaran = document.getElementById("rumusPengeluaranProduksi");
+  const card = document.querySelector("#rumusPanelBody .rumus-card-produksi");
+  if (card) {
+    card.innerHTML = `
+      <div class="amplop-detail-subtitle">Omset</div>
+      ${omsetRows || `<div class="amplop-detail-row"><span class="label">-</span><span class="value">Rp 0</span></div>`}
+      <div class="amplop-detail-row amplop-detail-row-sum"><span class="label">Total Omset</span><span class="value">${formatRupiah(totalOmset)}</span></div>
+
+      <div class="amplop-detail-subtitle">Pengeluaran</div>
+      ${pengeluaranRows || `<div class="amplop-detail-row"><span class="label">Tidak ada</span><span class="value">Rp 0</span></div>`}
+      <div class="amplop-detail-row amplop-detail-row-sum"><span class="label">Total Pengeluaran</span><span class="value">- ${formatRupiah(totalPengeluaran)}</span></div>
+
+      <div class="amplop-detail-total"><span>Amplop Produksi</span><span>${formatRupiah(amplop)}</span></div>`;
+  }
+
   const elAmplop = document.getElementById("rumusAmplopProduksi");
-  if (elOmset) elOmset.textContent = formatRupiah(omset);
-  if (elLainnya) elLainnya.textContent = formatRupiah(lainnya);
-  if (elPengeluaran) elPengeluaran.textContent = formatRupiah(pengeluaran);
   if (elAmplop) elAmplop.textContent = formatRupiah(amplop);
 }
 function toggleRumusTanggalCheck(show) {
@@ -478,35 +490,70 @@ function toggleRumusTanggalCheck(show) {
   if (el) el.style.display = show ? "" : "none";
 }
 function updateDistribusiUI() {
-  let omset = 0;
-  let lainnya = 0;
+  let totalOmset = 0, totalLainnya = 0, totalPengeluaran = 0;
+  let omsetRows = "", lainnyaRows = "", pengeluaranRows = "";
 
   if (rumusLaporanData) {
-    Object.keys(rumusLaporanData).forEach((key) => {
-      if (key === "tanggal" || key === "createdBy") return; // skip field level dokumen
-      const kurir = rumusLaporanData[key];
+    Object.keys(rumusLaporanData).forEach(key => {
+      if (key === "tanggal" || key === "createdBy") return;
+      const kurir    = rumusLaporanData[key];
       const keuangan = kurir?.distribusi?.keuangan;
       if (!keuangan) return;
 
-      omset += keuangan.grossMargin || 0;
-      lainnya += (keuangan.bonus?.bonusPay || 0) + (keuangan.klaimInsentif || 0) + (keuangan.kasbon || 0);
+      const nilaiOmset    = keuangan.grossMargin || 0;
+      const bonusPay      = keuangan.bonus?.bonusPay || 0;
+      const klaimInsentif = keuangan.klaimInsentif || 0;
+      const kasbon        = keuangan.kasbon || 0;
+      const totalKurir    = bonusPay + klaimInsentif + kasbon;
+      const netto         = nilaiOmset - bonusPay - klaimInsentif;
+
+      totalOmset   += netto;
+      totalLainnya += totalKurir;
+
+      const details = [
+        bonusPay      > 0 ? `Bonus Pay: ${formatRupiah(bonusPay)}`          : null,
+        klaimInsentif > 0 ? `Klaim Insentif: ${formatRupiah(klaimInsentif)}` : null,
+        kasbon        > 0 ? `Kasbon: ${formatRupiah(kasbon)}`                : null,
+      ].filter(Boolean).join(" · ");
+
+      omsetRows   += `<div class="amplop-detail-row"><span class="label">${kurir?.nama||""}</span><span class="value">${formatRupiah(netto)}</span></div>`;
+      lainnyaRows += `
+        <div class="amplop-detail-row" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <div style="display:flex;justify-content:space-between;width:100%">
+            <span class="label">${kurir?.nama||""}</span>
+            <span class="value">- ${formatRupiah(totalKurir)}</span>
+          </div>
+          ${details ? `<div style="font-size:11px;color:var(--text-muted)">${details}</div>` : ""}
+        </div>`;
     });
   }
 
-  let pengeluaran = 0;
   if (rumusPengeluaranData?.distribusi) {
-    pengeluaran = rumusPengeluaranData.distribusi.reduce((sum, item) => sum + (item.nominal || 0), 0);
+    rumusPengeluaranData.distribusi.forEach(item => {
+      totalPengeluaran += Number(item.nominal) || 0;
+      pengeluaranRows  += `<div class="amplop-detail-row"><span class="label">${item.nama||""} (x${item.qty||1})</span><span class="value">- ${formatRupiah(item.nominal)}</span></div>`;
+    });
+  }
+  const amplop = totalOmset - totalPengeluaran;
+  const card = document.querySelector(".rumus-card-distribusi");
+  if (card) {
+    card.innerHTML = `
+      <div class="amplop-detail-subtitle">Omset</div>
+      ${omsetRows || `<div class="amplop-detail-row"><span class="label">-</span><span class="value">Rp 0</span></div>`}
+      <div class="amplop-detail-row amplop-detail-row-sum"><span class="label">Total Omset</span><span class="value">${formatRupiah(totalOmset)}</span></div>
+
+      <div class="amplop-detail-subtitle">Lainnya</div>
+      ${lainnyaRows || `<div class="amplop-detail-row"><span class="label">Tidak ada</span><span class="value">Rp 0</span></div>`}
+      <div class="amplop-detail-row amplop-detail-row-sum"><span class="label">Total Lainnya</span><span class="value">- ${formatRupiah(totalLainnya)}</span></div>
+
+      <div class="amplop-detail-subtitle">Pengeluaran</div>
+      ${pengeluaranRows || `<div class="amplop-detail-row"><span class="label">Tidak ada</span><span class="value">Rp 0</span></div>`}
+      <div class="amplop-detail-row amplop-detail-row-sum"><span class="label">Total Pengeluaran</span><span class="value">- ${formatRupiah(totalPengeluaran)}</span></div>
+
+      <div class="amplop-detail-total"><span>Amplop Distribusi</span><span>${formatRupiah(amplop)}</span></div>`;
   }
 
-  const amplop = omset - lainnya - pengeluaran;
-
-  const elOmset = document.getElementById("rumusOmsetDistribusi");
-  const elLainnya = document.getElementById("rumusLainnyaDistribusi");
-  const elPengeluaran = document.getElementById("rumusPengeluaranDistribusi");
   const elAmplop = document.getElementById("rumusAmplopDistribusi");
-  if (elOmset) elOmset.textContent = formatRupiah(omset);
-  if (elLainnya) elLainnya.textContent = formatRupiah(lainnya);
-  if (elPengeluaran) elPengeluaran.textContent = formatRupiah(pengeluaran);
   if (elAmplop) elAmplop.textContent = formatRupiah(amplop);
 }
 async function getUidAdminCabang() {
@@ -631,10 +678,7 @@ document.getElementById("rumusSaveBtn")?.addEventListener("click", () => {
   const panel = document.getElementById("rumusPanel");
   if (!panel) return;
   const body = panel.querySelector(".rumus-panel-body");
-
-  // ── MOBILE: swipe ke bawah (scroll body dihandle manual biar gak rebutan sama native scroll) ──
   let startY = 0, lastY = 0, dy = 0, dragging = false, tracking = false;
-
   panel.addEventListener("touchstart", (e) => {
     if (window.innerWidth > 768) return;
     tracking = true;
@@ -643,7 +687,6 @@ document.getElementById("rumusSaveBtn")?.addEventListener("click", () => {
     dy = 0;
     panel.style.transition = "none";
   }, { passive: true });
-
   panel.addEventListener("touchmove", (e) => {
     if (!tracking) return;
     const y = e.touches[0].clientY;
@@ -667,12 +710,10 @@ document.getElementById("rumusSaveBtn")?.addEventListener("click", () => {
       panel.style.transform = `translateY(${Math.max(0, dy)}px)`;
     }
   }, { passive: false });
-
   panel.addEventListener("touchend", () => {
     tracking = false;
     if (!dragging) return;
     dragging = false;
-
     panel.style.transition = "transform .3s cubic-bezier(.32,1,.23,1)";
 
     if (dy > 120) {
@@ -689,17 +730,14 @@ document.getElementById("rumusSaveBtn")?.addEventListener("click", () => {
       setTimeout(() => { panel.style.transition = ""; }, 300);
     }
   });
-
   // ── DESKTOP: swipe ke kanan (mouse drag) ──
   let startX = 0, curX = 0, draggingDesktop = false;
-
   panel.addEventListener("mousedown", (e) => {
     if (window.innerWidth <= 768) return;
     startX = curX = e.clientX;
     draggingDesktop = true;
     panel.style.transition = "none";
   });
-
   window.addEventListener("mousemove", (e) => {
     if (!draggingDesktop) return;
     curX = e.clientX;
@@ -707,7 +745,6 @@ document.getElementById("rumusSaveBtn")?.addEventListener("click", () => {
     if (dx < 0) return;
     panel.style.transform = `translateX(${dx}px)`;
   });
-
   window.addEventListener("mouseup", () => {
     if (!draggingDesktop) return;
     draggingDesktop = false;

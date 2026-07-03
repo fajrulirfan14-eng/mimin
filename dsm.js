@@ -439,9 +439,16 @@ async function renderDsmTable() {
         data-foto-keterangan="${esc(dh.keterangan?.foto||"")}"
         data-nama="${esc(c.namaCustomer||"-")}">${badgeLabel}</span>` : "";
 
+    const hasFee     = !c._isPenjualan && varianList.some(v => Number(dh.fee?.[v] ?? 0) > 0);
+    const hasDisable = !c._isPenjualan && varianList.some(v => Number(dh.disable?.[v] ?? 0) > 0);
+    const feeData     = hasFee     ? JSON.stringify(dh.fee     || {}) : "";
+    const disableData = hasDisable ? JSON.stringify(dh.disable || {}) : "";
+    const feeBadgeHtml     = hasFee     ? `<span class="dsm-status-badge dsm-badge-fee"     data-fee='${feeData}'         data-nama="${esc(c.namaCustomer||"-")}">Fee</span>`     : "";
+    const disableBadgeHtml = hasDisable ? `<span class="dsm-status-badge dsm-badge-disable" data-disable='${disableData}' data-nama="${esc(c.namaCustomer||"-")}">Disable</span>` : "";
+
     let row = `<tr>
       <td class="dsm-td-base" style="width:${COL_NO}px;${stickyNo}">${i+1}</td>
-      <td class="dsm-td-base dsm-td-nama ${namaCls}" style="text-align:left;${stickyNama}">${esc(c.namaCustomer||"-")}${badgeHtml}</td>`;
+      <td class="dsm-td-base dsm-td-nama ${namaCls}" style="text-align:left;${stickyNama}">${esc(c.namaCustomer||"-")}${badgeHtml}${feeBadgeHtml}${disableBadgeHtml}</td>`;
 
     GROUPS.forEach(g => {
       let src;
@@ -651,11 +658,38 @@ async function renderDsmTable() {
   wrap.querySelectorAll(".dsm-status-badge").forEach(badge => {
     badge.addEventListener("click", e => {
       e.stopPropagation();
-      showDsmFotoPopup(badge.dataset.nama, badge.dataset.fotoCustomer, badge.dataset.fotoKeterangan);
+      if (badge.classList.contains("dsm-badge-fee")) {
+        showDsmFeePopup(badge.dataset.nama, JSON.parse(badge.dataset.fee || "{}"), "Fee");
+      } else if (badge.classList.contains("dsm-badge-disable")) {
+        showDsmFeePopup(badge.dataset.nama, JSON.parse(badge.dataset.disable || "{}"), "Disable");
+      } else {
+        showDsmFotoPopup(badge.dataset.nama, badge.dataset.fotoCustomer, badge.dataset.fotoKeterangan);
+      }
     });
   });
 
   initDsmDragScroll();
+}
+function showDsmFeePopup(nama, obj, label = "Fee") {
+  document.getElementById("dsmFeeOverlay")?.remove();
+  const el = document.createElement("div");
+  el.id = "dsmFeeOverlay";
+  el.className = "dsm-foto-overlay";
+  el.innerHTML = `
+    <div class="dsm-foto-box">
+      <div class="dsm-foto-title">${esc(label)} — ${esc(nama)}</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        ${Object.entries(obj).map(([v, val]) => `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-hover);border-radius:8px">
+            <span style="font-size:13px;font-weight:700;color:var(--text-primary)">${esc(v)}</span>
+            <span style="font-size:13px;font-weight:700;color:#1a5fb4">${Number(val).toLocaleString("id-ID")}</span>
+          </div>`).join("")}
+      </div>
+      <button class="dsm-foto-close" id="dsmFeeCloseBtn">Tutup</button>
+    </div>`;
+  document.body.appendChild(el);
+  document.getElementById("dsmFeeCloseBtn").onclick = () => el.remove();
+  el.onclick = e => { if (e.target === el) el.remove(); };
 }
 
 function showDsmFotoPopup(nama, fotoCustomer, fotoKeterangan) {
