@@ -1924,7 +1924,6 @@ function renderCustCards(customers = []) {
   list.querySelectorAll(".cust-card").forEach(card => {
     const id       = card.dataset.id;
     const customer = customers.find(c => c.id === id);
-    console.log("initRollingDrag", id, !!customer);
     if (customer) initRollingDrag(card, customer);
   });
   list.querySelectorAll(".cust-card-del-btn").forEach(btn => {

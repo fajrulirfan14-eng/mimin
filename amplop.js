@@ -209,9 +209,11 @@ function closeAmplopDetail() {
 /* ── KONFIRMASI DITERIMA ── */
 function showAmplopKonfirmasi(tanggal, diterimaSekarang) {
   document.getElementById("amplopKonfirmasiOverlay")?.remove();
+
   const pesan = diterimaSekarang
     ? "Tandai amplop ini sebagai <b>Belum Diterima</b>?"
     : "Tandai amplop ini sebagai <b>Diterima</b>?";
+
   const el = document.createElement("div");
   el.id = "amplopKonfirmasiOverlay";
   el.className = "amplop-konfirmasi-overlay";
@@ -219,6 +221,10 @@ function showAmplopKonfirmasi(tanggal, diterimaSekarang) {
     <div class="amplop-konfirmasi-box">
       <div class="amplop-konfirmasi-title">Konfirmasi</div>
       <div class="amplop-konfirmasi-pesan">${pesan}</div>
+      <div class="amplop-konfirmasi-pass-wrap">
+        <input type="password" class="amplop-konfirmasi-pass" id="amplopKonfirmasiPass" placeholder="Masukkan password">
+        <div class="amplop-konfirmasi-pass-err" id="amplopKonfirmasiErr"></div>
+      </div>
       <div class="amplop-konfirmasi-actions">
         <button class="amplop-konfirmasi-batal" id="amplopKonfirmasiBatal">Batal</button>
         <button class="amplop-konfirmasi-oke ${diterimaSekarang ? "amplop-konfirmasi-oke-red" : "amplop-konfirmasi-oke-green"}" id="amplopKonfirmasiOke">
@@ -232,13 +238,31 @@ function showAmplopKonfirmasi(tanggal, diterimaSekarang) {
   el.onclick = e => { if (e.target === el) el.remove(); };
 
   document.getElementById("amplopKonfirmasiOke").onclick = async () => {
-    const btn = document.getElementById("amplopKonfirmasiOke");
+    const btn     = document.getElementById("amplopKonfirmasiOke");
+    const passEl  = document.getElementById("amplopKonfirmasiPass");
+    const errEl   = document.getElementById("amplopKonfirmasiErr");
+    const passInput = passEl?.value?.trim() || "";
+
+    if (!passInput) { errEl.textContent = "Password wajib diisi"; return; }
+
+    // validasi password dari IDB kantorCabang
+    const kantorCabang   = await window.idb.getKantorCabang();
+    const correctPassword = kantorCabang?.pagePassword || "";
+
+    if (passInput !== correctPassword) {
+      errEl.textContent = "Password salah";
+      passEl.value = "";
+      passEl.focus();
+      return;
+    }
+
     btn.disabled = true; btn.textContent = "Menyimpan...";
     try {
       const uidAdminCabang = await window.getUidAdminCabang();
       await window.setDoc(
         window.doc(window.db, "users", uidAdminCabang, "setoranAmplop", tanggal),
-        { diterima: !diterimaSekarang }, { merge: true }
+        { diterima: !diterimaSekarang },
+        { merge: true }
       );
       window.showToast(!diterimaSekarang ? "Ditandai diterima" : "Dibatalkan", "success");
       el.remove();

@@ -8,7 +8,7 @@ import {
   doc, getDoc, collection, query, where,
   getDocs, addDoc, setDoc, updateDoc, deleteDoc,
   onSnapshot, serverTimestamp, deleteField,
-  collectionGroup, orderBy, limit, Timestamp
+  collectionGroup, orderBy, limit, Timestamp, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getStorage, ref as storageRef,
@@ -57,6 +57,7 @@ window.deleteDoc       = deleteDoc;
 window.onSnapshot      = onSnapshot;
 window.serverTimestamp = serverTimestamp;
 window.Timestamp = Timestamp;
+window.writeBatch = writeBatch;
 window.deleteField     = deleteField;
 window.storageRef      = storageRef;
 window.uploadBytes     = uploadBytes;

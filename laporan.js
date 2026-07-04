@@ -15,7 +15,6 @@ window.initLaporanView = async function() {
 };
 
 let lapActiveKurirUid = null;
-
 async function loadLapKurirList() {
   const listEl = document.getElementById("lapKurirList");
   if (!listEl) return;
@@ -36,7 +35,6 @@ async function loadLapKurirList() {
 
   renderLapKurirList(users);
 }
-
 function renderLapKurirList(users = []) {
   const listEl = document.getElementById("lapKurirList");
   if (!listEl) return;
@@ -73,7 +71,6 @@ function renderLapKurirList(users = []) {
     });
   });
 }
-
 async function selectLapKurir(user) {
   if (!user) return;
   lapActiveKurirUid = user.uid;
@@ -461,9 +458,12 @@ async function openKeuModal(tanggal) {
   window._lapOmsetData = omsetData;
   const refEl = document.getElementById("lapKeuOmsetRef");
   if (refEl) refEl.textContent = `Omset by data: Rp ${omsetData.toLocaleString("id-ID")}`;
-  window._lapBonusInsentif   = bonusInsentif;
-  window._lapBonusKunjungan  = bonusKunjungan;
-  window._lapBonusPay        = bonusPay;
+  const upahHunterVal     = Number(kantorCabang?.upahHunter) || 0;
+  const bonusCustomerBaru = cn * upahHunterVal;
+  window._lapBonusInsentif    = bonusInsentif;
+  window._lapBonusKunjungan   = bonusKunjungan;
+  window._lapBonusPay         = bonusPay;
+  window._lapBonusCustomerBaru = bonusCustomerBaru;
 
   // load existing dari Firestore laporanMarketing
   try {
@@ -495,19 +495,21 @@ function hitungKeuangan() {
   const insentif = parse("lapKeuInsentif");
   const kasbon   = parse("lapKeuKasbon");
 
-  const bonusPay       = window._lapBonusPay       || 0;
-  const bonusKunjungan = window._lapBonusKunjungan  || 0;
-  const bonusInsentif  = window._lapBonusInsentif   || 0;
-  const totalBonus     = bonusPay + bonusKunjungan + bonusInsentif;
-  const total          = omset + totalBonus - kasbon;
+  const bonusPay         = window._lapBonusPay         || 0;
+  const bonusKunjungan   = window._lapBonusKunjungan    || 0;
+  const bonusInsentif    = window._lapBonusInsentif     || 0;
+  const bonusCustomerBaru = window._lapBonusCustomerBaru || 0;
+  const totalBonus       = bonusPay + bonusKunjungan + bonusInsentif + bonusCustomerBaru;
+  const total            = omset + totalBonus - kasbon;
 
   const fmt = v => `Rp ${v.toLocaleString("id-ID")}`;
   const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = fmt(val); };
 
-  set("lapKeuBonusPay",       bonusPay);
-  set("lapKeuBonusKunjungan", bonusKunjungan);
-  set("lapKeuBonusInsentif",  bonusInsentif);
-  set("lapKeuBonusTotal",     totalBonus);
+  set("lapKeuBonusPay",          bonusPay);
+  set("lapKeuBonusKunjungan",    bonusKunjungan);
+  set("lapKeuBonusInsentif",     bonusInsentif);
+  set("lapKeuBonusCustomerBaru", bonusCustomerBaru);
+  set("lapKeuBonusTotal",        totalBonus);
 }
 function cekOmsetRef() {
   const refEl  = document.getElementById("lapKeuOmsetRef");
@@ -561,10 +563,11 @@ async function simpanKeuangan() {
     const klaimInsentif = parse("lapKeuInsentif");
     const kasbon        = parse("lapKeuKasbon");
 
-    const bonusPay       = window._lapBonusPay       || 0;
-    const bonusKunjungan = window._lapBonusKunjungan  || 0;
-    const bonusInsentif  = window._lapBonusInsentif   || 0;
-    const jumlahBonus    = bonusPay + bonusKunjungan + bonusInsentif;
+    const bonusPay          = window._lapBonusPay          || 0;
+    const bonusKunjungan    = window._lapBonusKunjungan     || 0;
+    const bonusInsentif     = window._lapBonusInsentif      || 0;
+    const bonusCustomerBaru = window._lapBonusCustomerBaru  || 0;
+    const jumlahBonus       = bonusPay + bonusKunjungan + bonusInsentif + bonusCustomerBaru;
 
     const omset      = data?.pembayaran?.bayarKonsumen || 0;
     const pay        = { ...data?.pay     || {} };
@@ -631,7 +634,7 @@ async function simpanKeuangan() {
         profitSekarang: grossMargin - jumlahBonus - upahHarian,
         profitKemarin:  payMargin - expiredMargin - jumlahBonus - upahHarian,
         klaimInsentif, kasbon,
-        bonus: { bonusInsentif, bonusKunjungan, bonusPay, jumlahBonus }
+        bonus: { bonusInsentif, bonusKunjungan, bonusPay, bonusCustomerBaru, jumlahBonus }
       }
     };
 
@@ -650,12 +653,29 @@ async function simpanKeuangan() {
       });
     }
 
-    // 2. simpan ke laporanMarketing kurir
-    await window.setDoc(
-      window.doc(window.db, "users", user.uid, "laporanMarketing", tanggal),
-      { distribusi },
-      { merge: true }
-    );
+    // 2b. update isNew: false untuk customer kurir di hari ini
+    try {
+      const hariNama = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+      const namaHari = hariNama[new Date(tanggal).getDay()];
+      const idCabang = kantorCabang?.id || "";
+
+      if (idCabang) {
+        const qSnap = await window.getDocs(window.query(
+          window.collection(window.db, "customer"),
+          window.where("idCabang", "==", idCabang),
+          window.where("pemilik",  "==", user.uid),
+          window.where("hari",     "==", namaHari),
+          window.where("isNew",    "==", true)
+        ));
+        if (!qSnap.empty) {
+          const batch = window.writeBatch(window.db);
+          qSnap.forEach(docSnap => batch.update(docSnap.ref, { isNew: false }));
+          await batch.commit();
+        }
+      }
+    } catch (err) {
+      console.error("❌ update isNew:", err);
+    }
 
     // 3. update IDB dataHarian
     const existing = await window.idb.getDataHarian(user.uid, tanggal);
@@ -841,7 +861,6 @@ async function openTargetModal(tanggal) {
 
   overlay?.classList.add("show");
 }
-
 window.openTargetModal = openTargetModal;
 
 /* ── TABEL DISTRIBUSI ── */
@@ -911,7 +930,6 @@ async function initLapTabel() {
 
   document.getElementById("lapTabelApply")?.addEventListener("click", renderLapTabel);
 }
-
 async function renderLapTabel() {
   const scroll = document.getElementById("lapTabelScroll");
   if (!scroll) return;

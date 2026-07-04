@@ -375,7 +375,7 @@ async function renderDsmTable() {
 
   const isMobile = window.innerWidth <= 768;
   const COL_NO   = 36;
-  const COL_NAMA = 140;
+  const COL_NAMA = 180;
   const COL_VAR  = 44;
   const COL_AKSI = 100;
   const stickyNo   = isMobile ? "" : `position:sticky;left:0;`;
@@ -506,8 +506,8 @@ async function renderDsmTable() {
 
   // ── REKAP COLGROUP ──
   const REKAP_COL_NO   = 40;
-  const REKAP_COL_NAMA = 150;
-  const REKAP_COL_VAR  = 47.7;
+  const REKAP_COL_NAMA = 176;
+  const REKAP_COL_VAR  = 44;
   let colgroup = `<colgroup>
     <col style="width:${REKAP_COL_NO}px">
     <col style="width:${REKAP_COL_NAMA}px">`;
@@ -520,14 +520,13 @@ async function renderDsmTable() {
 
   // ── REKAP HEADER ──
   let rekapThead = `<tr>
-    <th class="dsm-th-base"></th>
-    <th class="dsm-th-base" style="text-align:left">Rekap</th>`;
+    <th class="dsm-th-base" colspan="2" style="text-align:left">Rekap</th>`;
   rekapGroups2.forEach((g, gi) => {
     rekapThead += `<th colspan="${V}" class="dsm-th-group ${DSM_REKAP_CLASS[gi]}">${g}</th>`;
   });
   rekapThead += `<th colspan="4" class="dsm-th-group dsm-rk-customer">Customer</th>`;
   rekapThead += `<th class="dsm-th-group dsm-rk-omset" style="width:100%">Omset</th></tr>`;
-  rekapThead += `<tr><th class="dsm-th-base"></th><th class="dsm-th-base"></th>`;
+  rekapThead += `<tr><th class="dsm-th-base" colspan="2"></th>`;
   rekapGroups2.forEach((g, gi) => {
     varianList.forEach(v => { rekapThead += `<th class="dsm-th-sub ${DSM_REKAP_CLASS[gi]}">${v}</th>`; });
     if (!varianList.length) rekapThead += `<th class="dsm-th-sub ${DSM_REKAP_CLASS[gi]}">-</th>`;
@@ -548,7 +547,7 @@ async function renderDsmTable() {
       const lmData = snapLM.data();
       varianList.forEach(v => { orderMap[v] = Number(lmData.order?.[v] ?? 0); });
     }
-  } catch (e) { console.error("❌ fetch laporanMarketing:", e); }
+  } catch (e) { }
 
   const feeMap     = {};
   const disableMap = {};
@@ -613,7 +612,7 @@ async function renderDsmTable() {
   });
 
   // ── REKAP BODY ──
-  let rekapTbody = `<tr><td class="dsm-td-base"></td><td class="dsm-td-base" style="font-weight:700">Nilai</td>`;
+  let rekapTbody = `<tr><td class="dsm-td-base" colspan="2" style="font-weight:700">Nilai</td>`;
   const rekapRow = (map, idx) => {
     let html = "";
     varianList.forEach(v => {

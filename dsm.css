@@ -59,7 +59,7 @@
 .dsm-table-wrap::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 4px; }
 
 /* ── TABLE INNER ── */
-.dsm-table-inner { display: inline-block; min-width: 100%; }
+.dsm-table-inner { display: block; min-width: 100%; }
 .dsm-table-rekap {
   border-top: 2px solid var(--border-card);
   width: 100%;

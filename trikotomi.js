@@ -44,18 +44,30 @@ window.renderDsmAnalisa = async function renderDsmAnalisa() {
   const tri = await loadTrikotomiSetting();
   const tanggalList = window._dsmHitungMinggu(dsmSelectedHari, dsmSelectedBulan, dsmSelectedTahun);
 
+  // helper — ambil minggu terakhir dari bulan sebelumnya
+  function getMingguTerakhirBulanLalu(hari, bulan, tahun) {
+    let prevBulan = bulan - 1;
+    let prevTahun = tahun;
+    if (prevBulan < 0) { prevBulan = 11; prevTahun--; }
+    const list = window._dsmHitungMinggu(hari, prevBulan, prevTahun);
+    return list.length ? list[list.length - 1] : null;
+  }
+
   let refDates = [];
   if (window.dsmAnalisaPeriode === 1) {
-    const d = tanggalList[dsmMingguKe - 1 - 1];
+    // T-1 = minggu yang sedang dibuka
+    const d = tanggalList[dsmMingguKe - 1];
     if (d) refDates = [d];
   } else {
-    const d1 = tanggalList[dsmMingguKe - 1 - 1];
-    const d2 = tanggalList[dsmMingguKe - 1 - 2];
+    // T-2 = minggu yang dibuka + minggu sebelumnya (fallback ke bulan lalu)
+    const d1 = tanggalList[dsmMingguKe - 1]; // minggu yang dibuka
+    const d2 = tanggalList[dsmMingguKe - 2] // minggu sebelumnya
+      || getMingguTerakhirBulanLalu(dsmSelectedHari, dsmSelectedBulan, dsmSelectedTahun); // fallback bulan lalu
     refDates = [d1, d2].filter(Boolean);
   }
 
   if (!refDates.length) {
-    groupEl.innerHTML = `<div class="dh-ringkasan-empty">Tidak ada data minggu sebelumnya</div>`;
+    groupEl.innerHTML = `<div class="dh-ringkasan-empty">Tidak ada data</div>`;
     document.getElementById("dsmAnalisaGreen").textContent  = "0";
     document.getElementById("dsmAnalisaYellow").textContent = "0";
     document.getElementById("dsmAnalisaRed").textContent    = "0";
