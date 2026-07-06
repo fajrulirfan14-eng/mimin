@@ -30,6 +30,7 @@
 <link rel="stylesheet" href="stockopname.css">
 <link rel="stylesheet" href="pengeluaran.css">
 <link rel="stylesheet" href="amplop.css">
+<link rel="stylesheet" href="rekapdistribusi.css">
 <link rel="stylesheet" href="akun.css">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -92,6 +93,10 @@
       <a class="nav-item" data-view="amplop">
         <div class="nav-icon"><i class="fa-solid fa-envelope"></i></div>
         <span>Amplop</span>
+      </a>
+      <a class="nav-item" data-view="rekapdistribusi">
+        <div class="nav-icon"><i class="fa-solid fa-chart-pie"></i></div>
+        <span>Rekap Distribusi</span>
       </a>
       <a class="nav-item" data-view="akun">
         <div class="nav-icon"><i class="fa-solid fa-user-gear"></i></div>
@@ -227,6 +232,7 @@
           </div>
         </div>
 
+        <!-- AMPLOP -->
         <div class="view" id="view-amplop">
           <div class="amplop-toolbar">
             <div class="amplop-search-wrap">
@@ -1557,6 +1563,91 @@
             </div>
           </div>
         </div>
+        
+        <div class="view" id="view-rekapdistribusi">
+          <div class="lap-layout">
+
+            <!-- KIRI: LIST -->
+            <div class="lap-list-panel">
+              <div class="lap-list-header">
+                <div class="lap-list-title">Rekap Distribusi</div>
+              </div>
+              <div class="lap-list-scroll" id="rekapDistribusiList">
+                <div class="lap-kurir-item" data-id="rekapitulasi">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-chart-pie"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Rekapitulasi</div>
+                    <div class="lap-kurir-role">Semua kurir</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- KANAN: DETAIL -->
+            <div class="lap-detail-wrapper" id="rekapDistribusiDetailWrapper">
+              <div class="lap-detail-panel">
+
+                <div class="lap-detail-empty" id="rekapDistribusiEmpty">
+                  <div class="lap-empty-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                  <div class="lap-empty-title">Pilih Rekapitulasi</div>
+                  <div class="lap-empty-sub">Klik untuk melihat analisis distribusi.</div>
+                </div>
+
+                <div class="lap-detail-content" id="rekapDistribusiContent" style="display:none;">
+                  <div class="lap-detail-header">
+                    <div class="lap-detail-header-top">
+                      <button class="lap-detail-back-btn" id="rekapDistribusiBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="lap-detail-info">
+                        <div class="lap-detail-nama">Rekapitulasi Distribusi</div>
+                      </div>
+                      <div class="rekap-dist-filter-wrap">
+                        <button class="rekap-dist-filter-btn" id="rekapDistBulanBtn">
+                          <i class="fa-solid fa-calendar"></i>
+                          <span id="rekapDistBulanLabel">Juli</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="rekapDistBulanDropdown" style="display:none">
+                          <div class="rekap-dist-dropdown-option" data-bulan="0">Januari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="1">Februari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="2">Maret</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="3">April</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="4">Mei</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="5">Juni</div>
+                          <div class="rekap-dist-dropdown-option selected" data-bulan="6">Juli</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="7">Agustus</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="8">September</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="9">Oktober</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="10">November</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="11">Desember</div>
+                        </div>
+
+                        <button class="rekap-dist-filter-btn" id="rekapDistTahunBtn">
+                          <span id="rekapDistTahunLabel">2026</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="rekapDistTahunDropdown" style="display:none"></div>
+
+                        <button class="rekap-dist-filter-btn" id="rekapDistReloadBtn" title="Reload">
+                          <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="lap-detail-body">
+                    <div class="rekap-dist-grid" id="rekapDistGrid">
+                      <div class="dh-ringkasan-empty">Memuat...</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
 
       </main>
     </div>
@@ -1692,6 +1783,7 @@
 <script src="stockopname.js"></script>
 <script src="pengeluaran.js"></script>
 <script src="amplop.js"></script>
+<script src="rekapdistribusi.js"></script>
 <script src="akun.js"></script>
 <script type="module" src="index.js"></script>
 

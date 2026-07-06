@@ -75,6 +75,7 @@ const VIEW_TITLES = {
   laporan:      "Laporan",
   customerbaru: "Customer Baru",
   amplop:       "Amplop",
+  rekapdistribusi: "Rekap Distribusi",
   akun:         "Akun"
 };
 
@@ -207,6 +208,10 @@ function lazyInitView(viewName) {
     case "amplop":
       _inited.amplop = true;
       window.initAmplopView?.();
+      break;
+    case "rekapdistribusi":
+      _inited.rekapdistribusi = true;
+      window.initRekapDistribusiView?.();
       break;
     case "akun":
       _inited.akun = true;

@@ -578,6 +578,7 @@ async function fetchDataHarian(uidKurir, tanggal) {
           window.where("pemilik",  "==", uidKurir),
           window.where("createdBy","==", uidKurir),
           window.where("acc",      "==", true),
+          window.where("status",   "==", true),
           window.where("createdAt",">=", startTs),
           window.where("createdAt","<",  endTs)
         ));
@@ -589,7 +590,8 @@ async function fetchDataHarian(uidKurir, tanggal) {
           window.where("idCabang", "==", idCabang),
           window.where("pemilik",  "==", uidKurir),
           window.where("hari",     "==", hariFilter),
-          window.where("isNew",    "==", false)
+          window.where("isNew",    "==", false),
+          window.where("status",   "==", true)
         ));
         hasil.customerLama = clSnap.docs.filter(d => !("acc" in d.data())).length;
 
@@ -599,7 +601,8 @@ async function fetchDataHarian(uidKurir, tanggal) {
           window.where("idCabang", "==", idCabang),
           window.where("pemilik",  "==", uidKurir),
           window.where("hari",     "==", hariFilter),
-          window.where("isNew",    "==", true)
+          window.where("isNew",    "==", true),
+          window.where("status",   "==", true)
         ));
         hasil.customerTambahan = ctSnap.docs.filter(d => !("acc" in d.data())).length;
       }

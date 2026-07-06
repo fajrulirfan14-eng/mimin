@@ -1,0 +1,236 @@
+/* ── BACK BUTTON ── */
+.lap-detail-back-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+/* ── FILTER HEADER ── */
+.rekap-dist-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  position: relative;
+}
+
+.rekap-dist-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+  border-radius: 8px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rekap-dist-filter-btn:hover {
+  background: var(--brand-light);
+}
+
+.rekap-dist-dropdown {
+  position: fixed;
+  z-index: 3000;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  min-width: 140px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.rekap-dist-dropdown-option {
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-card);
+}
+.rekap-dist-dropdown-option:last-child {
+  border-bottom: none;
+}
+.rekap-dist-dropdown-option:hover {
+  background: var(--brand-light);
+}
+.rekap-dist-dropdown-option.selected {
+  font-weight: 700;
+  color: var(--brand-primary);
+}
+
+/* ── CARD HEADER + RELOAD BTN ── */
+.rekap-dist-card-header {
+  position: relative;
+}
+.rekap-dist-reload-btn {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: var(--bg-card);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.rekap-dist-reload-btn:hover {
+  background: var(--brand-pale);
+  color: var(--brand-primary);
+}
+.rekap-dist-reload-btn.spinning i,
+#rekapDistReloadBtn.spinning i {
+  animation: rekapDistSpin 0.7s linear infinite;
+}
+@keyframes rekapDistSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ── REKAP DISTRIBUSI GRID ── */
+.rekap-dist-grid {
+  display: flex;
+  gap: 16px;
+  padding: 4px;
+  overflow-x: auto;
+  align-items: flex-start;
+}
+
+/* ── CARD ── */
+.rekap-dist-card {
+  min-width: 320px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border-radius: 14px;
+  border: 1px solid var(--border-card);
+  display: flex;
+  flex-direction: column;
+  height: auto;
+}
+
+.rekap-dist-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-card);
+  background: var(--bg-hover);
+}
+
+.rekap-dist-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--brand-pale);
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.rekap-dist-nama {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.rekap-dist-role {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+
+.rekap-dist-card-body {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rekap-dist-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--brand-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+/* ── TABLE ── */
+.rekap-dist-table {
+  width: 100%; border-collapse: collapse;
+}
+
+.rekap-dist-table th {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border-card);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rekap-dist-table th:first-child {
+  width: 55%;
+}
+
+.rekap-dist-table th:not(:first-child) {
+  width: 22.5%;
+  text-align: right;
+}
+
+.rekap-dist-table td {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border-card);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rekap-dist-table td:not(:first-child) {
+  text-align: right;
+}
+
+.rekap-dist-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .rekap-dist-grid {
+    flex-direction: column;
+    overflow-x: visible;
+  }
+
+  .rekap-dist-card {
+    min-width: 0;
+    width: 100%;
+  }
+}

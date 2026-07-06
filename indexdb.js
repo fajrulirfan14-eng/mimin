@@ -1,5 +1,5 @@
 const DB_NAME    = "adminCabangDB";
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 
 function openAdminDB() {
   return new Promise((resolve, reject) => {
@@ -27,6 +27,9 @@ function openAdminDB() {
       if (!db.objectStoreNames.contains("dsmData")) {
         db.createObjectStore("dsmData", { keyPath: "id" });
       }
+      if (!db.objectStoreNames.contains("laporanAdmin")) {
+        db.createObjectStore("laporanAdmin", { keyPath: "id" });
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror   = () => reject(req.error);
@@ -43,7 +46,6 @@ window.idb = {
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.saveUsers:", err); }
   },
-
   async getUsers() {
     try {
       const db = await openAdminDB();
@@ -54,7 +56,6 @@ window.idb = {
       });
     } catch (err) { console.error("❌ idb.getUsers:", err); return []; }
   },
-
   async clearUsers() {
     try {
       const db = await openAdminDB();
@@ -72,7 +73,6 @@ window.idb = {
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.saveKantorCabang:", err); }
   },
-
   async getKantorCabang() {
     try {
       const db = await openAdminDB();
@@ -83,7 +83,6 @@ window.idb = {
       });
     } catch (err) { console.error("❌ idb.getKantorCabang:", err); return null; }
   },
-
   async clearKantorCabang() {
     try {
       const db = await openAdminDB();
@@ -101,7 +100,6 @@ window.idb = {
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.saveDataHarian:", err); }
   },
-
   async getDataHarian(uidKurir, tanggal) {
     try {
       const db = await openAdminDB();
@@ -112,7 +110,6 @@ window.idb = {
       });
     } catch (err) { console.error("❌ idb.getDataHarian:", err); return null; }
   },
-
   async clearDataHarian(uidKurir, tanggal) {
     try {
       const db = await openAdminDB();
@@ -122,7 +119,6 @@ window.idb = {
     } catch (err) { console.error("❌ idb.clearDataHarian:", err); }
   },
   
-  // ── CUSTOMER KURIR ──
   async saveCustKurir(uid, hari, data) {
     try {
       const db = await openAdminDB();
@@ -131,7 +127,6 @@ window.idb = {
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.saveCustKurir:", err); }
   },
-
   async getCustKurir(uid, hari) {
     try {
       const db = await openAdminDB();
@@ -142,7 +137,6 @@ window.idb = {
       });
     } catch (err) { console.error("❌ idb.getCustKurir:", err); return null; }
   },
-
   async clearCustKurir(uid, hari) {
     try {
       const db = await openAdminDB();
@@ -152,7 +146,6 @@ window.idb = {
     } catch (err) { console.error("❌ idb.clearCustKurir:", err); }
   },
 
-  // ── CUSTOMER HUNTER ──
   async saveCustHunter(uid, hari, data) {
     try {
       const db = await openAdminDB();
@@ -161,7 +154,6 @@ window.idb = {
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.saveCustHunter:", err); }
   },
-
   async getCustHunter(uid, hari) {
     try {
       const db = await openAdminDB();
@@ -172,7 +164,6 @@ window.idb = {
       });
     } catch (err) { console.error("❌ idb.getCustHunter:", err); return null; }
   },
-
   async clearCustHunter(uid, hari) {
     try {
       const db = await openAdminDB();
@@ -182,7 +173,6 @@ window.idb = {
     } catch (err) { console.error("❌ idb.clearCustHunter:", err); }
   },
 
-  // ── CUSTOMER SALES ──
   async saveCustSales(uid, hari, data) {
     try {
       const db = await openAdminDB();
@@ -191,7 +181,6 @@ window.idb = {
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.saveCustSales:", err); }
   },
-
   async getCustSales(uid, hari) {
     try {
       const db = await openAdminDB();
@@ -202,7 +191,6 @@ window.idb = {
       });
     } catch (err) { console.error("❌ idb.getCustSales:", err); return null; }
   },
-
   async clearCustSales(uid, hari) {
     try {
       const db = await openAdminDB();
@@ -220,7 +208,6 @@ window.idb = {
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.saveDsmData:", err); }
   },
-
   async getDsmData(uidKurir, tanggal) {
     try {
       const db = await openAdminDB();
@@ -231,7 +218,6 @@ window.idb = {
       });
     } catch (err) { console.error("❌ idb.getDsmData:", err); return null; }
   },
-
   async clearDsmData(uidKurir, tanggal) {
     try {
       const db = await openAdminDB();
@@ -239,5 +225,42 @@ window.idb = {
       tx.objectStore("dsmData").delete(`${uidKurir}_${tanggal}`);
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.clearDsmData:", err); }
+  },
+  
+  async saveLaporanAdmin(tanggal, data) {
+    try {
+      const db = await openAdminDB();
+      const tx = db.transaction("laporanAdmin", "readwrite");
+      tx.objectStore("laporanAdmin").put({ id: tanggal, tanggal, data, updatedAt: Date.now() });
+      await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    } catch (err) { console.error("❌ idb.saveLaporanAdmin:", err); }
+  },
+  async getLaporanAdmin(tanggal) {
+    try {
+      const db = await openAdminDB();
+      return new Promise((resolve, reject) => {
+        const req = db.transaction("laporanAdmin", "readonly").objectStore("laporanAdmin").get(tanggal);
+        req.onsuccess = () => resolve(req.result?.data ?? null);
+        req.onerror   = () => reject(req.error);
+      });
+    } catch (err) { console.error("❌ idb.getLaporanAdmin:", err); return null; }
+  },
+  async getAllLaporanAdmin() {
+    try {
+      const db = await openAdminDB();
+      return new Promise((resolve, reject) => {
+        const req = db.transaction("laporanAdmin", "readonly").objectStore("laporanAdmin").getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror   = () => reject(req.error);
+      });
+    } catch (err) { console.error("❌ idb.getAllLaporanAdmin:", err); return []; }
+  },
+  async clearLaporanAdmin(tanggal) {
+    try {
+      const db = await openAdminDB();
+      const tx = db.transaction("laporanAdmin", "readwrite");
+      tx.objectStore("laporanAdmin").delete(tanggal);
+      await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    } catch (err) { console.error("❌ idb.clearLaporanAdmin:", err); }
   },
 };
