@@ -653,6 +653,13 @@ async function simpanKeuangan() {
       });
     }
 
+    // 2. simpan ke laporanMarketing kurir (mirror)
+    await window.setDoc(
+      window.doc(window.db, "users", user.uid, "laporanMarketing", tanggal),
+      { distribusi },
+      { merge: true }
+    );
+
     // 2b. update isNew: false untuk customer kurir di hari ini
     try {
       const hariNama = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
