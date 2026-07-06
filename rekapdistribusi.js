@@ -36,17 +36,19 @@ function initRekapDistFilter() {
   tahunBtn?.addEventListener("click", e => { e.stopPropagation(); openDD(tahunBtn, tahunDD); });
 
   bulanDD?.querySelectorAll(".rekap-dist-dropdown-option").forEach(opt => {
-    opt.addEventListener("click", e => {
+    opt.addEventListener("click", async e => {
       e.stopPropagation();
       rekapDistBulan = Number(opt.dataset.bulan);
       document.getElementById("rekapDistBulanLabel").textContent = REKAP_DIST_BULAN_NAMA[rekapDistBulan];
       bulanDD.querySelectorAll(".rekap-dist-dropdown-option").forEach(o => o.classList.remove("selected"));
       opt.classList.add("selected");
       closeAll();
+      window.syncAssetsFilterLabel?.(false);
+      await renderRekapDistribusiGrid();
     });
   });
 
-  tahunDD?.addEventListener("click", e => {
+  tahunDD?.addEventListener("click", async e => {
     e.stopPropagation();
     const opt = e.target.closest(".rekap-dist-dropdown-option");
     if (!opt) return;
@@ -55,24 +57,103 @@ function initRekapDistFilter() {
     tahunDD.querySelectorAll(".rekap-dist-dropdown-option").forEach(o => o.classList.remove("selected"));
     opt.classList.add("selected");
     closeAll();
+    window.syncAssetsFilterLabel?.(false);
+    await renderRekapDistribusiGrid();
   });
 }
 
+/* ── HARI LIBUR POPUP ── */
+function initHariLiburPopup() {
+  ["rekapDistHariLiburBtn", "assetsHariLiburBtn", "slipGajiHariLiburBtn"].forEach(btnId => {
+    document.getElementById(btnId)?.addEventListener("click", async () => {
+      await openHariLiburPopup();
+    });
+  });
+
+  document.getElementById("hariLiburBatalBtn")?.addEventListener("click", () => {
+    document.getElementById("hariLiburOverlay").style.display = "none";
+  });
+  document.getElementById("hariLiburOverlay")?.addEventListener("click", e => {
+    if (e.target.id === "hariLiburOverlay") e.currentTarget.style.display = "none";
+  });
+
+  document.getElementById("hariLiburSaveBtn")?.addEventListener("click", async () => {
+    const btn   = document.getElementById("hariLiburSaveBtn");
+    const input = document.getElementById("hariLiburInput");
+    const jumlahHari = Number(input.value) || 0;
+
+    btn.disabled = true; btn.textContent = "Menyimpan...";
+    try {
+      const adminUid     = window.auth?.currentUser?.uid;
+      const kantorCabang = await window.idb.getKantorCabang();
+      const bulanStr     = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
+
+      await window.setDoc(
+        window.doc(window.db, "users", adminUid, "hariLibur", bulanStr),
+        {
+          bulan: bulanStr,
+          idCabang: kantorCabang?.id || "",
+          jumlahHari,
+        }
+      );
+
+      window.showToast("Hari libur berhasil disimpan", "success");
+      document.getElementById("hariLiburOverlay").style.display = "none";
+      await renderRekapDistribusiGrid();
+    } catch (err) {
+      console.error("❌ simpan hariLibur:", err);
+      window.showToast("Gagal menyimpan", "error");
+    } finally {
+      btn.disabled = false; btn.textContent = "Simpan";
+    }
+  });
+}
+
+async function openHariLiburPopup() {
+  const overlay = document.getElementById("hariLiburOverlay");
+  const label   = document.getElementById("hariLiburPeriodeLabel");
+  const input   = document.getElementById("hariLiburInput");
+
+  label.textContent = `Periode: ${REKAP_DIST_BULAN_NAMA[rekapDistBulan]} ${rekapDistTahun}`;
+  input.value = "";
+
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    const bulanStr = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
+    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "hariLibur", bulanStr));
+    if (snap.exists()) input.value = snap.data()?.jumlahHari || "";
+  } catch (err) {
+    console.error("❌ load hariLibur:", err);
+  }
+
+  overlay.style.display = "flex";
+}
+
+/* ── MAIN INIT ── */
 window.initRekapDistribusiView = function() {
   initRekapDistFilter();
+  initHariLiburPopup();
+  window.initAssetsView?.();
+  window.initSlipGajiPanel?.();
 
-  document.getElementById("rekapDistReloadBtn")?.addEventListener("click", async () => {
-    const btn = document.getElementById("rekapDistReloadBtn");
-    btn.classList.add("spinning");
-    await reloadLaporanAdminData();
-    await reloadCustKurirData();
-    await renderRekapDistribusiGrid();
-    btn.classList.remove("spinning");
-  });
   document.querySelectorAll("#rekapDistribusiList .lap-kurir-item").forEach(item => {
     item.addEventListener("click", async () => {
       document.querySelectorAll("#rekapDistribusiList .lap-kurir-item").forEach(x => x.classList.remove("active"));
       item.classList.add("active");
+
+      document.getElementById("rekapDistribusiDetailWrapper")?.classList.remove("show");
+      document.getElementById("assetsDetailWrapper")?.classList.remove("show");
+      document.getElementById("slipGajiDetailWrapper")?.classList.remove("show");
+
+      if (item.dataset.id === "assets") {
+        window.openAssetsPanel?.();
+        return;
+      }
+
+      if (item.dataset.id === "slipgaji") {
+        window.openSlipGajiPanel?.();
+        return;
+      }
 
       document.getElementById("rekapDistribusiEmpty").style.display   = "none";
       document.getElementById("rekapDistribusiContent").style.display = "flex";
@@ -92,42 +173,18 @@ window.initRekapDistribusiView = function() {
     document.getElementById("rekapDistribusiBackBtn").style.display = "none";
     document.querySelectorAll("#rekapDistribusiList .lap-kurir-item").forEach(x => x.classList.remove("active"));
   });
+
+  document.getElementById("rekapDistReloadBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("rekapDistReloadBtn");
+    btn.classList.add("spinning");
+    await reloadLaporanAdminData();
+    await reloadCustKurirData();
+    await renderRekapDistribusiGrid();
+    btn.classList.remove("spinning");
+  });
 };
-async function reloadCustKurirData() {
-  try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang = kantorCabang?.id || "";
-    if (!idCabang) return;
 
-    const snap = await window.getDocs(window.query(
-      window.collection(window.db, "customer"),
-      window.where("idCabang", "==", idCabang)
-    ));
-
-    // group per uid kurir + hari
-    const grouped = {}; // { "uid_hari": [customer, ...] }
-    snap.forEach(docSnap => {
-      const data = docSnap.data();
-      const uid  = data.pemilik;
-      const hari = data.hari;
-      if (!uid || !hari) return;
-      const key = `${uid}_${hari}`;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push({ id: docSnap.id, ...data });
-    });
-
-    // simpan ke IDB per kombinasi uid+hari
-    for (const key in grouped) {
-      const [uid, hari] = key.split("_");
-      await window.idb.saveCustKurir(uid, hari, grouped[key]);
-    }
-
-    return grouped;
-  } catch (err) {
-    console.error("❌ reloadCustKurirData:", err);
-    return null;
-  }
-}
+/* ── RELOAD DATA LAPORAN ADMIN ── */
 async function reloadLaporanAdminData() {
   try {
     const adminUid = window.auth?.currentUser?.uid;
@@ -156,6 +213,87 @@ async function reloadLaporanAdminData() {
     window.showToast("Gagal memuat data", "error");
   }
 }
+
+/* ── RELOAD DATA CUSTOMER (custKurir) ── */
+async function reloadCustKurirData() {
+  try {
+    const kantorCabang = await window.idb.getKantorCabang();
+    const idCabang = kantorCabang?.id || "";
+    if (!idCabang) return;
+
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "customer"),
+      window.where("idCabang", "==", idCabang)
+    ));
+
+    const grouped = {};
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const uid  = data.pemilik;
+      const hari = data.hari;
+      if (!uid || !hari) return;
+      const key = `${uid}_${hari}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push({ id: docSnap.id, ...data });
+    });
+
+    for (const key in grouped) {
+      const [uid, hari] = key.split("_");
+      await window.idb.saveCustKurir(uid, hari, grouped[key]);
+    }
+
+    return grouped;
+  } catch (err) {
+    console.error("❌ reloadCustKurirData:", err);
+    return null;
+  }
+}
+/* ── SHARED: HITUNG HARI KERJA & BONUS KEHADIRAN ── */
+async function hitungJumlahHariKerja(bulan, tahun) {
+  const kantorCabang = await window.idb.getKantorCabang();
+  const hariLiburNama = kantorCabang?.hariLibur?.distribusi || "";
+  const totalTanggalBulan = new Date(tahun, bulan + 1, 0).getDate();
+
+  const HARI_NAMA_LIST = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+  const targetDay = HARI_NAMA_LIST.indexOf(hariLiburNama);
+  let totalLiburMingguan = 0;
+  if (targetDay >= 0) {
+    for (let d = 1; d <= totalTanggalBulan; d++) {
+      const date = new Date(tahun, bulan, d);
+      if (date.getDay() === targetDay) totalLiburMingguan++;
+    }
+  }
+
+  const adminUid = window.auth?.currentUser?.uid;
+  const bulanStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
+  let liburPerusahaan = 0;
+  try {
+    const liburSnap = await window.getDoc(window.doc(window.db, "users", adminUid, "hariLibur", bulanStr));
+    if (liburSnap.exists()) liburPerusahaan = Number(liburSnap.data()?.jumlahHari) || 0;
+  } catch (err) {
+    console.error("❌ fetch hariLibur:", err);
+  }
+
+  return totalTanggalBulan - totalLiburMingguan - liburPerusahaan;
+}
+
+async function hitungBonusKehadiran(uid, bulan, tahun, jumlahHariKerjaCache = null, kantorCabangCache = null) {
+  const allLaporan = await window.idb.getAllLaporanAdmin();
+  const mm = String(bulan + 1).padStart(2, "0");
+  const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${tahun}-${mm}`));
+
+  const hariMasukKerja   = filteredLaporan.filter(l => l.data?.[uid]).length;
+  const jumlahHariKerja  = jumlahHariKerjaCache  ?? await hitungJumlahHariKerja(bulan, tahun);
+  const kantorCabang     = kantorCabangCache     ?? await window.idb.getKantorCabang();
+  const bonusKehadiranNilai = Number(kantorCabang?.bonus?.kehadiran) || 0;
+  const bonusKehadiran = hariMasukKerja >= jumlahHariKerja ? bonusKehadiranNilai : 0;
+
+  return { hariMasukKerja, jumlahHariKerja, bonusKehadiran };
+}
+
+window.hitungJumlahHariKerja  = hitungJumlahHariKerja;
+window.hitungBonusKehadiran   = hitungBonusKehadiran;
+/* ── RENDER GRID REKAPITULASI ── */
 async function renderRekapDistribusiGrid() {
   const gridEl = document.getElementById("rekapDistGrid");
   if (!gridEl) return;
@@ -171,42 +309,30 @@ async function renderRekapDistribusiGrid() {
   }
 
   const allLaporan = await window.idb.getAllLaporanAdmin();
-  const mm    = String(rekapDistBulan + 1).padStart(2, "0");
+  const mm = String(rekapDistBulan + 1).padStart(2, "0");
   const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${rekapDistTahun}-${mm}`));
 
   const varianList = ["CB", "BB", "BK", "MC"];
 
-  // ── HITUNG JUMLAH HARI KERJA (sama untuk semua kurir) ──
-  const kantorCabangGlobal = await window.idb.getKantorCabang();
-  const hariLiburNama = kantorCabangGlobal?.hariLibur?.distribusi || "";
-  const totalTanggalBulan = new Date(rekapDistTahun, rekapDistBulan + 1, 0).getDate();
+  const jumlahHariKerjaGlobal = await hitungJumlahHariKerja(rekapDistBulan, rekapDistTahun);
 
-  const HARI_NAMA_LIST = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
-  const targetDay = HARI_NAMA_LIST.indexOf(hariLiburNama);
-  let totalLiburMingguan = 0;
-  if (targetDay >= 0) {
-    for (let d = 1; d <= totalTanggalBulan; d++) {
-      const date = new Date(rekapDistTahun, rekapDistBulan, d);
-      if (date.getDay() === targetDay) totalLiburMingguan++;
-    }
-  }
-
-  const adminUid = window.auth?.currentUser?.uid;
-  const bulanStr = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
-  let liburPerusahaan = 0;
+  // fetch sekali di luar loop — dipakai untuk semua kurir
+  const kantorCabangShared = await window.idb.getKantorCabang();
+  const adminUidShared = window.auth?.currentUser?.uid;
+  const bulanStrShared  = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
+  let jumlahHariLiburPerusahaanShared = 0;
   try {
-    const liburSnap = await window.getDoc(
-      window.doc(window.db, "users", adminUid, "hariLibur", bulanStr)
-    );
-    if (liburSnap.exists()) liburPerusahaan = Number(liburSnap.data()?.jumlahHari) || 0;
+    const liburSnapShared = await window.getDoc(window.doc(window.db, "users", adminUidShared, "hariLibur", bulanStrShared));
+    if (liburSnapShared.exists()) jumlahHariLiburPerusahaanShared = Number(liburSnapShared.data()?.jumlahHari) || 0;
   } catch (err) {
-    console.error("❌ fetch hariLibur:", err);
+    console.error("❌ fetch hariLibur (shared):", err);
   }
-
-  const jumlahHariKerjaGlobal = totalTanggalBulan - totalLiburMingguan - liburPerusahaan;
-  const bonusKehadiranNilai = Number(kantorCabangGlobal?.bonus?.kehadiran) || 0;
+  const upahHarianShared = Number(kantorCabangShared?.upahHarian) || 0;
+  const bonusHariLiburPerusahaanShared = jumlahHariLiburPerusahaanShared * upahHarianShared;
 
   const cardsHtml = [];
+  const chartData = [];
+
   for (const u of users) {
     const nama    = u.nama || "Tanpa Nama";
     const inisial = nama.trim().charAt(0).toUpperCase();
@@ -214,20 +340,21 @@ async function renderRekapDistribusiGrid() {
       ? `<img class="rekap-dist-avatar" src="${esc(u.foto)}" alt="${esc(nama)}">`
       : `<div class="rekap-dist-avatar">${esc(inisial)}</div>`;
 
-    // sum semua dokumen bulan ini untuk kurir ini
     const pay      = {};
     const expired  = {};
     varianList.forEach(v => { pay[v] = 0; expired[v] = 0; });
 
     let customerNew = 0, customerPutus = 0;
     let targetData = 0, targetCustomer = 0, klaimInsentif = 0, kasbon = 0;
-    let bonusTargetHarian = 0;
-    let bonusPay = 0, bonusInsentif = 0;
+    let potonganTargetData = 0, potonganTargetCustomer = 0;
+    let bonusTargetHarian = 0, bonusPay = 0, bonusInsentif = 0;
     let jumlahCustomer = 0;
-    let bonusKehadiran = 0;
-    let jumlahHariKerja = 0;
-    let hariMasukKerja = 0;
-    // hitung jumlah customer aktif dari custKurir semua hari
+    const bonusInfo = await hitungBonusKehadiran(u.uid, rekapDistBulan, rekapDistTahun, jumlahHariKerjaGlobal, kantorCabangShared);
+    const bonusKehadiran   = bonusInfo.bonusKehadiran;
+    const jumlahHariKerja  = bonusInfo.jumlahHariKerja;
+    const hariMasukKerja   = bonusInfo.hariMasukKerja;
+    const jumlahHariLiburPerusahaan = jumlahHariLiburPerusahaanShared;
+    const bonusHariLiburPerusahaan  = bonusHariLiburPerusahaanShared;
     const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
     for (const h of HARI_LIST) {
       const custHari = await window.idb.getCustKurir(u.uid, h);
@@ -235,12 +362,8 @@ async function renderRekapDistribusiGrid() {
         jumlahCustomer += custHari.filter(c => c.status === true).length;
       }
     }
-    // ── HITUNG KEHADIRAN KURIR (jumlah doc di laporanAdmin bulan ini) ──
-    jumlahHariKerja = jumlahHariKerjaGlobal;
-    hariMasukKerja = filteredLaporan.filter(l => l.data?.[u.uid]).length;
-    bonusKehadiran = hariMasukKerja >= jumlahHariKerja ? bonusKehadiranNilai : 0;
-    const kantorCabang = await window.idb.getKantorCabang();
-    const upahHunter = Number(kantorCabang?.upahHunter) || 0;
+
+    const upahHunter = Number(kantorCabangShared?.upahHunter) || 0;
     const nominalJumlahCustomer = jumlahCustomer * upahHunter;
 
     filteredLaporan.forEach(l => {
@@ -257,13 +380,15 @@ async function renderRekapDistribusiGrid() {
       customerPutus  += Number(dist.infoTarget?.putus)       || 0;
       targetData     += Number(dist.infoTarget?.targetData)  || 0;
       targetCustomer += Number(dist.infoTarget?.targetCustomer) || 0;
+      potonganTargetData     += Number(dist.infoTarget?.potongan?.potonganTargetData)     || 0;
+      potonganTargetCustomer += Number(dist.infoTarget?.potongan?.potonganTargetCustomer) || 0;
       klaimInsentif  += Number(dist.keuangan?.klaimInsentif) || 0;
       kasbon         += Number(dist.keuangan?.kasbon)        || 0;
       bonusTargetHarian += Number(dist.keuangan?.bonus?.bonusKunjungan) || 0;
-      bonusPay           += Number(dist.keuangan?.bonus?.bonusPay)       || 0;
-      bonusInsentif      += Number(dist.keuangan?.bonus?.bonusInsentif)  || 0;
+      bonusPay          += Number(dist.keuangan?.bonus?.bonusPay)       || 0;
+      bonusInsentif     += Number(dist.keuangan?.bonus?.bonusInsentif)  || 0;
     });
-    // ambil harga per varian dari profil kurir
+
     const hargaMap = {};
     (u.varian || []).forEach(v => {
       const key = Object.keys(v)[0];
@@ -300,6 +425,8 @@ async function renderRekapDistribusiGrid() {
       const harga = hargaMap[v] || { produksi: 0 };
       return a + (expired[v] || 0) * harga.produksi;
     }, 0);
+
+    chartData.push({ nama, jumlahPay, jumlahExpired });
 
     const cardHtml = `
       <div class="rekap-dist-card" data-uid="${esc(u.uid)}">
@@ -352,8 +479,8 @@ async function renderRekapDistribusiGrid() {
             <table class="rekap-dist-table">
               <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
               <tbody>
-                <tr><td>Target Data</td><td>${targetData || "-"}</td><td>-</td></tr>
-                <tr><td>Target Customer</td><td>${targetCustomer || "-"}</td><td>-</td></tr>
+                <tr><td>Target Data</td><td>-</td><td>${potonganTargetData ? potonganTargetData.toLocaleString("id-ID") : "-"}</td></tr>
+                <tr><td>Target Customer</td><td>-</td><td>${potonganTargetCustomer ? potonganTargetCustomer.toLocaleString("id-ID") : "-"}</td></tr>
                 <tr><td>Klaim Insentif</td><td>-</td><td>${klaimInsentif ? klaimInsentif.toLocaleString("id-ID") : "-"}</td></tr>
                 <tr><td>Kasbon</td><td>-</td><td>${kasbon ? kasbon.toLocaleString("id-ID") : "-"}</td></tr>
               </tbody>
@@ -366,9 +493,10 @@ async function renderRekapDistribusiGrid() {
               <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
               <tbody>
                 <tr><td>Bonus Kehadiran</td><td>-</td><td>${bonusKehadiran ? bonusKehadiran.toLocaleString("id-ID") : "-"}</td></tr>
-                <tr><td>Bonus Target Harian</td><td>-</td><td>${bonusTargetHarian ? bonusTargetHarian.toLocaleString("id-ID") : "-"}</td></tr>
+                <tr><td>Bonus Kunjungan</td><td>-</td><td>${bonusTargetHarian ? bonusTargetHarian.toLocaleString("id-ID") : "-"}</td></tr>
                 <tr><td>Bonus Pay</td><td>-</td><td>${bonusPay ? bonusPay.toLocaleString("id-ID") : "-"}</td></tr>
                 <tr><td>Bonus Insentif</td><td>-</td><td>${bonusInsentif ? bonusInsentif.toLocaleString("id-ID") : "-"}</td></tr>
+                <tr><td>Bonus Hari Libur Perusahaan</td><td>${jumlahHariLiburPerusahaan || "-"}</td><td>${bonusHariLiburPerusahaan ? bonusHariLiburPerusahaan.toLocaleString("id-ID") : "-"}</td></tr>
               </tbody>
             </table>
           </div>
@@ -389,8 +517,37 @@ async function renderRekapDistribusiGrid() {
       </div>`;
     cardsHtml.push(cardHtml);
   }
+
   gridEl.innerHTML = cardsHtml.join("");
+
+  renderRekapDistChart(chartData);
 }
+
+/* ── CHART ── */
+let rekapDistChartInstance = null;
+function renderRekapDistChart(data) {
+  const canvas = document.getElementById("rekapDistChart");
+  if (!canvas || !window.Chart) return;
+
+  if (rekapDistChartInstance) rekapDistChartInstance.destroy();
+
+  rekapDistChartInstance = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: data.map(d => d.nama),
+      datasets: [
+        { label: "Pay",     data: data.map(d => d.jumlahPay),     backgroundColor: "#1a7080" },
+        { label: "Expired", data: data.map(d => d.jumlahExpired), backgroundColor: "#c05020" }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: "top" } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
 function esc(str) {
   return String(str)
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")

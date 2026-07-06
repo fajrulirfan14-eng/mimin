@@ -31,6 +31,7 @@
 <link rel="stylesheet" href="pengeluaran.css">
 <link rel="stylesheet" href="amplop.css">
 <link rel="stylesheet" href="rekapdistribusi.css">
+<link rel="stylesheet" href="slipgaji.css">
 <link rel="stylesheet" href="akun.css">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1581,11 +1582,27 @@
                   </div>
                   <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
                 </div>
+                <div class="lap-kurir-item" data-id="assets">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-boxes-stacked"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Assets</div>
+                    <div class="lap-kurir-role">Modal & customer per kurir</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
+                <div class="lap-kurir-item" data-id="slipgaji">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Slip Gaji</div>
+                    <div class="lap-kurir-role">Per kurir</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
               </div>
             </div>
 
-            <!-- KANAN: DETAIL -->
-            <div class="lap-detail-wrapper" id="rekapDistribusiDetailWrapper">
+            <!-- KANAN: DETAIL REKAPITULASI -->
+            <div class="lap-detail-wrapper rekap-dist-detail-wrapper" id="rekapDistribusiDetailWrapper">
               <div class="lap-detail-panel">
 
                 <div class="lap-detail-empty" id="rekapDistribusiEmpty">
@@ -1630,6 +1647,10 @@
                         </button>
                         <div class="rekap-dist-dropdown" id="rekapDistTahunDropdown" style="display:none"></div>
 
+                        <button class="rekap-dist-filter-btn" id="rekapDistHariLiburBtn" title="Input Hari Libur">
+                          <i class="fa-solid fa-calendar-xmark"></i>
+                        </button>
+
                         <button class="rekap-dist-filter-btn" id="rekapDistReloadBtn" title="Reload">
                           <i class="fa-solid fa-rotate-right"></i>
                         </button>
@@ -1646,6 +1667,169 @@
               </div>
             </div>
 
+            <!-- KANAN: DETAIL ASSETS -->
+            <div class="lap-detail-wrapper rekap-dist-detail-wrapper" id="assetsDetailWrapper">
+              <div class="lap-detail-panel">
+
+                <div class="lap-detail-empty" id="assetsEmpty">
+                  <div class="lap-empty-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+                  <div class="lap-empty-title">Assets</div>
+                  <div class="lap-empty-sub">Klik untuk melihat modal & customer per kurir.</div>
+                </div>
+
+                <div class="lap-detail-content" id="assetsContent" style="display:none;">
+                  <div class="lap-detail-header">
+                    <div class="lap-detail-header-top">
+                      <button class="lap-detail-back-btn" id="assetsBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="lap-detail-info">
+                        <div class="lap-detail-nama">Assets</div>
+                      </div>
+                      <div class="rekap-dist-filter-wrap">
+                        <button class="rekap-dist-filter-btn" id="assetsBulanBtn">
+                          <i class="fa-solid fa-calendar"></i>
+                          <span id="assetsBulanLabel">Juli</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <button class="rekap-dist-filter-btn" id="assetsTahunBtn">
+                          <span id="assetsTahunLabel">2026</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <button class="rekap-dist-filter-btn" id="assetsHariLiburBtn" title="Input Hari Libur">
+                          <i class="fa-solid fa-calendar-xmark"></i>
+                        </button>
+                        <button class="rekap-dist-filter-btn" id="assetsReloadBtn" title="Reload">
+                          <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="lap-detail-body">
+                    <div class="rekap-dist-grid" id="assetsGrid">
+                      <div class="dh-ringkasan-empty">Memuat...</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- KANAN: DETAIL SLIP GAJI ── SATU PANEL ── -->
+            <div class="lap-detail-wrapper rekap-dist-detail-wrapper" id="slipGajiDetailWrapper">
+              <div class="lap-detail-panel">
+
+                <div class="lap-detail-header">
+                  <div class="lap-detail-header-top">
+                    <button class="lap-detail-back-btn" id="slipGajiToRekapBackBtn" style="display:none">
+                      <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div class="lap-detail-info">
+                      <div class="lap-detail-nama">Slip Gaji</div>
+                    </div>
+                    <div class="rekap-dist-filter-wrap">
+                      <button class="rekap-dist-filter-btn" id="slipGajiBulanBtn">
+                        <i class="fa-solid fa-calendar"></i>
+                        <span id="slipGajiBulanLabel">Juli</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <button class="rekap-dist-filter-btn" id="slipGajiTahunBtn">
+                        <span id="slipGajiTahunLabel">2026</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <button class="rekap-dist-filter-btn" id="slipGajiHariLiburBtn" title="Input Hari Libur">
+                        <i class="fa-solid fa-calendar-xmark"></i>
+                      </button>
+                      <button class="rekap-dist-filter-btn" id="slipGajiReloadBtn" title="Reload">
+                        <i class="fa-solid fa-rotate-right"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="lap-detail-body">
+
+                  <!-- GRID PILIH KURIR -->
+                  <div class="rekap-dist-grid slip-gaji-pilih-grid" id="slipGajiKurirGrid">
+                    <div class="dh-ringkasan-empty">Memuat...</div>
+                  </div>
+
+                  <!-- FORM SLIP GAJI (muncul setelah pilih kurir) -->
+                  <div class="slip-gaji-form-wrap" id="slipGajiFormWrap" style="display:none">
+                    <div class="slip-gaji-form-header">
+                      <div class="slip-gaji-form-title">Form Slip Gaji — <span id="slipGajiFormNama">-</span></div>
+                    </div>
+
+                    <!-- PENDAPATAN -->
+                    <div class="slip-gaji-section">
+                      <div class="slip-gaji-section-title">Pendapatan</div>
+                      <div class="slip-gaji-item-table">
+                        <div class="slip-gaji-item-header">
+                          <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
+                        </div>
+                        <div id="slipGajiPendapatanItems"></div>
+                      </div>
+                      <button class="slip-gaji-add-btn" data-section="pendapatan">+ Tambah Lainnya</button>
+                    </div>
+
+                    <!-- BONUS -->
+                    <div class="slip-gaji-section">
+                      <div class="slip-gaji-section-title">Bonus</div>
+                      <div class="slip-gaji-item-table">
+                        <div class="slip-gaji-item-header">
+                          <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
+                        </div>
+                        <div id="slipGajiBonusItems"></div>
+                      </div>
+                      <button class="slip-gaji-add-btn" data-section="bonus">+ Tambah Lainnya</button>
+                    </div>
+
+                    <!-- POTONGAN -->
+                    <div class="slip-gaji-section">
+                      <div class="slip-gaji-section-title">Potongan</div>
+                      <div class="slip-gaji-item-table">
+                        <div class="slip-gaji-item-header">
+                          <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
+                        </div>
+                        <div id="slipGajiPotonganItems"></div>
+                      </div>
+                      <button class="slip-gaji-add-btn" data-section="potongan">+ Tambah Lainnya</button>
+                    </div>
+
+                    <!-- CATATAN -->
+                    <div class="slip-gaji-section">
+                      <div class="slip-gaji-section-title">Catatan</div>
+                      <textarea class="slip-gaji-catatan" id="slipGajiCatatan" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
+                    </div>
+
+                    <!-- TOTAL PENERIMAAN -->
+                    <div class="slip-gaji-total-bar">
+                      <span>Total Penerimaan</span>
+                      <span id="slipGajiTotalPenerimaan">Rp 0</span>
+                    </div>
+
+                    <button class="slip-gaji-save-btn" id="slipGajiSaveBtn">Simpan Slip Gaji</button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- POPUP INPUT HARI LIBUR -->
+        <div class="amplop-konfirmasi-overlay" id="hariLiburOverlay" style="display:none">
+          <div class="amplop-konfirmasi-box">
+            <div class="amplop-konfirmasi-title">Input Hari Libur Perusahaan</div>
+            <div class="amplop-konfirmasi-pesan" id="hariLiburPeriodeLabel">Periode: Juli 2026</div>
+            <div class="amplop-konfirmasi-pass-wrap">
+              <input type="number" min="0" class="amplop-konfirmasi-pass" id="hariLiburInput" placeholder="Jumlah hari libur">
+            </div>
+            <div class="amplop-konfirmasi-actions">
+              <button class="amplop-konfirmasi-batal" id="hariLiburBatalBtn">Batal</button>
+              <button class="amplop-konfirmasi-oke amplop-konfirmasi-oke-green" id="hariLiburSaveBtn">Simpan</button>
+            </div>
           </div>
         </div>
 
@@ -1774,6 +1958,8 @@
 <script src="map.js"></script>
 <script src="maprolling.js"></script>
 <script src="trikotomi.js"></script>
+<script src="assets.js"></script>
+<script src="slipgaji.js"></script>
 
 <script src="home.js"></script>
 <script src="dataharian.js"></script>
@@ -1786,6 +1972,7 @@
 <script src="rekapdistribusi.js"></script>
 <script src="akun.js"></script>
 <script type="module" src="index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <div id="devConsoleMount"></div>
 <script src="devconsole.js"></script>
