@@ -3,6 +3,7 @@ let slipGajiBulan = new Date().getMonth();
 let slipGajiTahun = new Date().getFullYear();
 let slipGajiSelectedUid  = null;
 let slipGajiSelectedNama = null;
+const SLIP_GAJI_BULAN_NAMA = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
 const SLIP_GAJI_TEMPLATE = {
   pendapatan: [
@@ -77,6 +78,8 @@ async function renderSlipGajiKurirGrid() {
     return;
   }
 
+  const periodeLabel = `${SLIP_GAJI_BULAN_NAMA[slipGajiBulan]} ${slipGajiTahun}`;
+
   gridEl.innerHTML = users.map(u => {
     const nama    = u.nama || "Tanpa Nama";
     const inisial = nama.trim().charAt(0).toUpperCase();
@@ -90,9 +93,12 @@ async function renderSlipGajiKurirGrid() {
           ${avatar}
           <div>
             <div class="rekap-dist-nama">${escSlip(nama)}</div>
-            <div class="rekap-dist-role">${escSlip(u.role || "-")}</div>
+            <div class="rekap-dist-role">${escSlip(periodeLabel)}</div>
           </div>
-          <i class="fa-solid fa-chevron-right" style="margin-left:auto;color:var(--text-muted)"></i>
+          <span class="rekap-dist-saved-badge" id="slipGajiBadge-${escSlip(u.uid)}" style="display:none">
+            <i class="fa-solid fa-circle-check"></i> Sudah dikirim
+          </span>
+          <i class="fa-solid fa-chevron-right" style="margin-left:8px;color:var(--text-muted)"></i>
         </div>
       </div>`;
   }).join("");
@@ -104,6 +110,22 @@ async function renderSlipGajiKurirGrid() {
       pilihKurirSlipGaji(card.dataset.uid, card.dataset.nama);
     });
   });
+
+  cekSlipGajiSudahDikirimBatch(users.map(u => u.uid));
+}
+
+async function cekSlipGajiSudahDikirimBatch(uids) {
+  const periode = `${slipGajiTahun}-${String(slipGajiBulan + 1).padStart(2, "0")}`;
+  await Promise.all(uids.map(async uid => {
+    const badge = document.getElementById(`slipGajiBadge-${uid}`);
+    if (!badge) return;
+    try {
+      const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGaji", periode));
+      badge.style.display = snap.exists() ? "flex" : "none";
+    } catch (err) {
+      console.error("❌ cekSlipGajiSudahDikirim:", err);
+    }
+  }));
 }
 
 async function pilihKurirSlipGaji(uid, nama) {
@@ -412,6 +434,9 @@ function initSlipGajiFilter() {
       bulanDD.querySelectorAll(".rekap-dist-dropdown-option").forEach(o => o.classList.remove("selected"));
       opt.classList.add("selected");
       closeAll();
+      document.getElementById("slipGajiFormWrap").style.display = "none";
+      slipGajiSelectedUid = null;
+      renderSlipGajiKurirGrid();
     });
   });
 
@@ -424,6 +449,9 @@ function initSlipGajiFilter() {
     tahunDD.querySelectorAll(".rekap-dist-dropdown-option").forEach(o => o.classList.remove("selected"));
     opt.classList.add("selected");
     closeAll();
+    document.getElementById("slipGajiFormWrap").style.display = "none";
+    slipGajiSelectedUid = null;
+    renderSlipGajiKurirGrid();
   });
 }
 

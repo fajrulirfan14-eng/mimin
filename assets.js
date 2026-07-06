@@ -131,11 +131,12 @@ function syncAssetsFilterLabel(shouldRerender = true) {
     roleLabel.textContent = `Data real-time · akan disimpan sebagai periode ${REKAP_DIST_BULAN_NAMA[rekapDistBulan]} ${rekapDistTahun}`;
   }
 }
+let perKurirData = [];
 async function renderAssetsGrid() {
+  perKurirData = [];
   const gridEl = document.getElementById("assetsGrid");
   if (!gridEl) return;
   gridEl.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
-
   if (!window.usersCache?.length) {
     window.usersCache = await window.idb.getUsers();
   }
@@ -352,10 +353,11 @@ async function renderAssetsGrid() {
   initAssetsHistoryToggle();
 
   document.getElementById("assetsSaveBtn")?.addEventListener("click", () => {
-    simpanAssetsSnapshot(perKurirData, {
+    const { finalPerKurirData, finalTotalData } = buildFinalAssetsData(varianList, {
       totalJumlahCustomer, totalNominalCustomer,
       totalModalQty, totalModalNominal, grandTotalNominal
     });
+    simpanAssetsSnapshot(finalPerKurirData, finalTotalData);
   });
 
   cekAssetsSudahDisimpan();
@@ -555,6 +557,73 @@ function recalculateTotalAssetsCard(varianList) {
     totalAssetRow.textContent = grandTotal ? grandTotal.toLocaleString("id-ID") : "-";
   }
 }
+function buildFinalAssetsData(varianList, base) {
+  const kantorCabang = window._assetsKantorCabangCache;
+  const upahHunter = Number(kantorCabang?.upahHunter) || 0;
+
+  let extraJumlahCustomer = 0;
+  let extraNominalCustomer = 0;
+  const extraModalQty = {};
+  const extraModalNominal = {};
+  varianList.forEach(v => { extraModalQty[v] = 0; extraModalNominal[v] = 0; });
+
+  const extraPerOrang = [];
+
+  assetsExtraCards.forEach(cardData => {
+    if (!cardData.uid) return; // skip kalau belum pilih nama
+    const jumlahCustomer  = cardData.jumlahCustomer || 0;
+    const nominalCustomer = jumlahCustomer * upahHunter;
+    extraJumlahCustomer  += jumlahCustomer;
+    extraNominalCustomer += nominalCustomer;
+
+    const userData = (window.usersCache || []).find(u => u.uid === cardData.uid);
+    const modalNominal = {};
+    let jumlahModalNominal = 0;
+    varianList.forEach(v => {
+      const qty = cardData.qty[v] || 0;
+      const varianObj = (userData?.varian || []).find(o => Object.keys(o)[0] === v);
+      const harga = Number(varianObj?.[v]?.hargaProduksi) || 0;
+      const nominal = qty * harga;
+      modalNominal[v] = nominal;
+      extraModalQty[v]     += qty;
+      extraModalNominal[v] += nominal;
+      jumlahModalNominal   += nominal;
+    });
+
+    extraPerOrang.push({
+      uid: cardData.uid,
+      nama: cardData.nama,
+      role: cardData.role,
+      jumlahCustomer,
+      nominalCustomer,
+      modalQty: { ...cardData.qty },
+      modalNominal,
+      totalAssetKurir: nominalCustomer + jumlahModalNominal,
+    });
+  });
+
+  const finalTotalJumlahCustomer  = base.totalJumlahCustomer  + extraJumlahCustomer;
+  const finalTotalNominalCustomer = base.totalNominalCustomer + extraNominalCustomer;
+  const finalTotalModalQty = {};
+  const finalTotalModalNominal = {};
+  varianList.forEach(v => {
+    finalTotalModalQty[v]     = base.totalModalQty[v]     + extraModalQty[v];
+    finalTotalModalNominal[v] = base.totalModalNominal[v] + extraModalNominal[v];
+  });
+  const finalGrandTotal = finalTotalNominalCustomer +
+    varianList.reduce((a, v) => a + finalTotalModalNominal[v], 0);
+
+  return {
+    finalPerKurirData: [...perKurirData, ...extraPerOrang],
+    finalTotalData: {
+      totalJumlahCustomer:  finalTotalJumlahCustomer,
+      totalNominalCustomer: finalTotalNominalCustomer,
+      totalModalQty:        finalTotalModalQty,
+      totalModalNominal:    finalTotalModalNominal,
+      grandTotalNominal:    finalGrandTotal,
+    }
+  };
+}
 async function updateAssetsExtraJumlah(cardEl, cardId, varianList) {
   const cardData = assetsExtraCards.find(c => c.id === cardId);
   const jumlahQty = varianList.reduce((a, v) => a + (cardData.qty[v] || 0), 0);
@@ -648,15 +717,45 @@ function renderAssetsHistoryView() {
   if (assetsHistoryMode === "tabel") {
     if (assetsHistoryChartInstance) { assetsHistoryChartInstance.destroy(); assetsHistoryChartInstance = null; }
 
-    const rows = assetsHistoryData.map(d => `
-      <tr><td>${d.periode}</td><td>-</td><td>${d.grandTotal ? d.grandTotal.toLocaleString("id-ID") : "-"}</td></tr>
-    `).join("");
+    const rows = assetsHistoryData.map((d, i) => {
+      const perKurir = (d.perKurir || []).slice().sort((a, b) => (b.totalAssetKurir||0) - (a.totalAssetKurir||0));
+      const detailRows = perKurir.map(k => `
+        <tr><td>${escAssets(k.nama || "-")}</td><td>${k.totalAssetKurir ? k.totalAssetKurir.toLocaleString("id-ID") : "-"}</td></tr>
+      `).join("");
+
+      return `
+        <tr class="assets-history-row" data-idx="${i}">
+          <td><i class="fa-solid fa-chevron-right assets-history-chevron"></i> ${d.periode}</td>
+          <td>-</td>
+          <td>${d.grandTotal ? d.grandTotal.toLocaleString("id-ID") : "-"}</td>
+        </tr>
+        <tr class="assets-history-detail-row" data-idx="${i}" style="display:none">
+          <td colspan="3">
+            <table class="rekap-dist-table assets-history-detail-table">
+              <thead><tr><th>Nama</th><th>Total Asset</th></tr></thead>
+              <tbody>${detailRows || `<tr><td colspan="2">Tidak ada data</td></tr>`}</tbody>
+            </table>
+          </td>
+        </tr>`;
+    }).join("");
 
     bodyEl.innerHTML = `
       <table class="rekap-dist-table">
         <thead><tr><th>Periode</th><th>Qty</th><th>Grand Total</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
+
+    bodyEl.querySelectorAll(".assets-history-row").forEach(row => {
+      row.addEventListener("click", () => {
+        const idx = row.dataset.idx;
+        const detailRow = bodyEl.querySelector(`.assets-history-detail-row[data-idx="${idx}"]`);
+        const chevron = row.querySelector(".assets-history-chevron");
+        const isOpen = detailRow.style.display !== "none";
+        detailRow.style.display = isOpen ? "none" : "table-row";
+        chevron.classList.toggle("fa-chevron-right", isOpen);
+        chevron.classList.toggle("fa-chevron-down", !isOpen);
+      });
+    });
   } else {
     if (assetsHistoryData.length < 2) {
       bodyEl.innerHTML = `<div class="dh-ringkasan-empty">Simpan minimal 2 periode untuk melihat trend grafik</div>`;

@@ -399,6 +399,10 @@
   margin-left: 8px;
   flex-shrink: 0;
 }
+.assets-history-row { cursor: pointer; }
+.assets-history-row:hover { background: rgba(0,0,0,0.03); }
+.assets-history-chevron { font-size: 11px; margin-right: 6px; transition: transform .15s; color: #888; }
+.assets-history-detail-table { margin: 6px 0 4px; }
 /* ── MOBILE ── */
 @media (max-width: 768px) {
   .rekap-dist-grid {
