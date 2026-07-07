@@ -355,11 +355,13 @@ async function renderRekapDistribusiGrid() {
     const hariMasukKerja   = bonusInfo.hariMasukKerja;
     const jumlahHariLiburPerusahaan = jumlahHariLiburPerusahaanShared;
     const bonusHariLiburPerusahaan  = bonusHariLiburPerusahaanShared;
+    let customerPutusIdb = 0;
     const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
     for (const h of HARI_LIST) {
       const custHari = await window.idb.getCustKurir(u.uid, h);
       if (custHari?.length) {
-        jumlahCustomer += custHari.filter(c => c.status === true).length;
+        jumlahCustomer  += custHari.filter(c => c.status === true).length;
+        customerPutusIdb += custHari.filter(c => c.status === false).length;
       }
     }
 
@@ -468,7 +470,7 @@ async function renderRekapDistribusiGrid() {
               <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
               <tbody>
                 <tr><td>Customer New</td><td>${customerNew || "-"}</td><td>${customerNew ? (customerNew * upahHunter).toLocaleString("id-ID") : "-"}</td></tr>
-                <tr><td>Customer Putus</td><td>${customerPutus || "-"}</td><td>${customerPutus ? (customerPutus * upahHunter).toLocaleString("id-ID") : "-"}</td></tr>
+                <tr><td>Customer Putus</td><td>${customerPutusIdb || "-"}</td><td>${customerPutusIdb ? (customerPutusIdb * upahHunter).toLocaleString("id-ID") : "-"}</td></tr>
                 <tr><td>Jumlah Customer</td><td>${jumlahCustomer || "-"}</td><td>${nominalJumlahCustomer ? nominalJumlahCustomer.toLocaleString("id-ID") : "-"}</td></tr>
               </tbody>
             </table>

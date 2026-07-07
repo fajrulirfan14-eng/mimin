@@ -277,6 +277,8 @@
             <div class="amplop-dropdown-option selected" data-status="semua">Semua</div>
             <div class="amplop-dropdown-option" data-status="diterima">Diterima</div>
             <div class="amplop-dropdown-option" data-status="pending">Belum Diterima</div>
+            <div class="amplop-dropdown-option" data-status="diserahkan">Sudah Diserahkan</div>
+            <div class="amplop-dropdown-option" data-status="belum-diserahkan">Belum Diserahkan</div>
           </div>
 
           <div class="amplop-range-overlay" id="amplopRangeOverlay" style="display:none">
@@ -301,6 +303,7 @@
 
           <div class="view-scroll" id="amplopScroll">
             <div class="amplop-page">
+              <div class="amplop-summary" id="amplopSummary"></div>
               <div class="amplop-list" id="amplopList">
                 <div class="amplop-list-empty">Memuat...</div>
               </div>
@@ -1953,6 +1956,10 @@
   </div>
 </div>
 
+<script type="module" src="index.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <script src="indexdb.js"></script>
 <script src="export.js"></script>
 <script src="map.js"></script>
@@ -1971,8 +1978,6 @@
 <script src="amplop.js"></script>
 <script src="rekapdistribusi.js"></script>
 <script src="akun.js"></script>
-<script type="module" src="index.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
 <div id="devConsoleMount"></div>
 <script src="devconsole.js"></script>

@@ -29,13 +29,39 @@ function amplopFilterAndRender() {
     );
   }
 
-  if (amplopStatus === "diterima") filtered = filtered.filter(d => d.diterima === true);
-  if (amplopStatus === "pending")  filtered = filtered.filter(d => d.diterima !== true);
+  if (amplopStatus === "diterima")         filtered = filtered.filter(d => d.diterima === true);
+  if (amplopStatus === "pending")          filtered = filtered.filter(d => d.diterima !== true);
+  if (amplopStatus === "diserahkan")       filtered = filtered.filter(d => d.diserahkan === true);
+  if (amplopStatus === "belum-diserahkan") filtered = filtered.filter(d => d.diserahkan !== true);
 
   if (amplopRangeDari)   filtered = filtered.filter(d => d.tanggal >= amplopRangeDari);
   if (amplopRangeSampai) filtered = filtered.filter(d => d.tanggal <= amplopRangeSampai);
 
+  renderAmplopSummary(filtered);
   renderAmplopList(filtered);
+}
+
+function renderAmplopSummary(docs) {
+  const el = document.getElementById("amplopSummary");
+  if (!el) return;
+
+  const totalDistribusi = docs.reduce((a, d) => a + (Number(d.distribusi?.amplop) || 0), 0);
+  const totalProduksi   = docs.reduce((a, d) => a + (Number(d.produksi?.amplop)   || 0), 0);
+  const totalGrand      = totalDistribusi + totalProduksi;
+
+  el.innerHTML = `
+    <div class="amplop-summary-row">
+      <span class="amplop-summary-label">Total Amplop Distribusi</span>
+      <span class="amplop-summary-value">${window.formatRupiah(totalDistribusi)}</span>
+    </div>
+    <div class="amplop-summary-row">
+      <span class="amplop-summary-label">Total Amplop Produksi</span>
+      <span class="amplop-summary-value">${window.formatRupiah(totalProduksi)}</span>
+    </div>
+    <div class="amplop-summary-row amplop-summary-row-grand">
+      <span class="amplop-summary-label">Total Keseluruhan</span>
+      <span class="amplop-summary-value">${window.formatRupiah(totalGrand)}</span>
+    </div>`;
 }
 
 function renderAmplopList(docs) {
@@ -50,11 +76,16 @@ function renderAmplopList(docs) {
   container.innerHTML = docs.map(data => {
     const badgeClass = data.diterima ? "sent" : "pending";
     const badgeText  = data.diterima ? "Diterima" : "Belum Diterima";
+    const diserahkanClass = data.diserahkan ? "sent" : "pending";
+    const diserahkanText  = data.diserahkan ? "Sudah Diserahkan" : "Belum Diserahkan";
     return `
       <div class="amplop-card" data-tanggal="${data.tanggal}">
         <div class="amplop-card-top">
           <div class="amplop-card-date">${formatTanggalIndo(data.tanggal)}</div>
-          <div class="amplop-card-badge ${badgeClass}" data-tanggal="${data.tanggal}" data-diterima="${data.diterima}">${badgeText}</div>
+          <div class="amplop-card-badges" style="display:flex;gap:6px">
+            <div class="amplop-card-badge ${badgeClass}" data-tanggal="${data.tanggal}" data-diterima="${data.diterima}">${badgeText}</div>
+            <div class="amplop-card-badge-diserahkan ${diserahkanClass}" data-tanggal="${data.tanggal}" data-diserahkan="${data.diserahkan}">${diserahkanText}</div>
+          </div>
         </div>
         <div class="amplop-card-row">
           <span class="amplop-card-label">Amplop Distribusi</span>
@@ -82,6 +113,15 @@ function renderAmplopList(docs) {
       const tanggal  = badge.dataset.tanggal;
       const diterima = badge.dataset.diterima === "true";
       showAmplopKonfirmasi(tanggal, diterima);
+    });
+  });
+
+  container.querySelectorAll(".amplop-card-badge-diserahkan").forEach(badge => {
+    badge.addEventListener("click", e => {
+      e.stopPropagation();
+      const tanggal    = badge.dataset.tanggal;
+      const diserahkan = badge.dataset.diserahkan === "true";
+      showDiserahkanKonfirmasi(tanggal, diserahkan);
     });
   });
 }
@@ -271,6 +311,54 @@ function showAmplopKonfirmasi(tanggal, diterimaSekarang) {
       window.showToast("Gagal menyimpan", "error");
       btn.disabled = false;
       btn.textContent = diterimaSekarang ? "Batalkan" : "Diterima";
+    }
+  };
+}
+
+/* ── KONFIRMASI DISERAHKAN (tanpa password) ── */
+function showDiserahkanKonfirmasi(tanggal, diserahkanSekarang) {
+  document.getElementById("amplopDiserahkanOverlay")?.remove();
+
+  const pesan = diserahkanSekarang
+    ? "Tandai amplop ini sebagai <b>Belum Diserahkan</b>?"
+    : "Tandai amplop ini sebagai <b>Sudah Diserahkan</b>?";
+
+  const el = document.createElement("div");
+  el.id = "amplopDiserahkanOverlay";
+  el.className = "amplop-konfirmasi-overlay";
+  el.innerHTML = `
+    <div class="amplop-konfirmasi-box">
+      <div class="amplop-konfirmasi-title">Konfirmasi</div>
+      <div class="amplop-konfirmasi-pesan">${pesan}</div>
+      <div class="amplop-konfirmasi-actions">
+        <button class="amplop-konfirmasi-batal" id="amplopDiserahkanBatal">Batal</button>
+        <button class="amplop-konfirmasi-oke ${diserahkanSekarang ? "amplop-konfirmasi-oke-red" : "amplop-konfirmasi-oke-green"}" id="amplopDiserahkanOke">
+          ${diserahkanSekarang ? "Batalkan" : "Diserahkan"}
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  document.getElementById("amplopDiserahkanBatal").onclick = () => el.remove();
+  el.onclick = e => { if (e.target === el) el.remove(); };
+
+  document.getElementById("amplopDiserahkanOke").onclick = async () => {
+    const btn = document.getElementById("amplopDiserahkanOke");
+    btn.disabled = true; btn.textContent = "Menyimpan...";
+    try {
+      const uidAdminCabang = await window.getUidAdminCabang();
+      await window.setDoc(
+        window.doc(window.db, "users", uidAdminCabang, "setoranAmplop", tanggal),
+        { diserahkan: !diserahkanSekarang },
+        { merge: true }
+      );
+      window.showToast(!diserahkanSekarang ? "Ditandai diserahkan" : "Dibatalkan", "success");
+      el.remove();
+    } catch (err) {
+      console.error("❌ update diserahkan:", err);
+      window.showToast("Gagal menyimpan", "error");
+      btn.disabled = false;
+      btn.textContent = diserahkanSekarang ? "Batalkan" : "Diserahkan";
     }
   };
 }

@@ -8,7 +8,8 @@ import {
   doc, getDoc, collection, query, where,
   getDocs, addDoc, setDoc, updateDoc, deleteDoc,
   onSnapshot, serverTimestamp, deleteField,
-  collectionGroup, orderBy, limit, Timestamp, writeBatch
+  collectionGroup, orderBy, limit, Timestamp, writeBatch,
+  arrayUnion, arrayRemove, runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getStorage, ref as storageRef,
@@ -59,6 +60,9 @@ window.serverTimestamp = serverTimestamp;
 window.Timestamp = Timestamp;
 window.writeBatch = writeBatch;
 window.deleteField     = deleteField;
+window.arrayUnion      = arrayUnion;
+window.arrayRemove     = arrayRemove;
+window.runTransaction  = runTransaction;
 window.storageRef      = storageRef;
 window.uploadBytes     = uploadBytes;
 window.uploadBytesResumable = uploadBytesResumable;
@@ -444,6 +448,7 @@ async function simpanSetoranAmplop() {
       tanggal,
       catatan,
       diterima: false,
+      diserahkan: false,
       distribusi: buildDistribusiPayload(),
       produksi: buildProduksiPayload()
     };

@@ -233,7 +233,7 @@ function renderPengList() {
   const listEl = document.getElementById("pengList");
   const emptyEl = document.getElementById("pengEmpty");
 
-  let filtered = [...pengData].sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+  let filtered = [...pengData];
 
   if (pengFilterKategori !== "semua") filtered = filtered.filter(x => x.kategori === pengFilterKategori);
   if (pengFilterJenis !== "semua") filtered = filtered.filter(x => x.jenis === pengFilterJenis);
@@ -246,25 +246,112 @@ function renderPengList() {
   }
   emptyEl.style.display = "none";
 
-  listEl.innerHTML = filtered.map(x => {
-    const tgl = new Date(x.tanggal);
-    const tglStr = tgl.toLocaleDateString("id-ID", { day:"numeric", month:"long", year:"numeric" });
-    const jamStr = tgl.toLocaleTimeString("id-ID", { hour:"2-digit", minute:"2-digit" });
-    return `
-      <div class="peng-item" data-kategori="${x.kategori}">
-        <div class="peng-item-top">
-          <div class="peng-item-badges">
-            <span class="peng-badge-kategori">${x.kategori}</span>
-            <span class="peng-badge-jenis">${x.jenis}</span>
-          </div>
-          <div class="peng-item-nominal">-${fmtRupiah(x.nominal)}</div>
-        </div>
-        <div class="peng-item-nama">${x.nama}</div>
-        <div class="peng-item-meta">${tglStr}, ${jamStr}${x.qty ? ` · ${x.qty} × ${fmtRupiah(x.harga)}` : ""}</div>
-        ${x.catatan ? `<div class="peng-item-catatan">"${x.catatan}"</div>` : ""}
+  // group per tanggal (bukan per item)
+  const groups = {};
+  filtered.forEach(x => {
+    const tglKey = (x.tanggal || "").slice(0, 10); // yyyy-mm-dd, dari field waktu yang sudah ikut tanggal form
+    if (!groups[tglKey]) groups[tglKey] = { produksi: [], distribusi: [] };
+    groups[tglKey][x.kategori].push(x);
+  });
+
+  const sortedKeys = Object.keys(groups).sort((a, b) => new Date(b) - new Date(a));
+
+  listEl.innerHTML = sortedKeys.map(tglKey => renderPengGroupCard(tglKey, groups[tglKey])).join("");
+
+  listEl.querySelectorAll(".peng-group-delete-btn").forEach(btn => {
+    btn.onclick = e => {
+      e.stopPropagation();
+      showPengHapusTanggalKonfirmasi(btn.dataset.tanggal);
+    };
+  });
+}
+
+function showPengHapusTanggalKonfirmasi(tanggal) {
+  document.getElementById("pengHapusTanggalOverlay")?.remove();
+
+  const tglStr = new Date(tanggal + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+
+  const el = document.createElement("div");
+  el.id = "pengHapusTanggalOverlay";
+  el.className = "peng-konfirmasi-overlay";
+  el.innerHTML = `
+    <div class="peng-konfirmasi-box">
+      <div class="peng-konfirmasi-title">Hapus Catatan</div>
+      <div class="peng-konfirmasi-pesan">Yakin mau hapus <b>semua</b> catatan pengeluaran (Produksi & Distribusi) tanggal <b>${tglStr}</b>? Tindakan ini tidak bisa dibatalkan.</div>
+      <div class="peng-konfirmasi-actions">
+        <button class="peng-konfirmasi-batal" id="pengHapusTanggalBatal">Batal</button>
+        <button class="peng-konfirmasi-oke peng-konfirmasi-oke-red" id="pengHapusTanggalOke">Hapus</button>
       </div>
-    `;
-  }).join("");
+    </div>`;
+  document.body.appendChild(el);
+
+  document.getElementById("pengHapusTanggalBatal").onclick = () => el.remove();
+  el.onclick = e => { if (e.target === el) el.remove(); };
+
+  document.getElementById("pengHapusTanggalOke").onclick = async () => {
+    const btn = document.getElementById("pengHapusTanggalOke");
+    btn.disabled = true; btn.textContent = "Menghapus...";
+    try {
+      const adminUid = window.auth?.currentUser?.uid;
+      const ref = window.doc(window.db, "users", adminUid, "pengeluaran", tanggal);
+      await window.deleteDoc(ref);
+
+      pengExistingDocCache = { tanggal: null, data: null };
+      await loadPengData();
+
+      window.showToast?.("Catatan dihapus", "success");
+      el.remove();
+    } catch (err) {
+      console.error("❌ hapus dokumen pengeluaran:", err);
+      window.showToast?.("Gagal menghapus", "error");
+      btn.disabled = false;
+      btn.textContent = "Hapus";
+    }
+  };
+}
+
+function renderPengGroupCard(tglKey, group) {
+  const tglObj = new Date(tglKey + "T00:00:00");
+  const tglStr = tglObj.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  window.__pengGroupDates = window.__pengGroupDates || {};
+  const renderSection = (items, label) => {
+    if (!items.length) return "";
+    const total = items.reduce((a, b) => a + (Number(b.nominal) || 0), 0);
+    const rows = items.map(x => `
+      <div class="peng-group-item">
+        <div class="peng-group-item-top">
+          <span class="peng-group-item-nama">${x.nama}</span>
+          <span class="peng-group-item-nominal">-${fmtRupiah(x.nominal)}</span>
+        </div>
+        <div class="peng-group-item-meta">
+          <span class="peng-badge-jenis">${x.jenis}</span>
+          ${x.qty ? `<span>${x.qty} × ${fmtRupiah(x.harga)}</span>` : ""}
+        </div>
+        ${x.catatan ? `<div class="peng-group-item-catatan">"${x.catatan}"</div>` : ""}
+      </div>
+    `).join("");
+
+    return `
+      <div class="peng-group-section">
+        <div class="peng-group-section-header">
+          <span class="peng-group-section-title">${label}</span>
+          <span class="peng-group-section-total">${fmtRupiah(total)}</span>
+        </div>
+        ${rows}
+      </div>`;
+  };
+
+  return `
+    <div class="peng-group-card">
+      <div class="peng-group-card-header">
+        <div class="peng-group-date">${tglStr}</div>
+        <button type="button" class="peng-group-delete-btn" data-tanggal="${tglKey}">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+      ${renderSection(group.produksi, "Produksi")}
+      ${renderSection(group.distribusi, "Distribusi")}
+    </div>`;
 }
 
 function initPengFilters() {
@@ -336,11 +423,14 @@ function renderPengItemRow(nama, hargaSatuan, isPreset, existing) {
       const qty = Number(existing.qty) || 0;
       const hs = Number(existing.harga) || 0;
       return `
-        <div class="peng-item-row peng-item-row-saved" data-preset="true" data-nama="${nama}" data-harga-satuan="${hs}">
+        <div class="peng-item-row peng-item-row-saved" data-preset="true" data-nama="${nama}" data-harga-satuan="${hs}" data-existing="true" data-jenis="${existing.jenis || ""}">
           <div class="peng-item-nama-label">${nama} <span class="peng-item-saved-badge">Tersimpan</span></div>
           <input type="number" min="0" class="peng-item-qty-input" value="${qty}">
           <input type="number" min="0" class="peng-item-harga-input" value="${hs}">
           <div class="peng-item-total-label">${fmtRupiah(qty * hs)}</div>
+          <button type="button" class="peng-item-delete-btn" data-nama="${nama}" data-jenis="${existing.jenis || ""}">
+            <i class="fa-solid fa-trash"></i>
+          </button>
         </div>
       `;
     }
@@ -367,6 +457,69 @@ function attachPengRemoveHandlers() {
   document.querySelectorAll("#pengItemList .peng-item-remove-btn").forEach(btn => {
     btn.onclick = () => btn.closest(".peng-item-row").remove();
   });
+}
+
+function attachPengDeleteHandlers(tanggal, kategori) {
+  document.querySelectorAll("#pengItemList .peng-item-delete-btn").forEach(btn => {
+    btn.onclick = () => {
+      const nama = btn.dataset.nama;
+      const jenis = btn.dataset.jenis;
+      showPengDeleteKonfirmasi(tanggal, kategori, nama, jenis);
+    };
+  });
+}
+
+function showPengDeleteKonfirmasi(tanggal, kategori, nama, jenis) {
+  document.getElementById("pengDeleteOverlay")?.remove();
+
+  const el = document.createElement("div");
+  el.id = "pengDeleteOverlay";
+  el.className = "peng-konfirmasi-overlay";
+  el.innerHTML = `
+    <div class="peng-konfirmasi-box">
+      <div class="peng-konfirmasi-title">Hapus Item</div>
+      <div class="peng-konfirmasi-pesan">Yakin mau hapus <b>${nama}</b> dari catatan tanggal ini?</div>
+      <div class="peng-konfirmasi-actions">
+        <button class="peng-konfirmasi-batal" id="pengDeleteBatal">Batal</button>
+        <button class="peng-konfirmasi-oke peng-konfirmasi-oke-red" id="pengDeleteOke">Hapus</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  document.getElementById("pengDeleteBatal").onclick = () => el.remove();
+  el.onclick = e => { if (e.target === el) el.remove(); };
+
+  document.getElementById("pengDeleteOke").onclick = async () => {
+    const btn = document.getElementById("pengDeleteOke");
+    btn.disabled = true; btn.textContent = "Menghapus...";
+    try {
+      const adminUid = window.auth?.currentUser?.uid;
+      const ref = window.doc(window.db, "users", adminUid, "pengeluaran", tanggal);
+
+      await window.runTransaction(window.db, async (transaction) => {
+        const snap = await transaction.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const arr = Array.isArray(data[kategori]) ? data[kategori] : [];
+        const newArr = arr.filter(x => !(x.nama === nama && x.jenis === jenis));
+        transaction.update(ref, { [kategori]: newArr, updatedAt: window.serverTimestamp() });
+      });
+
+      pengExistingDocCache = { tanggal: null, data: null };
+      await loadPengData();
+
+      const jenisAktif = document.querySelector("#pengToggleJenis .peng-toggle-btn.active")?.dataset.val || jenis;
+      await refreshPengItemList(kategori, jenisAktif);
+
+      window.showToast?.("Item dihapus", "success");
+      el.remove();
+    } catch (err) {
+      console.error("❌ hapus item peng:", err);
+      window.showToast?.("Gagal menghapus", "error");
+      btn.disabled = false;
+      btn.textContent = "Hapus";
+    }
+  };
 }
 
 function attachPengNominalListeners() {
@@ -449,6 +602,7 @@ async function refreshPengItemList(kategori, jenis) {
   listEl.innerHTML = html;
   attachPengRemoveHandlers();
   attachPengNominalListeners();
+  attachPengDeleteHandlers(document.getElementById("pengInputTanggal")?.value, kategori);
 
   // fade in
   requestAnimationFrame(() => {
@@ -551,12 +705,17 @@ async function savePengSubmit(selectedKategori, selectedJenis) {
 
     if (!nama || qty <= 0 || harga <= 0) return;
 
+    const now = new Date();
+    const jam    = String(now.getHours()).padStart(2, "0");
+    const menit  = String(now.getMinutes()).padStart(2, "0");
+    const detik  = String(now.getSeconds()).padStart(2, "0");
+
     newItems.push({
       jenis: selectedJenis,
       nama, qty, harga,
       nominal: qty * harga,
       catatan,
-      waktu: new Date().toISOString(),
+      waktu: `${tanggal}T${jam}:${menit}:${detik}`,
     });
   });
 
@@ -570,25 +729,29 @@ async function savePengSubmit(selectedKategori, selectedJenis) {
     if (!adminUid) throw new Error("User tidak terautentikasi");
 
     const ref = window.doc(window.db, "users", adminUid, "pengeluaran", tanggal);
-    const snap = await window.getDoc(ref);
-    const existing = snap.exists() ? snap.data() : {};
 
-    const existingProduksi = Array.isArray(existing.produksi) ? existing.produksi : [];
-    const existingDistribusi = Array.isArray(existing.distribusi) ? existing.distribusi : [];
+    await window.runTransaction(window.db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      const existing = snap.exists() ? snap.data() : {};
+      const arr = Array.isArray(existing[selectedKategori]) ? [...existing[selectedKategori]] : [];
 
-    const payload = {
-      tanggal,
-      createdBy: adminUid,
-      idCabang,
-      updatedAt: window.serverTimestamp(),
-    };
+      newItems.forEach(item => {
+        const idx = arr.findIndex(x => x.nama === item.nama && x.jenis === item.jenis);
+        if (idx > -1) {
+          arr[idx] = item; // nama+jenis sama -> update/replace
+        } else {
+          arr.push(item); // item baru
+        }
+      });
 
-    if (selectedKategori === "produksi") {
-      payload.produksi = [...existingProduksi, ...newItems];
-    } else {
-      payload.distribusi = [...existingDistribusi, ...newItems];
-    }
-    await window.setDoc(ref, payload, { merge: true });
+      transaction.set(ref, {
+        tanggal,
+        createdBy: adminUid,
+        idCabang,
+        updatedAt: window.serverTimestamp(),
+        [selectedKategori]: arr,
+      }, { merge: true });
+    });
     pengExistingDocCache = { tanggal: null, data: null };
     await loadPengData();
     document.getElementById("pengPopupOverlay")?.classList.remove("show");

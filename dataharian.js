@@ -141,6 +141,7 @@ async function selectDhKurir(user) {
       const tanggal = document.getElementById("dhDetailDate")?.value || getTanggalLocal();
       await window.idb.clearDataHarian(activeKurirUid, tanggal);
       await renderDhRingkasan(true);
+      hitungTagihan();
       reloadBtn.classList.remove("spinning");
       reloadBtn.disabled = false;
     };
@@ -166,6 +167,16 @@ async function renderDhForm() {
 
   document.querySelectorAll(".dh-simpan-wrap").forEach(el => el.remove());
 
+  // simpan uid kurir yang sedang di-fetch, buat validasi setelah await selesai
+  const kurirUidSaatFetch = activeKurirUid;
+
+  // kosongkan form dulu + kunci, biar gak ada data kurir lama yang bisa ke-submit
+  formBody.innerHTML = `<div class="dh-ringkasan-empty">Memuat form...</div>`;
+  formBody.closest(".dh-form-panel")?.insertAdjacentHTML("beforeend", `
+    <div class="dh-simpan-wrap">
+      <button class="dh-simpan-btn" id="dhSimpanBtn" disabled>Memuat...</button>
+    </div>`);
+
   const tanggal = document.getElementById("dhDetailDate")?.value || getTanggalLocal();
   let existing  = {};
   try {
@@ -174,6 +185,9 @@ async function renderDhForm() {
     );
     if (snap.exists()) existing = snap.data();
   } catch {}
+
+  // kalau user udah pindah ke kurir lain selagi fetch berjalan, batalkan render ini
+  if (kurirUidSaatFetch !== activeKurirUid) return;
 
   const admin  = (window.usersCache || []).find(u => u.role === "adminCabang");
   const varian = (admin?.varian || [])
@@ -245,6 +259,7 @@ async function renderDhForm() {
 
   formBody.innerHTML = inputRows + closingRow + pembayaranRow;
 
+  document.querySelectorAll(".dh-simpan-wrap").forEach(el => el.remove());
   formBody.closest(".dh-form-panel").insertAdjacentHTML("beforeend", `
     <div class="dh-simpan-wrap">
       <button class="dh-simpan-btn" id="dhSimpanBtn">Simpan</button>
@@ -267,7 +282,7 @@ async function renderDhForm() {
     input.addEventListener("input", hitungClosing);
   });
   hitungClosing();
-
+  attachDhArrowKeyNav(formBody);
   formBody.querySelector(".dh-input-bayar")?.addEventListener("input", e => {
     const angka = e.target.value.replace(/\D/g, "");
     e.target.value = angka ? Number(angka).toLocaleString("id-ID") : "";
@@ -387,6 +402,55 @@ async function renderDhForm() {
       btn.textContent = "Simpan";
     }
   });
+}
+
+/* ── NAVIGASI PANAH ANTAR VARIAN ── */
+function attachDhArrowKeyNav(formBody) {
+  const rowTypes = ["order", "fee", "offflavor", "sisabarang"];
+  const arrowKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+
+  const inputs = Array.from(formBody.querySelectorAll(".dh-form-input:not(.dh-input-bayar)"));
+  const bayarInput = formBody.querySelector(".dh-input-bayar");
+
+  inputs.forEach(input => {
+    input.addEventListener("keydown", e => {
+      if (!arrowKeys.includes(e.key)) return;
+      e.preventDefault();
+
+      const type   = input.dataset.type;
+      const rowInputs = inputs.filter(i => i.dataset.type === type);
+      const colIdx    = rowInputs.indexOf(input);
+      let target = null;
+
+      if (e.key === "ArrowLeft")  target = rowInputs[colIdx - 1];
+      if (e.key === "ArrowRight") target = rowInputs[colIdx + 1];
+
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        const dir = e.key === "ArrowUp" ? -1 : 1;
+        let rowIdx = rowTypes.indexOf(type) + dir;
+        while (rowIdx >= 0 && rowIdx < rowTypes.length) {
+          const candidateRow = inputs.filter(i => i.dataset.type === rowTypes[rowIdx]);
+          target = candidateRow[colIdx];
+          if (target) break;
+          rowIdx += dir;
+        }
+        // row terakhir (sisabarang) + tekan bawah -> loncat ke Pembayaran (lewatin Closing yang read-only)
+        if (!target && dir === 1 && bayarInput) target = bayarInput;
+      }
+
+      if (target) target.focus();
+    });
+  });
+
+  // dari Pembayaran, panah atas balik ke Sisa Barang (kolom pertama)
+  if (bayarInput) {
+    bayarInput.addEventListener("keydown", e => {
+      if (e.key !== "ArrowUp") return;
+      e.preventDefault();
+      const sisaBarangRow = inputs.filter(i => i.dataset.type === "sisabarang");
+      if (sisaBarangRow.length) sisaBarangRow[0].focus();
+    });
+  }
 }
 
 /* ── HITUNG TAGIHAN ── */
