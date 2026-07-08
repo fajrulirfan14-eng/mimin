@@ -1,5 +1,5 @@
 const DB_NAME    = "adminCabangDB";
-const DB_VERSION = 6;
+const DB_VERSION = 7;
 
 function openAdminDB() {
   return new Promise((resolve, reject) => {
@@ -29,6 +29,9 @@ function openAdminDB() {
       }
       if (!db.objectStoreNames.contains("laporanAdmin")) {
         db.createObjectStore("laporanAdmin", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("stockOpname")) {
+        db.createObjectStore("stockOpname", { keyPath: "id" });
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -262,5 +265,34 @@ window.idb = {
       tx.objectStore("laporanAdmin").delete(tanggal);
       await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
     } catch (err) { console.error("❌ idb.clearLaporanAdmin:", err); }
+  },
+  
+  async saveStockOpname(tanggal, data) {
+    try {
+      const db = await openAdminDB();
+      const tx = db.transaction("stockOpname", "readwrite");
+      tx.objectStore("stockOpname").put({ id: tanggal, tanggal, data, updatedAt: Date.now() });
+      await new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+    } catch (err) { console.error("❌ idb.saveStockOpname:", err); }
+  },
+  async getStockOpname(tanggal) {
+    try {
+      const db = await openAdminDB();
+      return new Promise((resolve, reject) => {
+        const req = db.transaction("stockOpname", "readonly").objectStore("stockOpname").get(tanggal);
+        req.onsuccess = () => resolve(req.result?.data ?? null);
+        req.onerror   = () => reject(req.error);
+      });
+    } catch (err) { console.error("❌ idb.getStockOpname:", err); return null; }
+  },
+  async getAllStockOpname() {
+    try {
+      const db = await openAdminDB();
+      return new Promise((resolve, reject) => {
+        const req = db.transaction("stockOpname", "readonly").objectStore("stockOpname").getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror   = () => reject(req.error);
+      });
+    } catch (err) { console.error("❌ idb.getAllStockOpname:", err); return []; }
   },
 };

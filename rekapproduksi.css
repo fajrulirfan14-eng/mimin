@@ -1,0 +1,301 @@
+#rekapProdReloadBtn.spinning i {
+  animation: rekapDistSpin 0.7s linear infinite;
+}
+/* ── SCOPE FIX: hanya berlaku di dalam view Rekap Produksi ── */
+#view-rekapproduksi .lap-detail-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#view-rekapproduksi .lap-detail-header {
+  flex-shrink: 0;
+}
+
+#view-rekapproduksi .lap-detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+/* ── REKAP PRODUKSI: CARD & TABLE ── */
+.rekap-prod-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px;
+  overflow: hidden;
+}
+
+.rekap-prod-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.rekap-prod-card-title i {
+  color: #6366f1;
+  font-size: 14px;
+}
+
+.rekap-prod-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
+.rekap-prod-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.rekap-prod-table thead th {
+  background: #f9fafb;
+  color: #6b7280;
+  font-weight: 600;
+  text-align: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  position: sticky;
+  top: 0;
+}
+
+.rekap-prod-th-jenis {
+  text-align: left !important;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #f9fafb;
+  min-width: 130px;
+}
+
+.rekap-prod-table tbody td {
+  padding: 10px 14px;
+  text-align: center;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.rekap-prod-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rekap-prod-table tbody tr:hover td {
+  background: #fafafa;
+}
+
+.rekap-prod-td-jenis {
+  text-align: left !important;
+  font-weight: 500;
+  color: #1f2937;
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.rekap-prod-table tbody tr:hover .rekap-prod-td-jenis {
+  background: #fafafa;
+}
+
+/* baris Saldo Kemarin ditonjolkan (netral) */
+.rekap-prod-table tbody tr[data-jenis="saldo-kemarin"] td {
+  font-weight: 600;
+  background: #f8f9ff;
+}
+.rekap-prod-table tbody tr[data-jenis="saldo-kemarin"] .rekap-prod-td-jenis {
+  background: #f8f9ff;
+}
+
+/* baris Saldo Akhir ditonjolkan (total utama — warna info/biru) */
+.rekap-prod-table tbody tr[data-jenis="saldo-akhir"] td {
+  font-weight: 700;
+  background: var(--info-bg);
+  color: var(--info);
+}
+.rekap-prod-table tbody tr[data-jenis="saldo-akhir"] .rekap-prod-td-jenis {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+/* baris Jumlah Rugi ditonjolkan (warna danger/merah) */
+.rekap-prod-table tbody tr[data-jenis="jumlah-rugi"] td {
+  font-weight: 700;
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.rekap-prod-table tbody tr[data-jenis="jumlah-rugi"] .rekap-prod-td-jenis {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.rekap-prod-kpi-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 12px 0 12px;
+}
+.rekap-prod-kpi-card {
+  flex: 1;
+  min-width: 140px;
+  border-radius: 12px;
+  padding: 14px 16px;
+  border: 1px solid transparent;
+}
+
+.rekap-prod-kpi-label {
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  opacity: 0.75;
+}
+
+.rekap-prod-kpi-value {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* palet warna bergilir — pakai variabel status */
+.rekap-prod-kpi-card.kpi-c0 { background: var(--info-bg); border-color: var(--info); }
+.rekap-prod-kpi-card.kpi-c0 .rekap-prod-kpi-label,
+.rekap-prod-kpi-card.kpi-c0 .rekap-prod-kpi-value { color: var(--info); }
+
+.rekap-prod-kpi-card.kpi-c1 { background: var(--success-bg); border-color: var(--success); }
+.rekap-prod-kpi-card.kpi-c1 .rekap-prod-kpi-label,
+.rekap-prod-kpi-card.kpi-c1 .rekap-prod-kpi-value { color: var(--success); }
+
+.rekap-prod-kpi-card.kpi-c2 { background: var(--warning-bg); border-color: var(--warning); }
+.rekap-prod-kpi-card.kpi-c2 .rekap-prod-kpi-label,
+.rekap-prod-kpi-card.kpi-c2 .rekap-prod-kpi-value { color: var(--warning); }
+
+.rekap-prod-kpi-card.kpi-c3 { background: var(--danger-bg); border-color: var(--danger); }
+.rekap-prod-kpi-card.kpi-c3 .rekap-prod-kpi-label,
+.rekap-prod-kpi-card.kpi-c3 .rekap-prod-kpi-value { color: var(--danger); }
+
+.rekap-prod-kpi-card.kpi-c4 { background: var(--accent-bg); border-color: var(--accent); }
+.rekap-prod-kpi-card.kpi-c4 .rekap-prod-kpi-label,
+.rekap-prod-kpi-card.kpi-c4 .rekap-prod-kpi-value { color: var(--accent); }
+
+/* ── REKAP PRODUKSI: DETAIL WRAPPER & PANEL (khusus, tidak share dengan view lain) ── */
+.rekapprod-detail-wrapper {
+  flex: 1;
+  padding: 0;
+  background: var(--bg-page);
+  overflow: hidden;
+}
+
+.rekapprod-detail-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-page);
+}
+
+.rekapprod-detail-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 20px;
+}
+
+.rekapprod-empty-icon {
+  font-size: 40px;
+  color: var(--border-card);
+  margin-bottom: 12px;
+}
+
+.rekapprod-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.rekapprod-empty-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.rekapprod-detail-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rekapprod-detail-header {
+  flex-shrink: 0;
+  padding: 16px 16px 0;
+}
+
+.rekapprod-detail-header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-card);
+}
+
+.rekapprod-detail-back-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.rekapprod-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rekapprod-detail-nama {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rekapprod-detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── MOBILE: REKAP PRODUKSI ── */
+@media (max-width: 768px) {
+  .rekapprod-detail-wrapper {
+    padding: 0;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: var(--bg-page);
+    transform: translateX(100%);
+    transition: transform var(--transition-slow);
+  }
+  .rekapprod-detail-wrapper.show {
+    display: flex !important;
+    transform: translateX(0);
+  }
+  .rekapprod-detail-panel {
+    border-radius: 0;
+  }
+}

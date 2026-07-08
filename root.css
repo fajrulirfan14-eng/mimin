@@ -34,7 +34,7 @@
   --shadow-lg:      rgba(61,44,30,0.16);
   --shadow-sidebar: rgba(0,0,0,0.4);
 
-  /* Status */
+/* Status */
   --success:        #16a34a;
   --success-bg:     #f0fdf4;
   --warning:        #ca8a04;
@@ -43,6 +43,8 @@
   --danger-bg:      #fff1f2;
   --info:           #2563eb;
   --info-bg:        #eff6ff;
+  --accent:         #7c3aed;
+  --accent-bg:      #f5f3ff;
 
   /* Transition */
   --transition-fast: 0.15s ease;

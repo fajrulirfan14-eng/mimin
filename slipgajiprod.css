@@ -1,0 +1,130 @@
+/* ── SLIP GAJI PRODUKSI: DETAIL WRAPPER & PANEL ── */
+.slipgajiprod-detail-wrapper {
+  flex: 1;
+  padding: 0;
+  background: var(--bg-page);
+  overflow: hidden;
+  display: none;
+}
+
+.slipgajiprod-detail-wrapper.show {
+  display: flex;
+}
+
+.slipgajiprod-detail-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-page);
+}
+
+.slipgajiprod-detail-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 20px;
+}
+
+.slipgajiprod-empty-icon {
+  font-size: 40px;
+  color: var(--border-card);
+  margin-bottom: 12px;
+}
+
+.slipgajiprod-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.slipgajiprod-empty-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.slipgajiprod-detail-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.slipgajiprod-detail-header {
+  flex-shrink: 0;
+  padding: 16px 16px 0;
+}
+
+.slipgajiprod-detail-header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-card);
+}
+
+.slipgajiprod-detail-back-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.slipgajiprod-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.slipgajiprod-detail-nama {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.slipgajiprod-detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.slipgajiprod-placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 0;
+}
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .slipgajiprod-detail-wrapper {
+    padding: 0;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: var(--bg-page);
+    transform: translateX(100%);
+    transition: transform var(--transition-slow);
+  }
+  .slipgajiprod-detail-wrapper.show {
+    display: flex !important;
+    transform: translateX(0);
+  }
+  .slipgajiprod-detail-panel {
+    border-radius: 0;
+  }
+}

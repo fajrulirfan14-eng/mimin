@@ -1,0 +1,314 @@
+/* ── RINCIAN PRODUKSI: DETAIL WRAPPER & PANEL ── */
+.rincianprod-detail-wrapper {
+  flex: 1;
+  padding: 0;
+  background: var(--bg-page);
+  overflow: hidden;
+  display: none;
+}
+
+.rincianprod-detail-wrapper.show {
+  display: flex;
+}
+
+.rincianprod-detail-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-page);
+  width: 100%;
+}
+
+.rincianprod-detail-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 20px;
+}
+
+.rincianprod-empty-icon {
+  font-size: 40px;
+  color: var(--border-card);
+  margin-bottom: 12px;
+}
+
+.rincianprod-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.rincianprod-empty-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.rincianprod-detail-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.rincianprod-detail-header {
+  flex-shrink: 0;
+  padding: 16px 16px 0;
+}
+
+.rincianprod-detail-header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-card);
+}
+
+.rincianprod-detail-back-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.rincianprod-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rincianprod-detail-nama {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.rincianprod-detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.rincianprod-placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 40px 0;
+}
+/* ── RINCIAN PRODUKSI: CARD & TABLE ── */
+.rincian-prod-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.rincian-prod-card:last-child {
+  margin-bottom: 0;
+}
+.rincian-prod-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.rincian-prod-card-title i {
+  color: #6366f1;
+  font-size: 14px;
+}
+
+.rincian-prod-table-wrap {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
+.rincian-prod-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.rincian-prod-table thead th {
+  background: #f9fafb;
+  color: #6b7280;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  border-left: 1px solid #f0f0f0;
+}
+
+.rincian-prod-table thead th:first-child {
+  border-left: none;
+}
+
+.rincian-prod-th-nama {
+  text-align: left !important;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #f9fafb;
+  min-width: 140px;
+}
+
+.rincian-prod-table tbody td {
+  padding: 8px 12px;
+  text-align: center;
+  color: #374151;
+  border-bottom: 1px solid #f3f4f6;
+  border-left: 1px solid #f6f6f6;
+}
+
+.rincian-prod-table tbody td:first-child {
+  border-left: none;
+}
+
+.rincian-prod-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rincian-prod-table tbody tr:hover td {
+  background: #fafafa;
+}
+
+.rincian-prod-td-nama {
+  text-align: left !important;
+  font-weight: 500;
+  color: #1f2937;
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.rincian-prod-table tbody tr:hover .rincian-prod-td-nama {
+  background: #fafafa;
+}
+
+.rincian-prod-td-total {
+  font-weight: 700;
+  color: var(--info);
+}
+.rincian-prod-td-nama {
+  white-space: nowrap;
+}
+
+.rincian-prod-role-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 2px 8px;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+.rincian-prod-total-row td {
+  font-weight: 700;
+  background: var(--info-bg);
+  color: var(--info);
+  border-top: 2px solid var(--info);
+}
+
+.rincian-prod-total-row .rincian-prod-td-nama {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+/* ── RINCIAN PENGELUARAN: EXPAND/COLLAPSE ── */
+.rincian-peng-jenis-row {
+  cursor: pointer;
+}
+
+.rincian-peng-jenis-row:hover td {
+  background: #fafafa;
+}
+
+.rincian-peng-chevron {
+  display: inline-block;
+  width: 14px;
+  margin-right: 8px;
+  font-size: 10px;
+  color: #9ca3af;
+  transition: transform 0.15s ease;
+}
+
+.rincian-peng-jenis-row.expanded .rincian-peng-chevron {
+  transform: rotate(90deg);
+}
+
+.rincian-peng-nama-row {
+  display: none;
+  background: #fafbfc;
+}
+
+.rincian-peng-nama-row.show {
+  display: table-row;
+}
+
+.rincian-peng-nama-row td:first-child {
+  padding-left: 34px;
+  font-weight: 400;
+  color: #6b7280;
+  font-size: 12.5px;
+}
+
+.rincian-peng-empty {
+  text-align: center;
+  color: #9ca3af;
+  padding: 20px;
+}
+.rincian-peng-total-row td {
+  font-weight: 700;
+  background: var(--info-bg);
+  color: var(--info);
+  border-top: 2px solid var(--info);
+}
+
+.rincian-peng-total-row .rincian-prod-td-nama {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+/* ── MOBILE: RINCIAN PRODUKSI ── */
+@media (max-width: 768px) {
+  .rincianprod-detail-wrapper {
+    padding: 0;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: var(--bg-page);
+    transform: translateX(100%);
+    transition: transform var(--transition-slow);
+  }
+  .rincianprod-detail-wrapper.show {
+    display: flex !important;
+    transform: translateX(0);
+  }
+  .rincianprod-detail-panel {
+    border-radius: 0;
+  }
+}

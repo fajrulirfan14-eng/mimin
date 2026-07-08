@@ -32,6 +32,10 @@
 <link rel="stylesheet" href="amplop.css">
 <link rel="stylesheet" href="rekapdistribusi.css">
 <link rel="stylesheet" href="slipgaji.css">
+<link rel="stylesheet" href="rekapproduksi.css">
+<link rel="stylesheet" href="rincianproduksi.css">
+<link rel="stylesheet" href="auditprod.css">
+<link rel="stylesheet" href="slipgajiprod.css">
 <link rel="stylesheet" href="akun.css">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -98,6 +102,10 @@
       <a class="nav-item" data-view="rekapdistribusi">
         <div class="nav-icon"><i class="fa-solid fa-chart-pie"></i></div>
         <span>Rekap Distribusi</span>
+      </a>
+      <a class="nav-item" data-view="rekapproduksi">
+        <div class="nav-icon"><i class="fa-solid fa-industry"></i></div>
+        <span>Rekap Produksi</span>
       </a>
       <a class="nav-item" data-view="akun">
         <div class="nav-icon"><i class="fa-solid fa-user-gear"></i></div>
@@ -1568,6 +1576,7 @@
           </div>
         </div>
         
+        <!-- DIST -->
         <div class="view" id="view-rekapdistribusi">
           <div class="lap-layout">
 
@@ -1820,6 +1829,280 @@
 
           </div>
         </div>
+        
+        <!-- PROD -->
+        <div class="view" id="view-rekapproduksi">
+          <div class="lap-layout">
+
+            <!-- KIRI: LIST -->
+            <div class="lap-list-panel">
+              <div class="lap-list-header">
+                <div class="lap-list-title">Rekap Produksi</div>
+              </div>
+              <div class="lap-list-scroll" id="rekapProduksiList">
+                <div class="lap-kurir-item" data-id="rekapitulasi">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-chart-pie"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Rekapitulasi</div>
+                    <div class="lap-kurir-role">Semua data produksi</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
+                <div class="lap-kurir-item" data-id="rincian">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-list-ul"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Rincian</div>
+                    <div class="lap-kurir-role">Pengeluaran & pemasukan</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
+                <div class="lap-kurir-item" data-id="audit">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-clipboard-check"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Audit Barang Mentah</div>
+                    <div class="lap-kurir-role">Pengecekan stok bahan baku</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
+                <div class="lap-kurir-item" data-id="slipgaji">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Slip Gaji</div>
+                    <div class="lap-kurir-role">Gaji koki & pegawai produksi</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- KANAN: DETAIL -->
+            <div class="rekapprod-detail-wrapper" id="rekapProduksiDetailWrapper">
+              <div class="rekapprod-detail-panel">
+
+                <div class="rekapprod-detail-empty" id="rekapProduksiEmpty">
+                  <div class="rekapprod-empty-icon"><i class="fa-solid fa-industry"></i></div>
+                  <div class="rekapprod-empty-title">Pilih Rekapitulasi</div>
+                  <div class="rekapprod-empty-sub">Klik untuk melihat data produksi.</div>
+                </div>
+
+                <div class="rekapprod-detail-content" id="rekapProduksiContent" style="display:none;">
+                  <div class="rekapprod-detail-header">
+                    <div class="rekapprod-detail-header-top">
+                      <button class="rekapprod-detail-back-btn" id="rekapProduksiBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="rekapprod-detail-info">
+                        <div class="rekapprod-detail-nama">Rekapitulasi Produksi</div>
+                      </div>
+                      <div class="rekap-dist-filter-wrap">
+                        <button class="rekap-dist-filter-btn" id="rekapProdBulanBtn">
+                          <i class="fa-solid fa-calendar"></i>
+                          <span id="rekapProdBulanLabel">Juli</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="rekapProdBulanDropdown" style="display:none">
+                          <div class="rekap-dist-dropdown-option" data-bulan="0">Januari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="1">Februari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="2">Maret</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="3">April</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="4">Mei</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="5">Juni</div>
+                          <div class="rekap-dist-dropdown-option selected" data-bulan="6">Juli</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="7">Agustus</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="8">September</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="9">Oktober</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="10">November</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="11">Desember</div>
+                        </div>
+                        <button class="rekap-dist-filter-btn" id="rekapProdTahunBtn">
+                          <span id="rekapProdTahunLabel">2026</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="rekapProdTahunDropdown" style="display:none"></div>
+                        <button class="rekap-dist-filter-btn" id="rekapProdReloadBtn" title="Reload">
+                          <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="rekapprod-detail-body">
+                    <div class="rekap-prod-kpi-row" id="rekapProdKpiRow"></div>
+                    <div class="rekap-prod-card">
+                      <div class="rekap-prod-card-title">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                        Rekapitulasi Barang Jadi
+                      </div>
+                      <div class="rekap-prod-table-wrap">
+                        <table class="rekap-prod-table" id="rekapProdTable">
+                          <thead>
+                            <tr id="rekapProdTableHead">
+                              <th class="rekap-prod-th-jenis">Jenis</th>
+                              <!-- kolom varian di-inject JS -->
+                            </tr>
+                          </thead>
+                          <tbody id="rekapProdTableBody">
+                            <!-- baris jenis di-inject JS -->
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
+            <!-- KANAN: DETAIL RINCIAN -->
+            <div class="rincianprod-detail-wrapper" id="rincianProduksiDetailWrapper">
+              <div class="rincianprod-detail-panel">
+
+                <div class="rincianprod-detail-empty" id="rincianProduksiEmpty">
+                  <div class="rincianprod-empty-icon"><i class="fa-solid fa-list-ul"></i></div>
+                  <div class="rincianprod-empty-title">Pilih Rincian</div>
+                  <div class="rincianprod-empty-sub">Klik untuk melihat rincian pengeluaran & pemasukan.</div>
+                </div>
+
+                <div class="rincianprod-detail-content" id="rincianProduksiContent" style="display:none;">
+                  <div class="rincianprod-detail-header">
+                    <div class="rincianprod-detail-header-top">
+                      <button class="rincianprod-detail-back-btn" id="rincianProduksiBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="rincianprod-detail-info">
+                        <div class="rincianprod-detail-nama">Rincian Pengeluaran & Pemasukan</div>
+                      </div>
+                      <div class="rekap-dist-filter-wrap">
+                        <button class="rekap-dist-filter-btn" id="rincianProdBulanBtn">
+                          <i class="fa-solid fa-calendar"></i>
+                          <span id="rincianProdBulanLabel">Juli</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="rincianProdBulanDropdown" style="display:none">
+                          <div class="rekap-dist-dropdown-option" data-bulan="0">Januari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="1">Februari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="2">Maret</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="3">April</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="4">Mei</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="5">Juni</div>
+                          <div class="rekap-dist-dropdown-option selected" data-bulan="6">Juli</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="7">Agustus</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="8">September</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="9">Oktober</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="10">November</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="11">Desember</div>
+                        </div>
+                        <button class="rekap-dist-filter-btn" id="rincianProdTahunBtn">
+                          <span id="rincianProdTahunLabel">2026</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="rincianProdTahunDropdown" style="display:none"></div>
+                        <button class="rekap-dist-filter-btn" id="rincianProdReloadBtn" title="Reload">
+                          <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="rincianprod-detail-body">
+                    <div class="rincian-prod-card">
+                      <div class="rincian-prod-card-title">
+                        <i class="fa-solid fa-sack-dollar"></i>
+                        Rincian Pemasukan Bulanan
+                      </div>
+                      <div class="rincian-prod-table-wrap">
+                        <table class="rincian-prod-table" id="rincianProdTable">
+                          <thead>
+                            <tr id="rincianProdTableHeadTop"></tr>
+                            <tr id="rincianProdTableHeadSub"></tr>
+                          </thead>
+                          <tbody id="rincianProdTableBody"></tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div class="rincian-prod-card">
+                      <div class="rincian-prod-card-title">
+                        <i class="fa-solid fa-money-bill-wave"></i>
+                        Rincian Pengeluaran
+                      </div>
+                      <div class="rincian-prod-table-wrap">
+                        <table class="rincian-prod-table" id="rincianPengeluaranTable">
+                          <thead>
+                            <tr>
+                              <th class="rincian-prod-th-nama">Jenis</th>
+                              <th>Qty</th>
+                              <th>Nominal</th>
+                            </tr>
+                          </thead>
+                          <tbody id="rincianPengeluaranTableBody"></tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
+            <!-- KANAN: DETAIL AUDIT BARANG MENTAH -->
+            <div class="auditprod-detail-wrapper" id="auditProduksiDetailWrapper">
+              <div class="auditprod-detail-panel">
+
+                <div class="auditprod-detail-empty" id="auditProduksiEmpty">
+                  <div class="auditprod-empty-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+                  <div class="auditprod-empty-title">Pilih Audit Barang Mentah</div>
+                  <div class="auditprod-empty-sub">Klik untuk melihat pengecekan stok bahan baku.</div>
+                </div>
+
+                <div class="auditprod-detail-content" id="auditProduksiContent" style="display:none;">
+                  <div class="auditprod-detail-header">
+                    <div class="auditprod-detail-header-top">
+                      <button class="auditprod-detail-back-btn" id="auditProduksiBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="auditprod-detail-info">
+                        <div class="auditprod-detail-nama">Audit Barang Mentah</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="auditprod-detail-body">
+                    <div class="auditprod-placeholder">Placeholder — konten audit barang mentah menyusul</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- KANAN: DETAIL SLIP GAJI -->
+            <div class="slipgajiprod-detail-wrapper" id="slipgajiProduksiDetailWrapper">
+              <div class="slipgajiprod-detail-panel">
+
+                <div class="slipgajiprod-detail-empty" id="slipgajiProduksiEmpty">
+                  <div class="slipgajiprod-empty-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                  <div class="slipgajiprod-empty-title">Pilih Slip Gaji</div>
+                  <div class="slipgajiprod-empty-sub">Klik untuk melihat slip gaji koki & pegawai produksi.</div>
+                </div>
+
+                <div class="slipgajiprod-detail-content" id="slipgajiProduksiContent" style="display:none;">
+                  <div class="slipgajiprod-detail-header">
+                    <div class="slipgajiprod-detail-header-top">
+                      <button class="slipgajiprod-detail-back-btn" id="slipgajiProduksiBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="slipgajiprod-detail-info">
+                        <div class="slipgajiprod-detail-nama">Slip Gaji</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="slipgajiprod-detail-body">
+                    <div class="slipgajiprod-placeholder">Placeholder — konten slip gaji menyusul</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
+        </div>
 
         <!-- POPUP INPUT HARI LIBUR -->
         <div class="amplop-konfirmasi-overlay" id="hariLiburOverlay" style="display:none">
@@ -1977,6 +2260,10 @@
 <script src="pengeluaran.js"></script>
 <script src="amplop.js"></script>
 <script src="rekapdistribusi.js"></script>
+<script src="rekapproduksi.js"></script>
+<script src="rincianproduksi.js"></script>
+<script src="auditprod.js"></script>
+<script src="slipgajiprod.js"></script>
 <script src="akun.js"></script>
 
 <div id="devConsoleMount"></div>
