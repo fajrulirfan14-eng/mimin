@@ -657,7 +657,13 @@ async function fetchDataHarian(uidKurir, tanggal) {
           window.where("isNew",    "==", false),
           window.where("status",   "==", true)
         ));
-        hasil.customerLama = clSnap.docs.filter(d => !("acc" in d.data())).length;
+        hasil.customerLama = clSnap.docs.filter(d => {
+          const cData = d.data();
+          if (cData.acc !== true) return true; // belum di-acc -> tetap Lama
+          const createdAt = cData.createdAt?.toDate ? cData.createdAt.toDate() : null;
+          if (!createdAt) return true; // gak ada createdAt, aman dihitung Lama
+          return !(createdAt >= startDate && createdAt < endDate);
+        }).length;
 
         // customer tambahan
         const ctSnap = await window.getDocs(window.query(
@@ -668,7 +674,13 @@ async function fetchDataHarian(uidKurir, tanggal) {
           window.where("isNew",    "==", true),
           window.where("status",   "==", true)
         ));
-        hasil.customerTambahan = ctSnap.docs.filter(d => !("acc" in d.data())).length;
+        hasil.customerTambahan = ctSnap.docs.filter(d => {
+          const cData = d.data();
+          if (cData.acc !== true) return true;
+          const createdAt = cData.createdAt?.toDate ? cData.createdAt.toDate() : null;
+          if (!createdAt) return true;
+          return !(createdAt >= startDate && createdAt < endDate);
+        }).length;
       }
     } catch (err) { console.warn("❌ query customer:", err.message); }
 
