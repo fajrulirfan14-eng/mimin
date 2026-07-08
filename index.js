@@ -528,7 +528,7 @@ function updateDistribusiUI() {
       const klaimInsentif = keuangan.klaimInsentif || 0;
       const kasbon        = keuangan.kasbon || 0;
       const totalKurir    = bonusPay + klaimInsentif + kasbon;
-      const netto         = nilaiOmset - bonusPay - klaimInsentif;
+      const netto         = nilaiOmset - bonusPay - klaimInsentif - kasbon;
 
       totalOmset   += netto;
       totalLainnya += totalKurir;
