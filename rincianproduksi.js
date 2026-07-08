@@ -134,7 +134,7 @@ function renderRincianProdTable() {
   if (!rincianProdMarketingList.length) {
     const totalCols = 1 + rincianProdVarianList.length + 3;
     tbody.innerHTML = `<tr><td colspan="${totalCols}" style="text-align:center; color:#9ca3af; padding:20px;">Belum ada marketing (kurir/sales)</td></tr>`;
-    return;
+    return 0;
   }
 
   const grandTotal = {
@@ -188,16 +188,30 @@ function renderRincianProdTable() {
       <td class="rincian-prod-td-total">${grandTotal.total ? grandTotal.total.toLocaleString("id-ID") : ""}</td>
     </tr>
   `;
+
+  return grandTotal.total;
 }
 
 async function refreshRincianProduksiData() {
   rincianProdVarianList     = await loadRincianVarianList();
   rincianProdMarketingList  = await loadRincianMarketingList();
   rincianProdLaporanAgg     = await loadRincianLaporanAgg();
-  renderRincianProdTable();
+  const totalPemasukan = renderRincianProdTable() || 0;
 
-  const pengeluaranAgg = await loadRincianPengeluaranAgg();
-  renderRincianPengeluaranTable(pengeluaranAgg);
+  const pengeluaranAgg   = await loadRincianPengeluaranAgg();
+  const totalPengeluaran = renderRincianPengeluaranTable(pengeluaranAgg) || 0;
+
+  const selisih = totalPemasukan - totalPengeluaran;
+
+  const pemasukanCard   = document.getElementById("rincianProdTotalPemasukan");
+  const pengeluaranCard = document.getElementById("rincianProdTotalPengeluaran");
+  const selisihCard     = document.getElementById("rincianProdSelisih");
+
+  if (pemasukanCard)   pemasukanCard.textContent   = `Rp ${totalPemasukan.toLocaleString("id-ID")}`;
+  if (pengeluaranCard) pengeluaranCard.textContent = `Rp ${totalPengeluaran.toLocaleString("id-ID")}`;
+  if (selisihCard) {
+    selisihCard.textContent = `${selisih < 0 ? "-Rp " : "Rp "}${Math.abs(selisih).toLocaleString("id-ID")}`;
+  }
 }
 
 function initRincianProdFilter() {
@@ -311,7 +325,7 @@ function renderRincianPengeluaranTable(groupedData) {
 
   if (!jenisKeys.length) {
     tbody.innerHTML = `<tr><td colspan="3" class="rincian-peng-empty">Belum ada data pengeluaran</td></tr>`;
-    return;
+    return 0;
   }
 
   let totalNominal = 0;
@@ -346,6 +360,8 @@ function renderRincianPengeluaranTable(groupedData) {
       <td>${totalNominal ? totalNominal.toLocaleString("id-ID") : ""}</td>
     </tr>
   `;
+
+  return totalNominal;
 }
 function initRincianPengeluaranToggle() {
   const tbody = document.getElementById("rincianPengeluaranTableBody");

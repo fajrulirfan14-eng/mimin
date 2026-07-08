@@ -4,6 +4,9 @@ window.initStockOpnameView = async function() {
   if (!soCanvas) return;
   soCtx = soCanvas.getContext("2d");
 
+  SO_LOYANG_LIST = await loadSoLoyangList();
+  rebuildSoStaticColumns();
+
   initSoFilters();
   initSoSearch();
   initSoReload();
@@ -67,14 +70,12 @@ async function renderSoPopupForm(mode) {
 
   let kokiList = [];
   try {
-    // ambil dari usersCache yang sudah di-load (sama seperti kurir/hunter/sales)
     if (!window.usersCache?.length) {
       window.usersCache = await window.idb.getUsers();
     }
     kokiList = (window.usersCache || [])
-      .filter(u => u.role === "produksi")
-      .map(u => u.nama)
-      .filter(Boolean);
+      .filter(u => u.role === "produksi" || u.role === "adminCabang")
+      .filter(u => u.nama);
   } catch (err) {
     console.error("❌ fetch koki:", err);
   }
@@ -104,22 +105,19 @@ async function renderSoPopupForm(mode) {
             <i class="fa-solid fa-chevron-down"></i>
           </button>
           <div class="so-select-dropdown" id="soKokiDropdown">
-            ${kokiList.map(k => `<div class="so-select-option" data-val="${k}">${k}</div>`).join("")}
-            <div class="so-select-option" data-val="lainnya">Lainnya</div>
+            ${kokiList.map(u => `<div class="so-select-option" data-uid="${u.uid}" data-nama="${escSlip(u.nama)}">${escSlip(u.nama)}</div>`).join("")}
+            <div class="so-select-option" data-uid="" data-nama="lainnya">Lainnya</div>
           </div>
         </div>
         <input type="text" class="so-form-input" id="soKokiManual" placeholder="Tulis nama koki" style="display:none">
       </div>
 
-      <div class="so-form-group">
-        <div class="so-form-label">Loyang Original</div>
-        <input type="number" min="0" class="so-form-input" id="soLoyangOriginal" placeholder="Jumlah loyang">
-      </div>
-
-      <div class="so-form-group">
-        <div class="so-form-label">Loyang Matcha</div>
-        <input type="number" min="0" class="so-form-input" id="soLoyangMatcha" placeholder="Jumlah loyang matcha">
-      </div>
+      ${SO_LOYANG_LIST.map(jenis => `
+        <div class="so-form-group">
+          <div class="so-form-label">Loyang ${jenis}</div>
+          <input type="number" min="0" class="so-form-input so-loyang-input" data-jenis="${jenis}" placeholder="Jumlah loyang ${jenis}">
+        </div>
+      `).join("")}
 
       ${gridGroup("Produksi", "produksi")}
       ${gridGroup("Reject", "reject")}
@@ -143,8 +141,9 @@ async function renderSoPopupForm(mode) {
       opt.addEventListener("click", () => {
         kokiLabel.textContent = opt.textContent;
         kokiDD.classList.remove("show");
-        const isOther = opt.dataset.val === "lainnya";
+        const isOther = opt.dataset.nama === "lainnya";
         kokiManual.style.display = isOther ? "block" : "none";
+        kokiBtn.dataset.uid = isOther ? "" : opt.dataset.uid;
       });
     });
     document.addEventListener("click", () => kokiDD?.classList.remove("show"));
@@ -171,22 +170,32 @@ async function renderSoPopupForm(mode) {
 
         // koki
         if (existing.koki) {
-          const isInList = kokiList.includes(existing.koki);
+          // cari user yang match — utamakan uidKoki (data baru), fallback cocokin nama (data lama)
+          const matchedUser = existing.uidKoki
+            ? kokiList.find(u => u.uid === existing.uidKoki)
+            : kokiList.find(u => u.nama === existing.koki);
+
           kokiLabel.textContent = existing.koki;
-          if (!isInList) {
+          if (matchedUser) {
+            kokiManual.style.display = "none";
+            kokiBtn.dataset.uid = matchedUser.uid;
+          } else {
             kokiManual.style.display = "block";
             kokiManual.value = existing.koki;
-          } else {
-            kokiManual.style.display = "none";
+            kokiBtn.dataset.uid = "";
           }
         } else {
           kokiLabel.textContent = "Pilih koki";
           kokiManual.style.display = "none";
           kokiManual.value = "";
+          kokiBtn.dataset.uid = "";
         }
 
-        document.getElementById("soLoyangOriginal").value = existing.jumlahLoyang || "";
-        document.getElementById("soLoyangMatcha").value = existing.jumlahLoyangMatcha || "";
+        document.querySelectorAll(".so-loyang-input").forEach(inp => {
+          const jenis = inp.dataset.jenis;
+          const fieldKey = jenis === "Original" ? "jumlahLoyang" : `jumlahLoyang${jenis}`;
+          inp.value = existing[fieldKey] || "";
+        });
 
         // isi grid produksi & reject
         document.querySelectorAll('.so-input-varian[data-field="produksi"]').forEach(inp => {
@@ -298,11 +307,19 @@ async function simpanSoData(mode) {
       const kokiLabel = document.getElementById("soKokiLabel")?.textContent || "";
       const kokiManual = document.getElementById("soKokiManual")?.value?.trim() || "";
       const koki = kokiLabel === "Lainnya" ? kokiManual : kokiLabel;
+      const uidKoki = document.getElementById("soKokiBtn")?.dataset.uid || "";
+
+      const loyangPayload = {};
+      document.querySelectorAll(".so-loyang-input").forEach(inp => {
+        const jenis = inp.dataset.jenis;
+        const fieldKey = jenis === "Original" ? "jumlahLoyang" : `jumlahLoyang${jenis}`;
+        loyangPayload[fieldKey] = Number(inp.value) || 0;
+      });
 
       payload = {
         koki,
-        jumlahLoyang: Number(document.getElementById("soLoyangOriginal")?.value) || 0,
-        jumlahLoyangMatcha: Number(document.getElementById("soLoyangMatcha")?.value) || 0,
+        uidKoki,
+        ...loyangPayload,
         tanggalExpired: document.getElementById("soTanggalExpired")?.value || "",
         produksi: buildVarianObj("produksi"),
         reject: buildVarianObj("reject"),
@@ -387,8 +404,26 @@ let soSearchQuery = "";
 
 // varian default — nanti diganti dinamis dari data kantorCabang
 const SO_VARIAN = ["CB", "BB", "BK", "MC"];
+// daftar jenis loyang aktif — di-load dinamis dari user.loyang (status: true)
+let SO_LOYANG_LIST = ["Original"]; // fallback sementara sebelum ke-load
 
-// kelompok kolom per varian, dengan warna masing-masing group
+async function loadSoLoyangList() {
+  try {
+    const kantorCabang = await window.idb.getKantorCabang();
+    const loyangArr = kantorCabang?.loyang || [];
+
+    const aktifList = loyangArr
+      .filter(item => item?.status === true)
+      .map(item => item.jenisLoyang)
+      .filter(Boolean);
+
+    return aktifList.length ? aktifList : ["Original"];
+  } catch (err) {
+    console.error("❌ loadSoLoyangList:", err);
+    return ["Original"];
+  }
+}
+
 const SO_GROUPS = [
   { key: "target",   label: "Target",        color: "#1a5fb4" },
   { key: "produksi", label: "Input",         color: "#2d6b2d" },
@@ -403,16 +438,13 @@ const SO_GROUPS = [
   { key: "saldo",    label: "Saldo",         color: "#2d6b2d" },
 ];
 
-// kolom statis (bukan per varian)
-const SO_STATIC_COLUMNS = [
+const SO_STATIC_COLUMNS_BASE = [
   { key: "tanggal", label: "Tanggal", width: 135 },
   { key: "expired", label: "Expired", width: 135 },
   { key: "koki",    label: "Koki",    width: 130 },
-  { key: "Original",  label: "Original",  width: 60 },
-  { key: "Matcha", label: "Matcha", width: 60 },
 ];
+let SO_STATIC_COLUMNS = [...SO_STATIC_COLUMNS_BASE];
 
-// build SO_COLUMNS dinamis: static + per group per varian
 function buildSoColumns() {
   const cols = [...SO_STATIC_COLUMNS];
   SO_GROUPS.forEach(g => {
@@ -423,6 +455,14 @@ function buildSoColumns() {
   return cols;
 }
 let SO_COLUMNS = buildSoColumns();
+
+function rebuildSoStaticColumns() {
+  SO_STATIC_COLUMNS = [
+    ...SO_STATIC_COLUMNS_BASE,
+    ...SO_LOYANG_LIST.map(jenis => ({ key: jenis, label: jenis, width: 60 })),
+  ];
+  SO_COLUMNS = buildSoColumns();
+}
 
 let soData = []; // array of row objects, diisi nanti dari fetch
 
@@ -613,13 +653,15 @@ async function loadSoData(forceReload = false) {
         _tanggalRaw: tglStr,
         expired: existing.tanggalExpired || "",
         koki: existing.koki || "",
-        loyang: existing.jumlahLoyang || 0,
-        loyangMatcha: existing.jumlahLoyangMatcha || 0,
-        Original: existing.jumlahLoyang || 0,
-        Matcha: existing.jumlahLoyangMatcha || 0,
         _isWeekTotal: false,
         _dow: dateObj.getDay(),
       };
+
+      // isi qty tiap jenis loyang secara dinamis
+      SO_LOYANG_LIST.forEach(jenis => {
+        const fieldKey = jenis === "Original" ? "jumlahLoyang" : `jumlahLoyang${jenis}`;
+        row[jenis] = existing[fieldKey] || 0;
+      });
 
       // ── TARGET (rumus berantai CB -> BB -> BK -> MC) ──
       const targetMap = {};
@@ -712,10 +754,9 @@ function buildWeekTotalRow(allRows) {
   const weekRows = allRows.slice(lastTotalIdx + 1).filter(r => !r._isWeekTotal);
 
   const totalRow = { tanggal: "Total Minggu", expired: "", koki: "", _isWeekTotal: true };
-  totalRow.loyang = weekRows.reduce((a,r) => a + (Number(r.loyang)||0), 0);
-  totalRow.loyangMatcha = weekRows.reduce((a,r) => a + (Number(r.loyangMatcha)||0), 0);
-  totalRow.Original = totalRow.loyang;
-  totalRow.Matcha = totalRow.loyangMatcha;
+  SO_LOYANG_LIST.forEach(jenis => {
+    totalRow[jenis] = weekRows.reduce((a, r) => a + (Number(r[jenis]) || 0), 0);
+  });
   SO_GROUPS.forEach(g => {
     SO_VARIAN.forEach(v => {
       const key = `${g.key}_${v}`;

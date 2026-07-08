@@ -108,6 +108,23 @@
   text-align: center;
   padding: 40px 0;
 }
+/* ── TOMBOL "+ Tambah Lainnya" (Slip Gaji Produksi) ── */
+.slipgajiprod-add-btn {
+  margin-top: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px dashed var(--border-card);
+  background: transparent;
+  border-radius: 8px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-primary);
+  cursor: pointer;
+}
+.slipgajiprod-add-btn:hover {
+  background: var(--brand-pale);
+}
 
 /* ── MOBILE ── */
 @media (max-width: 768px) {

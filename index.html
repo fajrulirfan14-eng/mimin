@@ -36,6 +36,7 @@
 <link rel="stylesheet" href="rincianproduksi.css">
 <link rel="stylesheet" href="auditprod.css">
 <link rel="stylesheet" href="slipgajiprod.css">
+<link rel="stylesheet" href="rinciandistribusi.css">
 <link rel="stylesheet" href="akun.css">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,11 +89,11 @@
         <span>DSM</span>
       </a>
       <a class="nav-item" data-view="stockopname">
-        <div class="nav-icon"><i class="fa-solid fa-user-plus"></i></div>
+        <div class="nav-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
         <span>Stock Opname</span>
       </a>
       <a class="nav-item" data-view="pengeluaran">
-        <div class="nav-icon"><i class="fa-solid fa-user-plus"></i></div>
+        <div class="nav-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
         <span>Pengeluaran</span>
       </a>
       <a class="nav-item" data-view="amplop">
@@ -131,27 +132,51 @@
       <i class="fa-solid fa-chart-bar"></i>
       <span>Laporan</span>
     </a>
-    <a class="bottom-nav-item" data-view="customer">
-      <i class="fa-solid fa-chart-bar"></i>
-      <span>Customer</span>
-    </a>
-    <a class="bottom-nav-item" data-view="stockopname">
-      <i class="fa-solid fa-users"></i>
-      <span>Stock</span>
-    </a>
-    <a class="bottom-nav-item" data-view="pengeluaran">
-      <i class="fa-solid fa-users"></i>
-      <span>Pengeluaran</span>
-    </a>
     <a class="bottom-nav-item" data-view="dsm">
       <i class="fa-solid fa-table-cells"></i>
       <span>DSM</span>
     </a>
-    <a class="bottom-nav-item" data-view="amplop">
-      <i class="fa-solid fa-envelope"></i>
-      <span>Amplop</span>
+    <a class="bottom-nav-item" id="bottomNavMoreBtn">
+      <i class="fa-solid fa-ellipsis"></i>
+      <span>Lainnya</span>
     </a>
   </nav>
+
+  <!-- ── BOTTOM NAV: SHEET "LAINNYA" (mobile) ── -->
+  <div class="bottom-nav-more-sheet" id="bottomNavMoreSheet">
+    <div class="bottom-nav-more-handle"></div>
+    <div class="bottom-nav-more-title">Menu Lainnya</div>
+    <div class="bottom-nav-more-grid">
+      <a class="bottom-nav-more-item" data-view="customer">
+        <div class="bottom-nav-more-icon"><i class="fa-solid fa-users"></i></div>
+        <span>Customer</span>
+      </a>
+      <a class="bottom-nav-more-item" data-view="rekapdistribusi">
+        <div class="bottom-nav-more-icon"><i class="fa-solid fa-chart-pie"></i></div>
+        <span>Rekap Distribusi</span>
+      </a>
+      <a class="bottom-nav-more-item" data-view="stockopname">
+        <div class="bottom-nav-more-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+        <span>Stock Opname</span>
+      </a>
+      <a class="bottom-nav-more-item" data-view="pengeluaran">
+        <div class="bottom-nav-more-icon"><i class="fa-solid fa-money-bill-wave"></i></div>
+        <span>Pengeluaran</span>
+      </a>
+      <a class="bottom-nav-more-item" data-view="amplop">
+        <div class="bottom-nav-more-icon"><i class="fa-solid fa-envelope"></i></div>
+        <span>Amplop</span>
+      </a>
+      <a class="bottom-nav-more-item" data-view="rekapproduksi">
+        <div class="bottom-nav-more-icon"><i class="fa-solid fa-industry"></i></div>
+        <span>Rekap Produksi</span>
+      </a>
+      <a class="bottom-nav-more-item" data-view="akun">
+        <div class="bottom-nav-more-icon"><i class="fa-solid fa-user-gear"></i></div>
+        <span>Akun</span>
+      </a>
+    </div>
+  </div>
 
   <!-- ── MAIN WRAPPER ── -->
   <div class="main-wrapper" id="mainWrapper">
@@ -1652,6 +1677,14 @@
                   </div>
                   <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
                 </div>
+                <div class="lap-kurir-item" data-id="rincianpemasukan">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-scale-balanced"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Rincian Pemasukan & Pengeluaran</div>
+                    <div class="lap-kurir-role">Ringkasan keuangan distribusi</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
               </div>
             </div>
 
@@ -1812,6 +1845,12 @@
                   <div class="slip-gaji-form-wrap" id="slipGajiFormWrap" style="display:none">
                     <div class="slip-gaji-form-header">
                       <div class="slip-gaji-form-title">Form Slip Gaji — <span id="slipGajiFormNama">-</span></div>
+                      <div class="slip-gaji-form-header-right">
+                        <span class="rekap-dist-saved-badge" id="slipGajiFormBadge" style="display:none">
+                          <i class="fa-solid fa-circle-check"></i> Sudah dikirim
+                        </span>
+                        <span class="slip-gaji-form-periode" id="slipGajiFormPeriode">Periode: -</span>
+                      </div>
                     </div>
 
                     <!-- PENDAPATAN -->
@@ -1863,6 +1902,96 @@
                     </div>
 
                     <button class="slip-gaji-save-btn" id="slipGajiSaveBtn">Simpan Slip Gaji</button>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- KANAN: DETAIL RINCIAN PEMASUKAN & PENGELUARAN -->
+            <div class="lap-detail-wrapper rekap-dist-detail-wrapper" id="rincianPemasukanDetailWrapper">
+              <div class="lap-detail-panel">
+
+                <div class="lap-detail-header">
+                  <div class="lap-detail-header-top">
+                    <button class="lap-detail-back-btn" id="rincianPemasukanBackBtn" style="display:none">
+                      <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div class="lap-detail-info">
+                      <div class="lap-detail-nama">Rincian Pemasukan & Pengeluaran</div>
+                    </div>
+                    <div class="rekap-dist-filter-wrap">
+                      <button class="rekap-dist-filter-btn" id="rincianPemasukanBulanBtn">
+                        <i class="fa-solid fa-calendar"></i>
+                        <span id="rincianPemasukanBulanLabel">Juli</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <div class="rekap-dist-dropdown" id="rincianPemasukanBulanDropdown" style="display:none"></div>
+
+                      <button class="rekap-dist-filter-btn" id="rincianPemasukanTahunBtn">
+                        <span id="rincianPemasukanTahunLabel">2026</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <div class="rekap-dist-dropdown" id="rincianPemasukanTahunDropdown" style="display:none"></div>
+
+                      <button class="rekap-dist-filter-btn" id="rincianPemasukanReloadBtn" title="Reload">
+                        <i class="fa-solid fa-rotate-right"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="lap-detail-body">
+
+                  <div class="rincian-summary-row">
+                    <div class="rincian-summary-card" data-tipe="pemasukan">
+                      <div class="rincian-summary-label">Total Pemasukan</div>
+                      <div class="rincian-summary-total">Rp 0</div>
+                    </div>
+                    <div class="rincian-summary-card" data-tipe="pengeluaran">
+                      <div class="rincian-summary-label">Total Pengeluaran</div>
+                      <div class="rincian-summary-total">Rp 0</div>
+                    </div>
+                    <div class="rincian-summary-card" data-tipe="selisih">
+                      <div class="rincian-summary-label">Selisih</div>
+                      <div class="rincian-summary-total">Rp 0</div>
+                    </div>
+                  </div>
+
+                  <div class="rincian-tabel-wrap">
+                    <div class="rincian-tabel-title">Pemasukan</div>
+                    <table class="rincian-tabel" id="rincianPemasukanTable">
+                      <thead>
+                        <tr>
+                          <th>Jenis</th>
+                          <th>Qty</th>
+                          <th>Nominal</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>-</td>
+                          <td>-</td>
+                          <td>Rp 0</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="rincian-tabel-wrap">
+                    <div class="rincian-tabel-title">Pengeluaran</div>
+                    <table class="rincian-tabel" id="rincianPengeluaranDistribusiTable">
+                      <thead>
+                        <tr>
+                          <th>Jenis</th>
+                          <th>Qty</th>
+                          <th>Nominal</th>
+                        </tr>
+                      </thead>
+                      <tbody id="rincianPengeluaranDistribusiTableBody">
+                        <tr><td colspan="3" class="rincian-peng-empty">Memuat...</td></tr>
+                      </tbody>
+                    </table>
                   </div>
 
                 </div>
@@ -1988,6 +2117,16 @@
                         </table>
                       </div>
                     </div>
+
+                    <div class="rekap-prod-card">
+                      <div class="rekap-prod-card-title">
+                        <i class="fa-solid fa-users"></i>
+                        Rekapitulasi Per Pegawai
+                      </div>
+                      <div class="rekap-dist-grid" id="rekapProdUserGrid">
+                        <div class="dh-ringkasan-empty">Memuat...</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -2045,6 +2184,21 @@
                     </div>
                   </div>
                   <div class="rincianprod-detail-body">
+                    <div class="rincian-summary-row">
+                      <div class="rincian-summary-card" data-tipe="pemasukan">
+                        <div class="rincian-summary-label">Total Pemasukan</div>
+                        <div class="rincian-summary-total" id="rincianProdTotalPemasukan">Rp 0</div>
+                      </div>
+                      <div class="rincian-summary-card" data-tipe="pengeluaran">
+                        <div class="rincian-summary-label">Total Pengeluaran</div>
+                        <div class="rincian-summary-total" id="rincianProdTotalPengeluaran">Rp 0</div>
+                      </div>
+                      <div class="rincian-summary-card" data-tipe="selisih">
+                        <div class="rincian-summary-label">Selisih</div>
+                        <div class="rincian-summary-total" id="rincianProdSelisih">Rp 0</div>
+                      </div>
+                    </div>
+
                     <div class="rincian-prod-card">
                       <div class="rincian-prod-card-title">
                         <i class="fa-solid fa-sack-dollar"></i>
@@ -2133,10 +2287,97 @@
                       <div class="slipgajiprod-detail-info">
                         <div class="slipgajiprod-detail-nama">Slip Gaji</div>
                       </div>
+                      <div class="rekap-dist-filter-wrap">
+                        <button class="rekap-dist-filter-btn" id="slipGajiProdBulanBtn">
+                          <i class="fa-solid fa-calendar"></i>
+                          <span id="slipGajiProdBulanLabel">Juli</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="slipGajiProdBulanDropdown" style="display:none"></div>
+
+                        <button class="rekap-dist-filter-btn" id="slipGajiProdTahunBtn">
+                          <span id="slipGajiProdTahunLabel">2026</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="slipGajiProdTahunDropdown" style="display:none"></div>
+
+                        <button class="rekap-dist-filter-btn" id="slipGajiProdReloadBtn" title="Reload">
+                          <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
+
                   <div class="slipgajiprod-detail-body">
-                    <div class="slipgajiprod-placeholder">Placeholder — konten slip gaji menyusul</div>
+
+                    <!-- GRID PILIH PEGAWAI -->
+                    <div class="rekap-dist-grid slip-gaji-pilih-grid" id="slipGajiProdKurirGrid">
+                      <div class="dh-ringkasan-empty">Memuat...</div>
+                    </div>
+
+                    <!-- FORM SLIP GAJI (muncul setelah pilih pegawai) -->
+                    <div class="slip-gaji-form-wrap" id="slipGajiProdFormWrap" style="display:none">
+                      <div class="slip-gaji-form-header">
+                        <div class="slip-gaji-form-title">Form Slip Gaji — <span id="slipGajiProdFormNama">-</span></div>
+                        <div class="slip-gaji-form-header-right">
+                          <span class="rekap-dist-saved-badge" id="slipGajiProdFormBadge" style="display:none">
+                            <i class="fa-solid fa-circle-check"></i> Sudah dikirim
+                          </span>
+                          <span class="slip-gaji-form-periode" id="slipGajiProdFormPeriode">Periode: -</span>
+                        </div>
+                      </div>
+
+                      <!-- PENDAPATAN -->
+                      <div class="slip-gaji-section">
+                        <div class="slip-gaji-section-title">Pendapatan</div>
+                        <div class="slip-gaji-item-table">
+                          <div class="slip-gaji-item-header">
+                            <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
+                          </div>
+                          <div id="slipGajiProdPendapatanItems"></div>
+                        </div>
+                        <button class="slipgajiprod-add-btn" data-section="pendapatan">+ Tambah Lainnya</button>
+                      </div>
+
+                      <!-- BONUS -->
+                      <div class="slip-gaji-section">
+                        <div class="slip-gaji-section-title">Bonus</div>
+                        <div class="slip-gaji-item-table">
+                          <div class="slip-gaji-item-header">
+                            <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
+                          </div>
+                          <div id="slipGajiProdBonusItems"></div>
+                        </div>
+                        <button class="slipgajiprod-add-btn" data-section="bonus">+ Tambah Lainnya</button>
+                      </div>
+
+                      <!-- POTONGAN -->
+                      <div class="slip-gaji-section">
+                        <div class="slip-gaji-section-title">Potongan</div>
+                        <div class="slip-gaji-item-table">
+                          <div class="slip-gaji-item-header">
+                            <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
+                          </div>
+                          <div id="slipGajiProdPotonganItems"></div>
+                        </div>
+                        <button class="slipgajiprod-add-btn" data-section="potongan">+ Tambah Lainnya</button>
+                      </div>
+
+                      <!-- CATATAN -->
+                      <div class="slip-gaji-section">
+                        <div class="slip-gaji-section-title">Catatan</div>
+                        <textarea class="slip-gaji-catatan" id="slipGajiProdCatatan" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
+                      </div>
+
+                      <!-- TOTAL PENERIMAAN -->
+                      <div class="slip-gaji-total-bar">
+                        <span>Total Penerimaan</span>
+                        <span id="slipGajiProdTotalPenerimaan">Rp 0</span>
+                      </div>
+
+                      <button class="slip-gaji-save-btn" id="slipGajiProdSaveBtn">Simpan Slip Gaji</button>
+                    </div>
+
                   </div>
                 </div>
 
@@ -2144,6 +2385,7 @@
             </div>
 
           </div>
+          
         </div>
 
         <!-- POPUP INPUT HARI LIBUR -->
@@ -2305,7 +2547,8 @@
 <script src="rekapproduksi.js"></script>
 <script src="rincianproduksi.js"></script>
 <script src="auditprod.js"></script>
-<script src="slipgajiprod.js"></script>
+<script src="slipGajiProduksi.js"></script>
+<script src="rincianpemasukan.js"></script>
 <script src="akun.js"></script>
 
 <div id="devConsoleMount"></div>

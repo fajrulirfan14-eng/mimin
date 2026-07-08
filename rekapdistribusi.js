@@ -135,6 +135,7 @@ window.initRekapDistribusiView = function() {
   initHariLiburPopup();
   window.initAssetsView?.();
   window.initSlipGajiPanel?.();
+  window.initRincianPemasukanView?.();
 
   document.querySelectorAll("#rekapDistribusiList .lap-kurir-item").forEach(item => {
     item.addEventListener("click", async () => {
@@ -144,6 +145,7 @@ window.initRekapDistribusiView = function() {
       document.getElementById("rekapDistribusiDetailWrapper")?.classList.remove("show");
       document.getElementById("assetsDetailWrapper")?.classList.remove("show");
       document.getElementById("slipGajiDetailWrapper")?.classList.remove("show");
+      document.getElementById("rincianPemasukanDetailWrapper")?.classList.remove("show");
 
       if (item.dataset.id === "assets") {
         window.openAssetsPanel?.();
@@ -152,6 +154,12 @@ window.initRekapDistribusiView = function() {
 
       if (item.dataset.id === "slipgaji") {
         window.openSlipGajiPanel?.();
+        return;
+      }
+
+      if (item.dataset.id === "rincianpemasukan") {
+        window.syncRincianPemasukanFilter?.();
+        window.openRincianPemasukanPanel?.();
         return;
       }
 

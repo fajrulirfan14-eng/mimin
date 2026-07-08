@@ -93,8 +93,29 @@ async function loadLaporanAdminAggregates() {
   return result;
 }
 
+async function loadRekapProdLoyangList() {
+  try {
+    const kantorCabang = await window.idb.getKantorCabang();
+    const loyangArr = kantorCabang?.loyang || [];
+
+    const aktifList = loyangArr
+      .filter(item => item?.status === true)
+      .map(item => item.jenisLoyang)
+      .filter(Boolean);
+
+    return aktifList.length ? aktifList : ["Original"];
+  } catch (err) {
+    console.error("❌ loadRekapProdLoyangList:", err);
+    return ["Original"];
+  }
+}
+
 async function loadStockOpnameKpi() {
   const result = {};
+
+  const loyangList = await loadRekapProdLoyangList();
+  loyangList.forEach(jenis => { result[jenis] = 0; });
+
   try {
     const bulanStr = String(rekapProdBulan + 1).padStart(2, "0");
     const prefix   = `${rekapProdTahun}-${bulanStr}`;
@@ -245,6 +266,157 @@ function hitungJumlahRugi() {
   return result;
 }
 
+async function loadKasbonProduksiPerUser() {
+  const result = {}; // { uid: totalNominal }
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return result;
+
+    const mm    = String(rekapProdBulan + 1).padStart(2, "0");
+    const start = `${rekapProdTahun}-${mm}-01`;
+    const end   = `${rekapProdTahun}-${mm}-31`;
+
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users", adminUid, "pengeluaran"),
+      window.where("tanggal", ">=", start),
+      window.where("tanggal", "<=", end)
+    ));
+
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const kasbonArr = data.kasbonProduksi || [];
+
+      kasbonArr.forEach(item => {
+        const uid     = item.uid;
+        const nominal = Number(item.nominal) || 0;
+        if (!uid) return;
+
+        result[uid] = (result[uid] || 0) + nominal;
+      });
+    });
+  } catch (err) {
+    console.error("❌ loadKasbonProduksiPerUser:", err);
+  }
+
+  return result;
+}
+
+async function loadStockOpnameLoyangPerUser() {
+  const result = {}; // { uid: { jenisLoyang: qty } }
+  try {
+    const bulanStr = String(rekapProdBulan + 1).padStart(2, "0");
+    const prefix   = `${rekapProdTahun}-${bulanStr}`;
+
+    const allRecords = await window.idb.getAllStockOpname();
+    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(prefix));
+
+    filtered.forEach(record => {
+      const data = record.data || {};
+      const uid  = data.uidKoki;
+      if (!uid) return;
+
+      if (!result[uid]) result[uid] = {};
+
+      Object.entries(data).forEach(([key, val]) => {
+        if (!key.startsWith("jumlahLoyang")) return;
+        if (typeof val !== "number" && isNaN(Number(val))) return;
+
+        const suffix = key.replace("jumlahLoyang", "");
+        const jenis  = suffix === "" ? "Original" : suffix;
+
+        result[uid][jenis] = (result[uid][jenis] || 0) + Number(val || 0);
+      });
+    });
+  } catch (err) {
+    console.error("❌ loadStockOpnameLoyangPerUser:", err);
+  }
+
+  return result;
+}
+
+function renderRekapProdUserCards(loyangPerUser, kasbonPerUser) {
+  const gridEl = document.getElementById("rekapProdUserGrid");
+  if (!gridEl) return;
+
+  const users = (window.usersCache || []).filter(u => u.role === "produksi" || u.role === "adminCabang");
+
+  if (!users.length) {
+    gridEl.innerHTML = `<div class="dh-ringkasan-empty">Belum ada pegawai produksi</div>`;
+    return;
+  }
+
+  gridEl.innerHTML = users.map(u => {
+    const nama    = u.nama || "Tanpa Nama";
+    const inisial = nama.trim().charAt(0).toUpperCase();
+    const avatar  = u.foto
+      ? `<img class="rekap-dist-avatar" src="${escSlip(u.foto)}" alt="${escSlip(nama)}">`
+      : `<div class="rekap-dist-avatar">${escSlip(inisial)}</div>`;
+
+    // hargaMap: { jenisLoyang: upah } dari dokumen user
+    const hargaMap = {};
+    (u.loyang || []).forEach(item => {
+      const jenis = item.jenisLoyang;
+      if (jenis) hargaMap[jenis] = Number(item.upah) || 0;
+    });
+
+    const qtyMap = loyangPerUser[u.uid] || {};
+
+    // gabungkan jenis dari hargaMap & qtyMap, biar semua jenis ke-cover walau salah satunya kosong
+    const jenisSet = new Set([...Object.keys(hargaMap), ...Object.keys(qtyMap)]);
+    const jenisList = jenisSet.size ? Array.from(jenisSet) : ["Original", "Matcha"];
+
+    let totalUpah = 0;
+    const loyangRows = jenisList.map(jenis => {
+      const qty   = qtyMap[jenis]   || 0;
+      const harga = hargaMap[jenis] || 0;
+      const upah  = qty * harga;
+      totalUpah  += upah;
+      return `
+        <tr>
+          <td>${jenis}</td>
+          <td>${qty || "-"}</td>
+          <td>${harga ? harga.toLocaleString("id-ID") : "-"}</td>
+          <td>${upah ? upah.toLocaleString("id-ID") : "-"}</td>
+        </tr>`;
+    }).join("");
+
+    return `
+      <div class="rekap-dist-card" data-uid="${escSlip(u.uid)}">
+        <div class="rekap-dist-card-header">
+          ${avatar}
+          <div>
+            <div class="rekap-dist-nama">${escSlip(nama)}</div>
+            <div class="rekap-dist-role">${escSlip(u.role || "-")}</div>
+          </div>
+        </div>
+        <div class="rekap-dist-card-body">
+
+          <div>
+            <div class="rekap-dist-section-title">Loyang</div>
+            <table class="rekap-dist-table">
+              <thead><tr><th>Loyang</th><th>Qty</th><th>Harga</th><th>Upah</th></tr></thead>
+              <tbody>
+                ${loyangRows}
+                <tr><td>Jumlah Upah</td><td>-</td><td>-</td><td>${totalUpah ? totalUpah.toLocaleString("id-ID") : "-"}</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <div class="rekap-dist-section-title">Kasbon</div>
+            <table class="rekap-dist-table">
+              <thead><tr><th>Keterangan</th><th>Nominal</th></tr></thead>
+              <tbody>
+                <tr><td>Kasbon</td><td>${(kasbonPerUser[u.uid] || 0) ? (kasbonPerUser[u.uid]).toLocaleString("id-ID") : "-"}</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>`;
+  }).join("");
+}
+
 function renderRekapProduksiTable() {
   const thead = document.getElementById("rekapProdTableHead");
   const tbody = document.getElementById("rekapProdTableBody");
@@ -289,6 +461,13 @@ async function refreshRekapProduksiData() {
   rekapProdData["Jumlah Rugi"] = hitungJumlahRugi();
 
   renderRekapProduksiTable();
+
+  if (!window.usersCache?.length) {
+    window.usersCache = await window.idb.getUsers();
+  }
+  const loyangPerUser = await loadStockOpnameLoyangPerUser();
+  const kasbonPerUser = await loadKasbonProduksiPerUser();
+  renderRekapProdUserCards(loyangPerUser, kasbonPerUser);
 }
 
 window.initRekapProduksiView = function() {

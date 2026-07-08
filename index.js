@@ -236,7 +236,7 @@ function initSidebar() {
 
   hamburger?.addEventListener("click", toggleSidebar);
   overlay?.addEventListener("click", closeSidebar);
-  document.querySelectorAll(".nav-item, .bottom-nav-item").forEach(item => {
+  document.querySelectorAll(".nav-item[data-view], .bottom-nav-item[data-view]").forEach(item => {
     item.addEventListener("click", () => {
       const view = item.dataset.view;
       if (view) showView(view);
@@ -320,12 +320,88 @@ function initTopbar() {
 }
 /* ── BOTTOM NAV ── */
 function initBottomNav() {
-  document.querySelectorAll(".bottom-nav-item").forEach(item => {
+  document.querySelectorAll(".bottom-nav-item[data-view]").forEach(item => {
     item.addEventListener("click", () => {
       const view = item.dataset.view;
       if (view) showView(view);
     });
   });
+
+  initBottomNavMore();
+}
+function initBottomNavMore() {
+  const moreBtn = document.getElementById("bottomNavMoreBtn");
+  const sheet   = document.getElementById("bottomNavMoreSheet");
+  const handle  = sheet?.querySelector(".bottom-nav-more-handle");
+  if (!moreBtn || !sheet) return;
+
+  const openSheet  = () => {
+    sheet.classList.add("show");
+    sheet.style.transform = "";
+  };
+  const closeSheet = () => {
+    sheet.classList.remove("show");
+    sheet.style.transform = "";
+  };
+
+  moreBtn.addEventListener("click", e => { e.stopPropagation(); openSheet(); });
+  document.addEventListener("click", e => {
+    if (sheet.classList.contains("show") && !e.target.closest("#bottomNavMoreSheet") && !e.target.closest("#bottomNavMoreBtn")) {
+      closeSheet();
+    }
+  });
+
+  document.querySelectorAll(".bottom-nav-more-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const view = item.dataset.view;
+      closeSheet();
+      if (view) showView(view);
+    });
+  });
+
+  // ── SWIPE DOWN TO CLOSE ──
+  let startY = 0;
+  let currentY = 0;
+  let dragging = false;
+
+  const onTouchStart = e => {
+    startY = e.touches[0].clientY;
+    currentY = startY;
+    dragging = true;
+    sheet.style.transition = "none";
+  };
+
+  const onTouchMove = e => {
+    if (!dragging) return;
+    currentY = e.touches[0].clientY;
+    const delta = currentY - startY;
+    if (delta > 0) {
+      sheet.style.transform = `translateY(${delta}px)`;
+      e.preventDefault();
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = "";
+    const delta = currentY - startY;
+    const threshold = sheet.getBoundingClientRect().height * 0.25;
+
+    if (delta > threshold) {
+      closeSheet();
+    } else {
+      sheet.style.transform = "";
+    }
+  };
+
+  handle?.addEventListener("touchstart", onTouchStart, { passive: true });
+  handle?.addEventListener("touchmove", onTouchMove, { passive: false });
+  handle?.addEventListener("touchend", onTouchEnd);
+
+  sheet.addEventListener("touchstart", onTouchStart, { passive: true });
+  sheet.addEventListener("touchmove", onTouchMove, { passive: false });
+  sheet.addEventListener("touchend", onTouchEnd);
 }
 /* ── TOPBAR AVATAR ── */
 function setTopbarAvatar() {

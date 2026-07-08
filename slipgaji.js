@@ -30,6 +30,12 @@ window.initSlipGajiPanel = function() {
   document.getElementById("slipGajiReloadBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("slipGajiReloadBtn");
     btn.classList.add("spinning");
+    const savedBulan = rekapDistBulan, savedTahun = rekapDistTahun;
+    rekapDistBulan = slipGajiBulan;
+    rekapDistTahun = slipGajiTahun;
+    await reloadLaporanAdminData();
+    rekapDistBulan = savedBulan;
+    rekapDistTahun = savedTahun;
     await renderSlipGajiKurirGrid();
     btn.classList.remove("spinning");
   });
@@ -127,7 +133,19 @@ async function cekSlipGajiSudahDikirimBatch(uids) {
     }
   }));
 }
+async function cekSlipGajiFormBadge(uid) {
+  const badge = document.getElementById("slipGajiFormBadge");
+  if (!badge) return;
+  badge.style.display = "none";
 
+  const periode = `${slipGajiTahun}-${String(slipGajiBulan + 1).padStart(2, "0")}`;
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGaji", periode));
+    badge.style.display = snap.exists() ? "flex" : "none";
+  } catch (err) {
+    console.error("❌ cekSlipGajiFormBadge:", err);
+  }
+}
 async function pilihKurirSlipGaji(uid, nama) {
   slipGajiSelectedUid  = uid;
   slipGajiSelectedNama = nama;
@@ -135,6 +153,11 @@ async function pilihKurirSlipGaji(uid, nama) {
   document.getElementById("slipGajiFormWrap").style.display = "block";
   document.getElementById("slipGajiFormNama").textContent   = nama;
 
+  const periodeLabelForm = `Periode: ${SLIP_GAJI_BULAN_NAMA[slipGajiBulan]} ${slipGajiTahun}`;
+  const periodeEl = document.getElementById("slipGajiFormPeriode");
+  if (periodeEl) periodeEl.textContent = periodeLabelForm;
+
+  await cekSlipGajiFormBadge(uid);
   slipGajiData = JSON.parse(JSON.stringify(SLIP_GAJI_TEMPLATE));
   document.getElementById("slipGajiCatatan").value = "";
 
@@ -373,6 +396,9 @@ async function simpanSlipGaji() {
     );
 
     window.showToast("Slip gaji berhasil disimpan", "success");
+    document.getElementById("slipGajiFormBadge").style.display = "flex";
+    const badgeGrid = document.getElementById(`slipGajiBadge-${slipGajiSelectedUid}`);
+    if (badgeGrid) badgeGrid.style.display = "flex";
   } catch (err) {
     console.error("❌ simpanSlipGaji:", err);
     window.showToast("Gagal menyimpan slip gaji", "error");
