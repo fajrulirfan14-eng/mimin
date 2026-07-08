@@ -10,10 +10,25 @@
 /* ── SUMMARY CARDS ── */
 .peng-summary-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
 }
 
+@media (max-width: 640px) {
+  .peng-summary-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .peng-summary-card[data-kategori="kasbon"] {
+    grid-column: 1 / -1;
+  }
+}
+.peng-summary-card[data-kategori="kasbon"] { --peng-accent: #8a5a44; }
+
+.peng-kasbon-kpi-meta {
+  font-size: 11px;
+  color: var(--text-secondary, #7a6a5a);
+  line-height: 1.4;
+}
 .peng-summary-card {
   background: var(--bg-card, #fff);
   border-radius: 18px;
@@ -287,8 +302,8 @@
 .peng-popup-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 14px 20px; border-bottom: 1px solid rgba(0,0,0,0.06);
+  flex-shrink: 0;
 }
-
 .peng-popup-title { font-size: 16px; font-weight: 700; color: var(--text-primary, #2d2d2d); }
 
 .peng-popup-close {
@@ -298,10 +313,14 @@
 }
 
 .peng-popup-body {
-  flex: 1; overflow-y: auto; padding: 18px 20px 28px;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 20px 28px;
   display: flex; flex-direction: column; gap: 14px;
 }
-
 .peng-form-group { display: flex; flex-direction: column; gap: 6px; }
 
 .peng-form-label {
@@ -314,7 +333,13 @@
   background: var(--bg-card, #fff); font-size: 14px; font-family: inherit;
   color: var(--text-primary, #2d2d2d); outline: none; resize: none;
 }
-
+.peng-form-textarea {
+  width: 100%;
+  min-height: 148px;
+  line-height: 1.5;
+  resize: vertical;
+  white-space: pre-wrap;
+}
 .peng-toggle-group {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
 }
@@ -458,7 +483,93 @@
   margin-top: 6px; padding: 14px; border: none; border-radius: 14px;
   background: var(--primary, #C9A67B); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer;
 }
+.peng-kasbon-existing {
+  margin-top: 4px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--bg-soft, #f5ede3);
+}
 
+.peng-kasbon-existing-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  color: var(--text-secondary, #7a6a5a);
+  margin-bottom: 10px;
+}
+
+.peng-kasbon-existing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.peng-kasbon-existing-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-card, #fff);
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.peng-kasbon-existing-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.peng-kasbon-existing-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.peng-kasbon-delete-btn {
+  border: none;
+  background: none;
+  color: #c62828;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.peng-kasbon-delete-btn:hover {
+  opacity: 0.7;
+}
+
+.peng-kasbon-existing-nama {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary, #2d2d2d);
+}
+
+.peng-kasbon-existing-nominal {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary, #2d2d2d);
+}
+
+.peng-kasbon-existing-meta {
+  margin-top: 4px;
+}
+
+.peng-kasbon-existing-catatan {
+  font-size: 12px;
+  color: var(--text-secondary, #7a6a5a);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+.peng-kasbon-existing-empty {
+  font-size: 12px;
+  color: var(--text-secondary, #7a6a5a);
+  text-align: center;
+  padding: 10px;
+}
 /* ── ITEM LIST TRANSITION ── */
 .peng-item-anim {
   animation: pengItemFadeIn 0.28s ease;
@@ -729,6 +840,140 @@
   font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
+}
+
+/* ── HEADER ACTIONS (Catat + Kasbon) ── */
+.peng-header-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+
+.peng-header-actions .peng-add-btn {
+  margin-left: 0;
+  flex: 1;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+@media (min-width: 768px) {
+  .peng-header-actions {
+    width: auto;
+  }
+  .peng-header-actions .peng-add-btn {
+    flex: none;
+  }
+}
+.peng-kasbon-btn {
+  background: #8a5a44;
+}
+
+/* ── FORM SELECT (dropdown trigger, mis. Pilih Nama) ── */
+.peng-form-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(0,0,0,0.08);
+  border-radius: 12px;
+  background: var(--bg-card, #fff);
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--text-primary, #2d2d2d);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.peng-form-select i {
+  font-size: 11px;
+  color: var(--text-secondary, #7a6a5a);
+}
+
+.peng-form-select span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── PILIH NAMA — INLINE DROPDOWN ── */
+.peng-nama-select-wrap {
+  position: relative;
+}
+
+.peng-nama-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card, #fff);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+  padding: 8px;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.peng-nama-dropdown.open { display: flex; }
+
+.peng-nama-dropdown-search {
+  padding: 10px 12px;
+  border: 1.5px solid rgba(0,0,0,0.08);
+  border-radius: 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary, #2d2d2d);
+  background: var(--bg-soft, #f5ede3);
+  outline: none;
+  width: 100%;
+}
+
+.peng-nama-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.peng-nama-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(0,0,0,0.08);
+  border-radius: 12px;
+  background: var(--bg-card, #fff);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.peng-nama-list-item:hover {
+  background: var(--bg-soft, #f9f3ec);
+  border-color: var(--primary, #C9A67B);
+}
+
+.peng-nama-list-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary, #2d2d2d);
+}
+
+.peng-nama-list-role {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.05);
+  color: var(--text-secondary, #7a6a5a);
+  white-space: nowrap;
 }
 
 /* ── DESKTOP: POPUP AS RIGHT DRAWER ── */

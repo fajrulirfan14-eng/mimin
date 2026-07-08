@@ -1364,6 +1364,10 @@
                 <i class="fa-solid fa-plus"></i>
                 <span>Catat</span>
               </button>
+              <button class="peng-add-btn peng-kasbon-btn" id="pengKasbonBtn">
+                <i class="fa-solid fa-hand-holding-dollar"></i>
+                <span>Kasbon</span>
+              </button>
             </div>
         
             <!-- LIST HISTORY -->
@@ -1423,6 +1427,44 @@
                 </div>
         
                 <button class="peng-submit-btn" id="pengSubmitBtn">Simpan</button>
+              </div>
+            </div>
+          </div>
+          <!-- KASBON POPUP -->
+          <div class="peng-popup-overlay" id="pengKasbonOverlay">
+            <div class="peng-popup-box peng-popup-box-side" id="pengKasbonBox">
+              <div class="peng-popup-header">
+                <span class="peng-popup-title">Catat Kasbon</span>
+                <button type="button" id="pengKasbonClose" class="peng-popup-close"><i class="fa-solid fa-xmark"></i></button>
+              </div>
+              <div class="peng-popup-body">
+                <label class="peng-form-label">Tanggal</label>
+                <input type="date" id="pengKasbonTanggal" class="peng-form-input">
+          
+                <label class="peng-form-label">Nama</label>
+                <div class="peng-nama-select-wrap" id="pengKasbonNamaWrap">
+                  <button type="button" id="pengKasbonNamaBtn" class="peng-form-select">
+                    <span id="pengKasbonNamaLabel">Pilih nama</span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                  </button>
+                  <div class="peng-nama-dropdown" id="pengKasbonNamaDropdown">
+                    <input type="text" id="pengKasbonNamaSearch" class="peng-nama-dropdown-search" placeholder="Cari nama...">
+                    <div id="pengKasbonNamaList" class="peng-nama-list"></div>
+                  </div>
+                </div>
+          
+                <label class="peng-form-label">Nominal</label>
+                <input type="number" min="0" id="pengKasbonNominal" class="peng-form-input" placeholder="0">
+          
+                <label class="peng-form-label">Catatan</label>
+                <textarea id="pengKasbonCatatan" class="peng-form-input peng-form-textarea" placeholder="Opsional" rows="3"></textarea>
+          
+                <button type="button" id="pengKasbonSubmitBtn" class="peng-submit-btn">Kirim</button>
+
+                <div class="peng-kasbon-existing">
+                  <div class="peng-kasbon-existing-title">Kasbon Tanggal Ini</div>
+                  <div id="pengKasbonExistingList" class="peng-kasbon-existing-list"></div>
+                </div>
               </div>
             </div>
           </div>

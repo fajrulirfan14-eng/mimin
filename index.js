@@ -399,7 +399,7 @@ function buildDistribusiPayload() {
 }
 function buildProduksiPayload() {
   const omset = [];
-  let totalOmset = 0, totalPengeluaran = 0;
+  let totalOmset = 0, totalPengeluaran = 0, totalKasbon = 0;
 
   if (rumusLaporanData) {
     Object.keys(rumusLaporanData).forEach((key) => {
@@ -419,11 +419,19 @@ function buildProduksiPayload() {
   }));
   totalPengeluaran = pengeluaran.reduce((sum, item) => sum + (item.nominal || 0), 0);
 
+  const kasbon = (rumusPengeluaranData?.kasbonProduksi || []).map((item) => ({
+    uid: item.uid || "",
+    nama: item.nama || "",
+    role: item.role || "",
+    nominal: item.nominal || 0
+  }));
+  totalKasbon = kasbon.reduce((sum, item) => sum + (item.nominal || 0), 0);
+
   return {
     omset,
     lainnya: [],
-    pengeluaranProduksi: { pengeluaran },
-    amplop: totalOmset - totalPengeluaran
+    pengeluaranProduksi: { pengeluaran, kasbon },
+    amplop: totalOmset - totalPengeluaran - totalKasbon
   };
 }
 async function simpanSetoranAmplop() {
@@ -469,8 +477,8 @@ async function simpanSetoranAmplop() {
   }
 }
 function updateProduksiUI() {
-  let totalOmset = 0, totalPengeluaran = 0;
-  let omsetRows = "", pengeluaranRows = "";
+  let totalOmset = 0, totalPengeluaran = 0, totalKasbon = 0;
+  let omsetRows = "", pengeluaranRows = "", kasbonRows = "";
 
   if (rumusLaporanData) {
     Object.keys(rumusLaporanData).forEach(key => {
@@ -489,7 +497,14 @@ function updateProduksiUI() {
     });
   }
 
-  const amplop = totalOmset - totalPengeluaran;
+  if (rumusPengeluaranData?.kasbonProduksi) {
+    rumusPengeluaranData.kasbonProduksi.forEach(item => {
+      totalKasbon += Number(item.nominal) || 0;
+      kasbonRows  += `<div class="amplop-detail-row"><span class="label">${item.nama||""}</span><span class="value">- ${formatRupiah(item.nominal)}</span></div>`;
+    });
+  }
+
+  const amplop = totalOmset - totalPengeluaran - totalKasbon;
 
   const card = document.querySelector("#rumusPanelBody .rumus-card-produksi");
   if (card) {
@@ -501,6 +516,10 @@ function updateProduksiUI() {
       <div class="amplop-detail-subtitle">Pengeluaran</div>
       ${pengeluaranRows || `<div class="amplop-detail-row"><span class="label">Tidak ada</span><span class="value">Rp 0</span></div>`}
       <div class="amplop-detail-row amplop-detail-row-sum"><span class="label">Total Pengeluaran</span><span class="value">- ${formatRupiah(totalPengeluaran)}</span></div>
+
+      <div class="amplop-detail-subtitle">Kasbon</div>
+      ${kasbonRows || `<div class="amplop-detail-row"><span class="label">Tidak ada</span><span class="value">Rp 0</span></div>`}
+      <div class="amplop-detail-row amplop-detail-row-sum"><span class="label">Total Kasbon</span><span class="value">- ${formatRupiah(totalKasbon)}</span></div>
 
       <div class="amplop-detail-total"><span>Amplop Produksi</span><span>${formatRupiah(amplop)}</span></div>`;
   }

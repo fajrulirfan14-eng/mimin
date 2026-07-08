@@ -30,6 +30,7 @@ window.initPengeluaranView = async function() {
   initPengFilters();
   initPengPeriodeFilter();
   initPengPopup();
+  initPengKasbonPopup();
   await loadPengData();
 };
 
@@ -176,6 +177,17 @@ async function loadPengData() {
           });
         });
       });
+      (data.kasbonProduksi || []).forEach((item, i) => {
+        flat.push({
+          id: `${docSnap.id}_kasbon_${i}`,
+          kategori: "kasbon",
+          nama: item.nama,
+          role: item.role,
+          nominal: item.nominal,
+          catatan: item.catatan,
+          tanggal: item.waktu || `${tanggal}T00:00:00`,
+        });
+      });
     });
 
     pengData = flat;
@@ -222,6 +234,40 @@ function renderPengSummary() {
       </div>
     `).join("");
   });
+
+  renderPengKasbonKpi();
+}
+
+function ensurePengKasbonKpiCard() {
+  if (document.getElementById("pengKasbonKpiCard")) return;
+  const row = document.querySelector(".peng-summary-row");
+  if (!row) return;
+  row.insertAdjacentHTML("beforeend", `
+    <div class="peng-summary-card" id="pengKasbonKpiCard" data-kategori="kasbon">
+      <div class="peng-summary-label">Kasbon</div>
+      <div class="peng-summary-total" id="pengKasbonKpiTotal">Rp0</div>
+      <div class="peng-kasbon-kpi-meta" id="pengKasbonKpiMeta">Belum ada kasbon periode ini</div>
+    </div>
+  `);
+}
+
+function renderPengKasbonKpi() {
+  ensurePengKasbonKpiCard();
+  const items = pengData.filter(x => x.kategori === "kasbon");
+  const total = items.reduce((a, b) => a + (Number(b.nominal) || 0), 0);
+
+  const totalEl = document.getElementById("pengKasbonKpiTotal");
+  const metaEl = document.getElementById("pengKasbonKpiMeta");
+  if (totalEl) totalEl.textContent = fmtRupiah(total);
+
+  if (metaEl) {
+    if (!items.length) {
+      metaEl.textContent = "Belum ada kasbon periode ini";
+    } else {
+      const namaUnik = [...new Set(items.map(x => x.nama))];
+      metaEl.textContent = `${items.length} catatan · ${namaUnik.join(", ")}`;
+    }
+  }
 }
 
 function hexA(hex, alpha) {
@@ -250,7 +296,7 @@ function renderPengList() {
   const groups = {};
   filtered.forEach(x => {
     const tglKey = (x.tanggal || "").slice(0, 10); // yyyy-mm-dd, dari field waktu yang sudah ikut tanggal form
-    if (!groups[tglKey]) groups[tglKey] = { produksi: [], distribusi: [] };
+    if (!groups[tglKey]) groups[tglKey] = { produksi: [], distribusi: [], kasbon: [] };
     groups[tglKey][x.kategori].push(x);
   });
 
@@ -341,6 +387,32 @@ function renderPengGroupCard(tglKey, group) {
       </div>`;
   };
 
+  const renderKasbonSection = (items) => {
+    if (!items.length) return "";
+    const total = items.reduce((a, b) => a + (Number(b.nominal) || 0), 0);
+    const rows = items.map(x => `
+      <div class="peng-group-item">
+        <div class="peng-group-item-top">
+          <span class="peng-group-item-nama">${x.nama}</span>
+          <span class="peng-group-item-nominal">-${fmtRupiah(x.nominal)}</span>
+        </div>
+        <div class="peng-group-item-meta">
+          <span class="peng-badge-jenis">${x.role === "adminCabang" ? "Admin Cabang" : "Produksi"}</span>
+        </div>
+        ${x.catatan ? `<div class="peng-group-item-catatan">"${x.catatan}"</div>` : ""}
+      </div>
+    `).join("");
+
+    return `
+      <div class="peng-group-section">
+        <div class="peng-group-section-header">
+          <span class="peng-group-section-title">Kasbon</span>
+          <span class="peng-group-section-total">${fmtRupiah(total)}</span>
+        </div>
+        ${rows}
+      </div>`;
+  };
+
   return `
     <div class="peng-group-card">
       <div class="peng-group-card-header">
@@ -351,6 +423,7 @@ function renderPengGroupCard(tglKey, group) {
       </div>
       ${renderSection(group.produksi, "Produksi")}
       ${renderSection(group.distribusi, "Distribusi")}
+      ${renderKasbonSection(group.kasbon)}
     </div>`;
 }
 
@@ -672,6 +745,7 @@ function initPengPopup() {
   }, { passive: true });
   box.addEventListener("touchmove", e => {
     if (!dragging) return;
+    if (box.scrollTop > 0) { dragging = false; box.style.transform = ""; return; }
     curY = e.touches[0].clientY;
     const d = curY - startY;
     if (d < 0) return;
@@ -763,5 +837,273 @@ async function savePengSubmit(selectedKategori, selectedJenis) {
     window.showToast?.("Gagal menyimpan", "error");
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = "Simpan"; }
+  }
+}
+
+let pengKasbonUsers = [];
+let pengKasbonSelectedUser = null;
+
+function initPengKasbonPopup() {
+  const overlay = document.getElementById("pengKasbonOverlay");
+  const box = document.getElementById("pengKasbonBox");
+  const namaDropdown = document.getElementById("pengKasbonNamaDropdown");
+
+  document.getElementById("pengKasbonBtn").onclick = async () => {
+    document.getElementById("pengKasbonTanggal").value = getPengTanggalHariIni();
+    pengKasbonSelectedUser = null;
+    document.getElementById("pengKasbonNamaLabel").textContent = "Pilih nama";
+    document.getElementById("pengKasbonNominal").value = "";
+    document.getElementById("pengKasbonCatatan").value = "";
+    namaDropdown.classList.remove("open");
+    overlay.classList.add("show");
+    await loadPengKasbonUsers();
+    await renderPengKasbonExisting();
+  };
+
+  document.getElementById("pengKasbonTanggal").onchange = () => {
+    renderPengKasbonExisting();
+  };
+
+  document.getElementById("pengKasbonClose").onclick = () => overlay.classList.remove("show");
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.classList.remove("show"); });
+
+  document.getElementById("pengKasbonNamaBtn").onclick = (e) => {
+    e.stopPropagation();
+    namaDropdown.classList.toggle("open");
+    if (namaDropdown.classList.contains("open")) renderPengKasbonNamaList();
+  };
+  namaDropdown.addEventListener("click", e => e.stopPropagation());
+  document.addEventListener("click", () => namaDropdown.classList.remove("open"));
+
+  document.getElementById("pengKasbonNamaSearch").oninput = function() {
+    renderPengKasbonNamaList(this.value.toLowerCase().trim());
+  };
+
+  document.getElementById("pengKasbonSubmitBtn").onclick = savePengKasbonSubmit;
+
+  // swipe close
+  let kasbonStartY = 0, kasbonCurY = 0, kasbonDragging = false;
+  box.addEventListener("touchstart", e => {
+    if (box.scrollTop > 10) return;
+    kasbonStartY = kasbonCurY = e.touches[0].clientY;
+    kasbonDragging = true;
+    box.style.transition = "none";
+  }, { passive: true });
+  box.addEventListener("touchmove", e => {
+    if (!kasbonDragging) return;
+    if (box.scrollTop > 0) { kasbonDragging = false; box.style.transform = ""; return; }
+    kasbonCurY = e.touches[0].clientY;
+    const d = kasbonCurY - kasbonStartY;
+    if (d < 0) return;
+    box.style.transform = `translateY(${d}px)`;
+  }, { passive: true });
+  box.addEventListener("touchend", () => {
+    if (!kasbonDragging) return;
+    kasbonDragging = false;
+    const d = kasbonCurY - kasbonStartY;
+    box.style.transition = "transform .28s ease";
+    if (d > 120) { overlay.classList.remove("show"); }
+    box.style.transform = "";
+  });
+}
+async function loadPengKasbonUsers() {
+  try {
+    const users = await window.idb.getUsers();
+    pengKasbonUsers = (users || []).filter(u => u.role === "adminCabang" || u.role === "produksi");
+  } catch (err) {
+    console.error("❌ loadPengKasbonUsers:", err);
+    pengKasbonUsers = [];
+  }
+}
+
+function renderPengKasbonNamaList(searchQuery = "") {
+  const listEl = document.getElementById("pengKasbonNamaList");
+  let items = pengKasbonUsers;
+  if (searchQuery) items = items.filter(u => (u.nama || "").toLowerCase().includes(searchQuery));
+
+  if (!items.length) {
+    listEl.innerHTML = `<div class="peng-empty">Tidak ada nama ditemukan</div>`;
+    return;
+  }
+
+  listEl.innerHTML = items.map(u => `
+    <div class="peng-nama-list-item" data-uid="${u.uid}">
+      <span class="peng-nama-list-name">${u.nama || "-"}</span>
+      <span class="peng-nama-list-role">${u.role === "adminCabang" ? "Admin Cabang" : "Produksi"}</span>
+    </div>
+  `).join("");
+
+  listEl.querySelectorAll(".peng-nama-list-item").forEach(el => {
+    el.onclick = () => {
+      const uid = el.dataset.uid;
+      pengKasbonSelectedUser = pengKasbonUsers.find(u => u.uid === uid);
+      document.getElementById("pengKasbonNamaLabel").textContent = pengKasbonSelectedUser?.nama || "-";
+      document.getElementById("pengKasbonNamaDropdown")?.classList.remove("open");
+    };
+  });
+}
+
+async function renderPengKasbonExisting() {
+  const listEl = document.getElementById("pengKasbonExistingList");
+  const tanggal = document.getElementById("pengKasbonTanggal")?.value;
+  if (!listEl || !tanggal) return;
+
+  listEl.innerHTML = `<div class="peng-kasbon-existing-empty">Memuat...</div>`;
+
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return;
+
+    const ref = window.doc(window.db, "users", adminUid, "pengeluaran", tanggal);
+    const snap = await window.getDoc(ref);
+    const arr = snap.exists() ? (snap.data().kasbonProduksi || []) : [];
+
+    if (!arr.length) {
+      listEl.innerHTML = `<div class="peng-kasbon-existing-empty">Belum ada kasbon tanggal ini</div>`;
+      return;
+    }
+
+    listEl.innerHTML = arr.map(item => `
+      <div class="peng-kasbon-existing-item">
+        <div class="peng-kasbon-existing-item-top">
+          <span class="peng-kasbon-existing-nama">${item.nama || "-"}</span>
+          <div class="peng-kasbon-existing-right">
+            <span class="peng-kasbon-existing-nominal">${formatRupiah(item.nominal)}</span>
+            <button type="button" class="peng-kasbon-delete-btn" data-uid="${item.uid}">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </div>
+        <div class="peng-kasbon-existing-meta">
+          <span class="peng-badge-jenis">${item.role === "adminCabang" ? "Admin Cabang" : "Produksi"}</span>
+        </div>
+        ${item.catatan ? `<div class="peng-kasbon-existing-catatan">"${item.catatan}"</div>` : ""}
+      </div>
+    `).join("");
+
+    listEl.querySelectorAll(".peng-kasbon-delete-btn").forEach(btn => {
+      btn.onclick = () => {
+        const uid = btn.dataset.uid;
+        const item = arr.find(x => x.uid === uid);
+        showPengKasbonDeleteKonfirmasi(tanggal, uid, item?.nama || "-");
+      };
+    });
+  } catch (err) {
+    console.error("❌ renderPengKasbonExisting:", err);
+    listEl.innerHTML = `<div class="peng-kasbon-existing-empty">Gagal memuat data</div>`;
+  }
+}
+
+function showPengKasbonDeleteKonfirmasi(tanggal, uid, nama) {
+  document.getElementById("pengKasbonDeleteOverlay")?.remove();
+
+  const el = document.createElement("div");
+  el.id = "pengKasbonDeleteOverlay";
+  el.className = "peng-konfirmasi-overlay";
+  el.innerHTML = `
+    <div class="peng-konfirmasi-box">
+      <div class="peng-konfirmasi-title">Hapus Kasbon</div>
+      <div class="peng-konfirmasi-pesan">Yakin mau hapus kasbon <b>${nama}</b> tanggal ini?</div>
+      <div class="peng-konfirmasi-actions">
+        <button class="peng-konfirmasi-batal" id="pengKasbonDeleteBatal">Batal</button>
+        <button class="peng-konfirmasi-oke peng-konfirmasi-oke-red" id="pengKasbonDeleteOke">Hapus</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  document.getElementById("pengKasbonDeleteBatal").onclick = () => el.remove();
+  el.onclick = e => { if (e.target === el) el.remove(); };
+
+  document.getElementById("pengKasbonDeleteOke").onclick = async () => {
+    const btn = document.getElementById("pengKasbonDeleteOke");
+    btn.disabled = true; btn.textContent = "Menghapus...";
+    try {
+      const adminUid = window.auth?.currentUser?.uid;
+      const ref = window.doc(window.db, "users", adminUid, "pengeluaran", tanggal);
+
+      await window.runTransaction(window.db, async (transaction) => {
+        const snap = await transaction.get(ref);
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const arr = Array.isArray(data.kasbonProduksi) ? data.kasbonProduksi : [];
+        const newArr = arr.filter(x => x.uid !== uid);
+        transaction.update(ref, { kasbonProduksi: newArr, updatedAt: window.serverTimestamp() });
+      });
+
+      pengExistingDocCache = { tanggal: null, data: null };
+      await loadPengData();
+      await renderPengKasbonExisting();
+
+      window.showToast?.("Kasbon dihapus", "success");
+      el.remove();
+    } catch (err) {
+      console.error("❌ hapus kasbon:", err);
+      window.showToast?.("Gagal menghapus", "error");
+      btn.disabled = false;
+      btn.textContent = "Hapus";
+    }
+  };
+}
+
+async function savePengKasbonSubmit() {
+  const btn = document.getElementById("pengKasbonSubmitBtn");
+  const tanggal = document.getElementById("pengKasbonTanggal").value;
+  const nominal = Number(document.getElementById("pengKasbonNominal").value || 0);
+  const catatan = document.getElementById("pengKasbonCatatan").value.trim();
+
+  if (!tanggal) { window.showToast?.("Pilih tanggal dulu", "error"); return; }
+  if (!pengKasbonSelectedUser) { window.showToast?.("Pilih nama dulu", "error"); return; }
+  if (nominal <= 0) { window.showToast?.("Nominal harus diisi", "error"); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = "Menyimpan..."; }
+
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    const idCabang = window.currentUser?.idCabang || window.kantorCabang?.id || "";
+    if (!adminUid) throw new Error("User tidak terautentikasi");
+
+    const ref = window.doc(window.db, "users", adminUid, "pengeluaran", tanggal);
+    const now = new Date();
+    const jam = String(now.getHours()).padStart(2, "0");
+    const menit = String(now.getMinutes()).padStart(2, "0");
+    const detik = String(now.getSeconds()).padStart(2, "0");
+
+    const item = {
+      uid: pengKasbonSelectedUser.uid,
+      nama: pengKasbonSelectedUser.nama || "",
+      role: pengKasbonSelectedUser.role,
+      nominal,
+      catatan,
+      waktu: `${tanggal}T${jam}:${menit}:${detik}`,
+    };
+
+    await window.runTransaction(window.db, async (transaction) => {
+      const snap = await transaction.get(ref);
+      const existing = snap.exists() ? snap.data() : {};
+      const arr = Array.isArray(existing.kasbonProduksi) ? [...existing.kasbonProduksi] : [];
+
+      const idx = arr.findIndex(x => x.uid === item.uid);
+      if (idx > -1) arr[idx] = item; // orang yang sama di tanggal sama -> update
+      else arr.push(item);
+
+      transaction.set(ref, {
+        tanggal,
+        createdBy: adminUid,
+        idCabang,
+        updatedAt: window.serverTimestamp(),
+        kasbonProduksi: arr,
+      }, { merge: true });
+    });
+
+    pengExistingDocCache = { tanggal: null, data: null };
+    await loadPengData();
+    await renderPengKasbonExisting();
+    document.getElementById("pengKasbonOverlay")?.classList.remove("show");
+    window.showToast?.("Kasbon berhasil dicatat", "success");
+  } catch (err) {
+    console.error("❌ savePengKasbonSubmit:", err);
+    window.showToast?.("Gagal menyimpan", "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Kirim"; }
   }
 }
