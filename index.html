@@ -2316,66 +2316,86 @@
                     </div>
 
                     <!-- FORM SLIP GAJI (muncul setelah pilih pegawai) -->
-                    <div class="slip-gaji-form-wrap" id="slipGajiProdFormWrap" style="display:none">
-                      <div class="slip-gaji-form-header">
-                        <div class="slip-gaji-form-title">Form Slip Gaji — <span id="slipGajiProdFormNama">-</span></div>
-                        <div class="slip-gaji-form-header-right">
-                          <span class="rekap-dist-saved-badge" id="slipGajiProdFormBadge" style="display:none">
+                    <div class="slipgajiprod-form-wrap" id="slipGajiProdFormWrap" style="display:none">
+                      <div class="slipgajiprod-form-header">
+                        <div class="slipgajiprod-form-title">Form Slip Gaji — <span id="slipGajiProdFormNama">-</span></div>
+                        <div class="slipgajiprod-form-header-right">
+                          <span class="slipgajiprod-saved-badge" id="slipGajiProdFormBadge" style="display:none">
                             <i class="fa-solid fa-circle-check"></i> Sudah dikirim
                           </span>
-                          <span class="slip-gaji-form-periode" id="slipGajiProdFormPeriode">Periode: -</span>
+                          <span class="slipgajiprod-form-periode" id="slipGajiProdFormPeriode">Periode: -</span>
                         </div>
                       </div>
 
                       <!-- PENDAPATAN -->
-                      <div class="slip-gaji-section">
-                        <div class="slip-gaji-section-title">Pendapatan</div>
-                        <div class="slip-gaji-item-table">
-                          <div class="slip-gaji-item-header">
-                            <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
-                          </div>
-                          <div id="slipGajiProdPendapatanItems"></div>
+                      <div class="slipgajiprod-card">
+                        <div class="slipgajiprod-card-title">
+                          <i class="fa-solid fa-boxes-stacked"></i>
+                          Pendapatan
                         </div>
-                        <button class="slipgajiprod-add-btn" data-section="pendapatan">+ Tambah Lainnya</button>
+                        <table class="slipgajiprod-table" id="slipGajiProdPendapatanTable">
+                          <thead>
+                            <tr>
+                              <th>Keterangan</th>
+                              <th>Qty</th>
+                              <th>Harga</th>
+                              <th>Upah</th>
+                            </tr>
+                          </thead>
+                          <tbody id="slipGajiProdPendapatanBody">
+                            <tr><td colspan="4" class="slipgajiprod-empty-cell">-</td></tr>
+                          </tbody>
+                        </table>
                       </div>
 
                       <!-- BONUS -->
-                      <div class="slip-gaji-section">
-                        <div class="slip-gaji-section-title">Bonus</div>
-                        <div class="slip-gaji-item-table">
-                          <div class="slip-gaji-item-header">
-                            <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
-                          </div>
-                          <div id="slipGajiProdBonusItems"></div>
+                      <div class="slipgajiprod-card">
+                        <div class="slipgajiprod-card-title">
+                          <i class="fa-solid fa-gift"></i>
+                          Bonus
                         </div>
-                        <button class="slipgajiprod-add-btn" data-section="bonus">+ Tambah Lainnya</button>
+                        <table class="slipgajiprod-table slipgajiprod-table-editable" id="slipGajiProdBonusTable">
+                          <thead>
+                            <tr><th>Keterangan</th><th>Nominal</th><th></th></tr>
+                          </thead>
+                          <tbody id="slipGajiProdBonusBody">
+                            <tr class="slipgajiprod-placeholder-row"><td colspan="3" class="slipgajiprod-empty-cell">Belum ada bonus</td></tr>
+                          </tbody>
+                        </table>
+                        <button class="slipgajiprod-add-btn" data-section="bonus">+ Tambah Bonus</button>
                       </div>
 
                       <!-- POTONGAN -->
-                      <div class="slip-gaji-section">
-                        <div class="slip-gaji-section-title">Potongan</div>
-                        <div class="slip-gaji-item-table">
-                          <div class="slip-gaji-item-header">
-                            <span>Keterangan</span><span>Hari</span><span>Pembayaran</span><span></span>
-                          </div>
-                          <div id="slipGajiProdPotonganItems"></div>
+                      <div class="slipgajiprod-card">
+                        <div class="slipgajiprod-card-title">
+                          <i class="fa-solid fa-money-bill-wave"></i>
+                          Potongan
                         </div>
-                        <button class="slipgajiprod-add-btn" data-section="potongan">+ Tambah Lainnya</button>
+                        <table class="slipgajiprod-table slipgajiprod-table-editable" id="slipGajiProdPotonganTable">
+                          <thead>
+                            <tr><th>Keterangan</th><th>Nominal</th><th></th></tr>
+                          </thead>
+                          <tbody id="slipGajiProdPotonganBody"></tbody>
+                        </table>
+                        <button class="slipgajiprod-add-btn" data-section="potongan">+ Tambah Potongan</button>
                       </div>
 
                       <!-- CATATAN -->
-                      <div class="slip-gaji-section">
-                        <div class="slip-gaji-section-title">Catatan</div>
-                        <textarea class="slip-gaji-catatan" id="slipGajiProdCatatan" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
+                      <div class="slipgajiprod-card">
+                        <div class="slipgajiprod-card-title">
+                          <i class="fa-solid fa-note-sticky"></i>
+                          Catatan
+                        </div>
+                        <textarea class="slipgajiprod-catatan" id="slipGajiProdCatatan" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
                       </div>
 
                       <!-- TOTAL PENERIMAAN -->
-                      <div class="slip-gaji-total-bar">
+                      <div class="slipgajiprod-total-bar">
                         <span>Total Penerimaan</span>
                         <span id="slipGajiProdTotalPenerimaan">Rp 0</span>
                       </div>
 
-                      <button class="slip-gaji-save-btn" id="slipGajiProdSaveBtn">Simpan Slip Gaji</button>
+                      <button class="slipgajiprod-save-btn" id="slipGajiProdSaveBtn">Simpan Slip Gaji</button>
                     </div>
 
                   </div>

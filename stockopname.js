@@ -435,7 +435,7 @@ const SO_GROUPS = [
   { key: "promosi",  label: "Promosi",       color: "#1a7080" },
   { key: "flavor",   label: "Off Flavor",    color: "#7a4a9a" },
   { key: "hilang",   label: "Barang Hilang", color: "#a03050" },
-  { key: "saldo",    label: "Saldo",         color: "#2d6b2d" },
+  { key: "saldo",    label: "Saldo",         color: "#1c3f60" },
 ];
 
 const SO_STATIC_COLUMNS_BASE = [
@@ -933,7 +933,7 @@ function drawSoTable() {
         soCtx.strokeStyle = "rgba(0,0,0,0.12)";
         soCtx.strokeRect(cx, y, col.width, SO_ROW_HEIGHT);
         soCtx.fillStyle = isWeekTotal ? "#8a5a00" : (col.group ? col.groupColor : "#2b2b2b");
-        soCtx.font = isWeekTotal ? "800 11px Poppins, sans-serif" : "700 11px Poppins, sans-serif";
+        soCtx.font = isWeekTotal ? "800 11px Poppins, sans-serif" : "500 11px Poppins, sans-serif";
         const rawVal = row[col.key];
         const val = (rawVal === 0 || rawVal === "" || rawVal == null) ? "" : rawVal;
         soCtx.textAlign = "center";
@@ -955,6 +955,7 @@ function drawSoTable() {
       if (y + SO_ROW_HEIGHT < SO_HEADER_HEIGHT || y > totalRowY) continue;
 
       let sx = saldoStartX;
+      soCtx.font = row._isWeekTotal ? "800 11px Poppins, sans-serif" : "500 11px Poppins, sans-serif";
       saldoCols.forEach(col => {
         soCtx.fillStyle = row._isWeekTotal ? "#cc8800" : col.groupColor;
         soCtx.fillRect(sx, y, col.width, SO_ROW_HEIGHT);

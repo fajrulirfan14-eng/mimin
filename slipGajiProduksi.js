@@ -1,24 +1,18 @@
-/* ── SLIP GAJI PRODUKSI (di dalam Rekap Produksi) ── */
-/* NOTE: bulan/tahun sengaja TIDAK punya variabel sendiri — ikut rekapProdBulan/rekapProdTahun,
-   mengikuti konvensi yang sudah dipakai di Rincian Produksi. */
 
 let slipGajiProdSelectedUid  = null;
 let slipGajiProdSelectedNama = null;
 
 const SLIP_GAJI_PROD_TEMPLATE = {
-  pendapatan: [
-    { key: "upahPokok",          label: "Upah Pokok",          hari: 0, pembayaran: 0, fixed: true },
-    { key: "tunjanganTransport", label: "Tunjangan Transport", hari: 0, pembayaran: 0, fixed: true },
-  ],
-  bonus: [
-    { key: "bonusKehadiran", label: "Bonus Kehadiran", hari: 0, pembayaran: 0, fixed: true },
-  ],
+  pendapatan: [],
+  bonus: [],
   potongan: [
-    { key: "kasbon", label: "Kasbon", hari: 0, pembayaran: 0, fixed: true },
+    { key: "kasbon", label: "Kasbon", hari: "-", pembayaran: 0, fixed: true },
   ],
 };
 
 let slipGajiProdData = null;
+let slipGajiProdSelectedRole = null;
+let slipGajiProdPendapatanTotal = 0;
 
 window.initSlipGajiProdView = function() {
   document.getElementById("slipGajiProdReloadBtn")?.addEventListener("click", async () => {
@@ -122,6 +116,7 @@ function initSlipGajiProdFilter() {
 
     document.getElementById("slipGajiProdFormWrap").style.display = "none";
     slipGajiProdSelectedUid = null;
+    slipGajiProdSelectedRole = null;
     await renderSlipGajiProdKurirGrid();
   });
 
@@ -141,6 +136,7 @@ function initSlipGajiProdFilter() {
 
     document.getElementById("slipGajiProdFormWrap").style.display = "none";
     slipGajiProdSelectedUid = null;
+    slipGajiProdSelectedRole = null;
     await renderSlipGajiProdKurirGrid();
   });
 }
@@ -171,7 +167,7 @@ async function renderSlipGajiProdKurirGrid() {
       : `<div class="rekap-dist-avatar">${escSlip(inisial)}</div>`;
 
     return `
-      <div class="rekap-dist-card slip-gaji-kurir-card" data-uid="${escSlip(u.uid)}" data-nama="${escSlip(nama)}">
+      <div class="rekap-dist-card slip-gaji-kurir-card" data-uid="${escSlip(u.uid)}" data-nama="${escSlip(nama)}" data-role="${escSlip(u.role || "")}">
         <div class="rekap-dist-card-header">
           ${avatar}
           <div>
@@ -190,7 +186,7 @@ async function renderSlipGajiProdKurirGrid() {
     card.addEventListener("click", () => {
       gridEl.querySelectorAll(".slip-gaji-kurir-card").forEach(c => c.classList.remove("active"));
       card.classList.add("active");
-      pilihKurirSlipGajiProd(card.dataset.uid, card.dataset.nama);
+      pilihKurirSlipGajiProd(card.dataset.uid, card.dataset.nama, card.dataset.role);
     });
   });
 
@@ -212,9 +208,10 @@ async function cekSlipGajiProdSudahDikirimBatch(uids) {
 }
 
 /* ── PILIH PEGAWAI → ISI FORM ── */
-async function pilihKurirSlipGajiProd(uid, nama) {
+async function pilihKurirSlipGajiProd(uid, nama, role) {
   slipGajiProdSelectedUid  = uid;
   slipGajiProdSelectedNama = nama;
+  slipGajiProdSelectedRole = role;
 
   document.getElementById("slipGajiProdFormWrap").style.display = "block";
   document.getElementById("slipGajiProdFormNama").textContent   = nama;
@@ -227,11 +224,107 @@ async function pilihKurirSlipGajiProd(uid, nama) {
 
   slipGajiProdData = JSON.parse(JSON.stringify(SLIP_GAJI_PROD_TEMPLATE));
   document.getElementById("slipGajiProdCatatan").value = "";
+  slipGajiProdPendapatanTotal = 0;
 
-  // TODO: isi nilai hari/pembayaran dari data produksi (laporanAdmin/pengeluaran) sesuai kebutuhan bisnis
-  // Untuk sekarang UI shell dulu, nilai default 0 — logic hitungan menyusul.
+  const kasbonPerUser = await loadKasbonProduksiPerUser();
+  const idxKasbon = slipGajiProdData.potongan.findIndex(i => i.key === "kasbon");
+  if (idxKasbon !== -1) {
+    slipGajiProdData.potongan[idxKasbon].pembayaran = kasbonPerUser[uid] || 0;
+  }
+
+  if (role === "produksi") {
+    await renderSlipGajiProdPendapatanTable(uid);
+  } else {
+    // adminCabang: Pendapatan cuma "Gaji Pokok" input manual
+    slipGajiProdData.pendapatan = [
+      { key: "gajiPokok", label: "Gaji Pokok", pembayaran: 0, fixed: true },
+    ];
+    renderSlipGajiProdPendapatanManual();
+  }
 
   renderSlipGajiProdItems();
+}
+
+async function renderSlipGajiProdPendapatanTable(uid) {
+  const bodyEl = document.getElementById("slipGajiProdPendapatanBody");
+  if (!bodyEl) return;
+
+  bodyEl.innerHTML = `<tr><td colspan="4" class="slipgajiprod-empty-cell">Memuat...</td></tr>`;
+
+  try {
+    const kantorCabang = await window.idb.getKantorCabang();
+    const loyangArr = kantorCabang?.loyang || [];
+    const aktifList = loyangArr.filter(item => item?.status === true);
+
+    const hargaMap = {};
+    aktifList.forEach(item => {
+      if (item.jenisLoyang) hargaMap[item.jenisLoyang] = Number(item.upah) || 0;
+    });
+
+    const qtyPerUser = await loadStockOpnameLoyangPerUser();
+    const qtyMap = qtyPerUser[uid] || {};
+
+    const jenisList = aktifList.map(item => item.jenisLoyang).filter(Boolean);
+
+    if (!jenisList.length) {
+      bodyEl.innerHTML = `<tr><td colspan="4" class="slipgajiprod-empty-cell">-</td></tr>`;
+      slipGajiProdPendapatanTotal = 0;
+      return;
+    }
+
+    let total = 0;
+    bodyEl.innerHTML = jenisList.map(jenis => {
+      const qty   = qtyMap[jenis]   || 0;
+      const harga = hargaMap[jenis] || 0;
+      const upah  = qty * harga;
+      total += upah;
+      return `
+        <tr>
+          <td>${jenis}</td>
+          <td>${qty || "-"}</td>
+          <td>${harga ? harga.toLocaleString("id-ID") : "-"}</td>
+          <td>${upah ? upah.toLocaleString("id-ID") : "-"}</td>
+        </tr>`;
+    }).join("") + `
+      <tr class="slipgajiprod-total-row">
+        <td>Jumlah</td><td></td><td></td>
+        <td>${total ? total.toLocaleString("id-ID") : "-"}</td>
+      </tr>`;
+
+    slipGajiProdPendapatanTotal = total;
+  } catch (err) {
+    console.error("❌ renderSlipGajiProdPendapatanTable:", err);
+    bodyEl.innerHTML = `<tr><td colspan="4" class="slipgajiprod-empty-cell">Gagal memuat</td></tr>`;
+    slipGajiProdPendapatanTotal = 0;
+  }
+
+  hitungTotalPenerimaanProd();
+}
+
+function renderSlipGajiProdPendapatanManual() {
+  const bodyEl = document.getElementById("slipGajiProdPendapatanBody");
+  if (!bodyEl) return;
+
+  bodyEl.innerHTML = slipGajiProdData.pendapatan.map((item, idx) => `
+    <tr data-idx="${idx}">
+      <td>${escSlip(item.label)}</td>
+      <td>-</td>
+      <td>-</td>
+      <td>
+        <input type="text" class="slipgajiprod-input-nominal" data-idx="${idx}" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0">
+      </td>
+    </tr>`).join("");
+
+  bodyEl.querySelectorAll(".slipgajiprod-input-nominal").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const idx = Number(inp.dataset.idx);
+      const angka = inp.value.replace(/\D/g, "");
+      inp.value = angka ? Number(angka).toLocaleString("id-ID") : "";
+      slipGajiProdData.pendapatan[idx].pembayaran = Number(angka) || 0;
+      slipGajiProdPendapatanTotal = slipGajiProdData.pendapatan.reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
+      hitungTotalPenerimaanProd();
+    });
+  });
 }
 
 async function cekSlipGajiProdFormBadge(uid) {
@@ -250,43 +343,41 @@ async function cekSlipGajiProdFormBadge(uid) {
 
 /* ── RENDER ITEM (Pendapatan/Bonus/Potongan) ── */
 function renderSlipGajiProdItems() {
-  ["pendapatan", "bonus", "potongan"].forEach(section => {
-    const containerEl = document.getElementById(`slipGajiProd${capitalize(section)}Items`);
-    if (!containerEl) return;
+  ["bonus", "potongan"].forEach(section => {
+    const bodyEl = document.getElementById(`slipGajiProd${capitalize(section)}Body`);
+    if (!bodyEl) return;
 
-    const jumlahSection = slipGajiProdData[section].reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
+    const items = slipGajiProdData[section];
 
-    containerEl.innerHTML = slipGajiProdData[section].map((item, idx) => `
-      <div class="slip-gaji-item-row" data-section="${section}" data-idx="${idx}">
-        <input type="text" class="slip-gaji-input-label" value="${escSlip(item.label)}" ${item.fixed ? "readonly" : ""}>
-        <input type="number" class="slip-gaji-input-hari" min="0" value="${item.hari || ""}" placeholder="-">
-        <input type="text" class="slip-gaji-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0">
-        <button class="slip-gaji-remove-btn" ${item.fixed ? "style=\"visibility:hidden\"" : ""}>
-          <i class="fa-solid fa-trash"></i>
-        </button>
-      </div>`).join("") + `
-      <div class="slip-gaji-item-row slip-gaji-jumlah-row">
-        <span>Jumlah</span>
-        <span></span>
-        <span class="slip-gaji-jumlah-val">${jumlahSection ? jumlahSection.toLocaleString("id-ID") : "-"}</span>
-        <span></span>
-      </div>`;
+    if (!items.length) {
+      const emptyLabel = section === "bonus" ? "Belum ada bonus" : "Belum ada potongan";
+      bodyEl.innerHTML = `<tr class="slipgajiprod-placeholder-row"><td colspan="3" class="slipgajiprod-empty-cell">${emptyLabel}</td></tr>`;
+      return;
+    }
 
-    containerEl.querySelectorAll(".slip-gaji-item-row[data-idx]").forEach(row => {
+    bodyEl.innerHTML = items.map((item, idx) => `
+      <tr data-section="${section}" data-idx="${idx}">
+        <td>
+          <input type="text" class="slipgajiprod-input-label" value="${escSlip(item.label)}" ${item.fixed ? "readonly" : ""}>
+        </td>
+        <td>
+          <input type="text" class="slipgajiprod-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0">
+        </td>
+        <td>
+          ${item.fixed ? "" : `<button class="slipgajiprod-remove-btn"><i class="fa-solid fa-trash"></i></button>`}
+        </td>
+      </tr>`).join("");
+
+    bodyEl.querySelectorAll("tr[data-idx]").forEach(row => {
       const idx = Number(row.dataset.idx);
-      const hariInput    = row.querySelector(".slip-gaji-input-hari");
-      const nominalInput = row.querySelector(".slip-gaji-input-nominal");
-      const labelInput   = row.querySelector(".slip-gaji-input-label");
-      const removeBtn    = row.querySelector(".slip-gaji-remove-btn");
+      const nominalInput = row.querySelector(".slipgajiprod-input-nominal");
+      const labelInput   = row.querySelector(".slipgajiprod-input-label");
+      const removeBtn    = row.querySelector(".slipgajiprod-remove-btn");
 
-      hariInput.addEventListener("input", () => {
-        slipGajiProdData[section][idx].hari = Number(hariInput.value) || 0;
-      });
       nominalInput.addEventListener("input", () => {
         const angka = nominalInput.value.replace(/\D/g, "");
         nominalInput.value = angka ? Number(angka).toLocaleString("id-ID") : "";
         slipGajiProdData[section][idx].pembayaran = Number(angka) || 0;
-        updateJumlahSectionProd(section);
         hitungTotalPenerimaanProd();
       });
       labelInput?.addEventListener("input", () => {
@@ -304,16 +395,6 @@ function renderSlipGajiProdItems() {
 
   hitungTotalPenerimaanProd();
 }
-
-function updateJumlahSectionProd(section) {
-  const containerEl = document.getElementById(`slipGajiProd${capitalize(section)}Items`);
-  if (!containerEl) return;
-  const jumlahRow = containerEl.querySelector(".slip-gaji-jumlah-row .slip-gaji-jumlah-val");
-  if (!jumlahRow) return;
-  const jumlahSection = slipGajiProdData[section].reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
-  jumlahRow.textContent = jumlahSection ? jumlahSection.toLocaleString("id-ID") : "-";
-}
-
 function tambahItemCustomProd(section) {
   if (!slipGajiProdData) return;
   slipGajiProdData[section].push({ key: `custom_${Date.now()}`, label: "", hari: 0, pembayaran: 0, fixed: false });
@@ -323,10 +404,9 @@ function tambahItemCustomProd(section) {
 function hitungTotalPenerimaanProd() {
   if (!slipGajiProdData) return;
   const sum = arr => arr.reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
-  const totalPendapatan = sum(slipGajiProdData.pendapatan);
-  const totalBonus      = sum(slipGajiProdData.bonus);
-  const totalPotongan   = sum(slipGajiProdData.potongan);
-  const total = totalPendapatan + totalBonus - totalPotongan;
+  const totalBonus    = sum(slipGajiProdData.bonus);
+  const totalPotongan = sum(slipGajiProdData.potongan);
+  const total = slipGajiProdPendapatanTotal + totalBonus - totalPotongan;
 
   const el = document.getElementById("slipGajiProdTotalPenerimaan");
   if (el) el.textContent = `Rp ${total.toLocaleString("id-ID")}`;
@@ -351,7 +431,16 @@ async function simpanSlipGajiProd() {
     }, {});
 
     const sum = arr => arr.reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
-    const totalPenerimaan = sum(slipGajiProdData.pendapatan) + sum(slipGajiProdData.bonus) - sum(slipGajiProdData.potongan);
+    const totalPenerimaan = slipGajiProdPendapatanTotal + sum(slipGajiProdData.bonus) - sum(slipGajiProdData.potongan);
+
+    const slipGajiPayload = [
+      { bonus:    toObj(slipGajiProdData.bonus) },
+      { potongan: toObj(slipGajiProdData.potongan) },
+    ];
+    // adminCabang: pendapatan manual (Gaji Pokok) ikut disimpan sebagai rincian
+    if (slipGajiProdSelectedRole !== "produksi") {
+      slipGajiPayload.unshift({ pendapatan: toObj(slipGajiProdData.pendapatan) });
+    }
 
     await window.setDoc(
       window.doc(window.db, "users", slipGajiProdSelectedUid, "slipGajiProduksi", periode),
@@ -362,11 +451,8 @@ async function simpanSlipGajiProd() {
         idCabang: kantorCabang?.id || "",
         idUser: slipGajiProdSelectedUid,
         periode,
-        slipGaji: [
-          { pendapatan: toObj(slipGajiProdData.pendapatan) },
-          { bonus:      toObj(slipGajiProdData.bonus) },
-          { potongan:   toObj(slipGajiProdData.potongan) },
-        ],
+        totalPendapatan: slipGajiProdPendapatanTotal,
+        slipGaji: slipGajiPayload,
         totalPenerimaan,
       }
     );

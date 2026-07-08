@@ -102,11 +102,204 @@
   padding: 16px;
 }
 
-.slipgajiprod-placeholder {
+/* ── FORM HEADER (per-pegawai) ── */
+.slipgajiprod-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.slipgajiprod-form-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.slipgajiprod-form-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.slipgajiprod-form-periode {
+  font-size: 12px;
   color: var(--text-muted);
+  white-space: nowrap;
+}
+.slipgajiprod-saved-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(45,107,45,0.12);
+  color: #2d6b2d;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ── CARD SECTION ── */
+.slipgajiprod-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.slipgajiprod-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+}
+.slipgajiprod-card-title i {
+  color: var(--brand-primary);
+  font-size: 13px;
+}
+
+/* ── TABLE (dipakai semua section: Pendapatan, Bonus, Potongan) ── */
+.slipgajiprod-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+}
+.slipgajiprod-table thead th {
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--brand-pale);
+  color: var(--text-primary);
+  font-weight: 700;
+  border-bottom: 1px solid var(--border-card);
+}
+.slipgajiprod-table thead th:first-child { border-radius: 8px 0 0 0; }
+.slipgajiprod-table thead th:last-child  { border-radius: 0 8px 0 0; }
+.slipgajiprod-table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-card);
+  color: var(--text-primary);
+}
+.slipgajiprod-table tbody tr:last-child td { border-bottom: none; }
+.slipgajiprod-table tbody tr:nth-child(even) td { background: var(--bg-page); }
+
+.slipgajiprod-empty-cell {
   text-align: center;
-  padding: 40px 0;
+  color: var(--text-muted);
+  padding: 16px 0 !important;
+}
+
+.slipgajiprod-total-row td {
+  font-weight: 700;
+  background: var(--brand-pale) !important;
+  color: var(--text-primary);
+}
+/* ── INPUT MANUAL DI TABEL PENDAPATAN (khusus adminCabang — Gaji Pokok) ── */
+#slipGajiProdPendapatanTable .slipgajiprod-input-nominal {
+  width: 100%;
+  border: 1px solid var(--border-card);
+  background: var(--bg-page);
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: 6px;
+  outline: none;
+  text-align: right;
+}
+#slipGajiProdPendapatanTable .slipgajiprod-input-nominal:focus {
+  border-color: var(--brand-primary);
+  background: var(--bg-hover);
+}
+#slipGajiProdPendapatanTable .slipgajiprod-input-nominal::placeholder {
+  color: var(--text-muted);
+}
+/* ── TABLE EDITABLE (Bonus & Potongan) ── */
+.slipgajiprod-table-editable input[type="text"],
+.slipgajiprod-table-editable input[type="number"] {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  color: var(--text-primary);
+  padding: 4px 6px;
+  border-radius: 6px;
+  outline: none;
+}
+.slipgajiprod-table-editable input:focus {
+  background: var(--bg-hover);
+}
+.slipgajiprod-table-editable input[readonly] {
+  color: var(--text-muted);
+  cursor: default;
+}
+.slipgajiprod-table-editable td:last-child {
+  width: 36px;
+  text-align: center;
+}
+.slipgajiprod-remove-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+.slipgajiprod-remove-btn:hover {
+  background: rgba(176,60,60,0.12);
+  color: #b03c3c;
+}
+
+/* ── CATATAN ── */
+.slipgajiprod-catatan {
+  width: 100%;
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  resize: vertical;
+  outline: none;
+}
+
+/* ── TOTAL BAR ── */
+.slipgajiprod-total-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-mid));
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+/* ── SAVE BUTTON ── */
+.slipgajiprod-save-btn {
+  width: 100%;
+  height: 46px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-mid));
+  color: #fff;
+  font-family: 'Poppins', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.slipgajiprod-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 /* ── TOMBOL "+ Tambah Lainnya" (Slip Gaji Produksi) ── */
 .slipgajiprod-add-btn {
