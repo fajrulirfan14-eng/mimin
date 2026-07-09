@@ -191,8 +191,8 @@
           <button class="topbar-btn" id="topbarBackBtn" style="display:none">
             <i class="fa-solid fa-arrow-left"></i>
           </button>
-          <button class="topbar-btn" id="topbarReload" style="display:none">
-            <i class="fa-solid fa-rotate-right"></i>
+          <button class="topbar-btn" id="topbarPurchase">
+            <i class="fa-solid fa-cart-shopping"></i>
           </button>
           <button class="topbar-btn" id="topbarTabel" style="display:none">
             <i class="fa-solid fa-table-cells"></i>
@@ -2429,6 +2429,55 @@
 
 </div>
 
+<!-- ── PURCHASE ORDER SHEET ── -->
+<div class="purchase-overlay" id="purchaseOverlay"></div>
+<div class="purchase-sheet" id="purchaseSheet">
+  <div class="purchase-sheet-handle"></div>
+  <div class="purchase-sheet-header">
+    <div class="purchase-sheet-title">Purchase Order</div>
+    <button class="purchase-sheet-close" id="purchaseSheetClose">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+  <div class="purchase-sheet-body">
+    <div class="purchase-form-group">
+      <div class="purchase-form-label">Tanggal Input</div>
+      <div class="purchase-date-field">
+        <div class="purchase-date-display">
+          <span id="purchaseTanggalInputText">-</span>
+          <i class="fa-solid fa-calendar-days"></i>
+        </div>
+        <input type="date" id="purchaseTanggalInputNative" class="purchase-date-native">
+      </div>
+    </div>
+
+    <div class="purchase-form-group">
+      <div class="purchase-form-label">Untuk Tanggal (Target)</div>
+      <div class="purchase-target-row">
+        <div class="purchase-target-display" id="purchaseTargetDisplay">-</div>
+        <span class="purchase-saved-badge" id="purchaseSavedBadge" style="display:none">
+          <i class="fa-solid fa-circle-check"></i> Tersimpan
+        </span>
+      </div>
+    </div>
+
+    <div class="purchase-form-group">
+      <div class="purchase-form-label">Order Per Staff</div>
+      <div id="purchaseStaffList" class="purchase-staff-list">
+        <div class="dh-ringkasan-empty">Memuat...</div>
+      </div>
+    </div>
+
+    <div class="purchase-form-group">
+      <div class="purchase-form-label">Catatan</div>
+      <textarea id="purchaseCatatan" class="purchase-catatan" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
+    </div>
+
+    <button class="purchase-save-btn" id="purchaseSaveBtn">Simpan Purchase Order</button>
+    <div class="purchase-status" id="purchaseStatus"></div>
+  </div>
+</div>
+
 <!-- PETA GLOBAL -->
 <div id="petaGlobalOverlay" class="peta-global-overlay" style="display:none">
   <div id="petaGlobalWrap" class="peta-global-wrap">
@@ -2492,6 +2541,7 @@
     </div>
   </div>
 </div>
+
 <!-- ── RUMUS PANEL (overlay + sheet/drawer) ── -->
 <div class="rumus-overlay" id="rumusOverlay"></div>
 <div class="rumus-panel" id="rumusPanel">
@@ -2551,6 +2601,8 @@
 <script src="export.js"></script>
 <script src="map.js"></script>
 <script src="maprolling.js"></script>
+<script src="purchase.js"></script>
+<script src="sheetamplop.js"></script>
 <script src="trikotomi.js"></script>
 <script src="assets.js"></script>
 <script src="slipgaji.js"></script>
