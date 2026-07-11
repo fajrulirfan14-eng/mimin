@@ -215,6 +215,7 @@ async function openAmplopDetail(data) {
   if (titleEl) titleEl.textContent = `Detail Setoran - ${formatTanggalIndo(data.tanggal)}`;
 
   document.getElementById("amplopDetailOverlay")?.classList.add("show");
+  if (window.innerWidth <= 768) history.pushState({ popup: true }, "", "");
   document.getElementById("amplopDetailPanel")?.classList.add("show");
 
   if (bodyEl) bodyEl.innerHTML = `<div class="amplop-list-empty">Memuat...</div>`;

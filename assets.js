@@ -31,7 +31,7 @@ function openAssetsPanel() {
   document.getElementById("assetsEmpty").style.display   = "none";
   document.getElementById("assetsContent").style.display = "flex";
   document.getElementById("assetsDetailWrapper")?.classList.add("show");
-
+  if (window.innerWidth <= 768) history.pushState({ panel: true }, "", "");
   if (window.innerWidth <= 768) {
     const backBtn = document.getElementById("assetsBackBtn");
     if (backBtn) backBtn.style.display = "flex";

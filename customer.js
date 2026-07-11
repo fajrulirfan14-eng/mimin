@@ -18,6 +18,7 @@ window.initCustomerView = async function() {
     } else {
       middlePanel?.classList.remove("show");
       document.getElementById("topbarBackBtn").style.display = "none";
+      if (window.innerWidth <= 768) history.pushState({ panel: true }, "", "");
       if (bottomNav) {
       bottomNav.style.display = "flex";
       requestAnimationFrame(() => { bottomNav.style.transform = ""; });
@@ -472,6 +473,7 @@ async function showHistoryView() {
   resetCustRightPanel();
   if (window.innerWidth <= 768) {
     document.getElementById("custMiddlePanel")?.classList.add("show");
+    if (window.innerWidth <= 768) history.pushState({ panel: true }, "", "");
     const backBtn = document.getElementById("topbarBackBtn");
     if (backBtn) backBtn.style.display = "flex";
   }

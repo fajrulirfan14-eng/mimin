@@ -53,6 +53,7 @@ function openSoPopup(overlayId) {
   if (!overlay) return;
   overlay.style.display = "block";
   requestAnimationFrame(() => overlay.classList.add("show"));
+  if (window.innerWidth <= 768) history.pushState({ popup: true }, "", "");
 }
 
 function closeSoPopup(overlayId) {

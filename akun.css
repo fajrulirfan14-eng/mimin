@@ -232,4 +232,12 @@
   .akun-panel-right.show { transform: translateX(0); }
   .akun-back-btn { display: flex !important; }
   .akun-tambah-box { max-width: 100%; border-radius: 0; max-height: 100vh; }
+
+  .akun-list,
+  .akun-detail-body {
+    padding-bottom: 84px !important;
+  }
+  .akun-detail-footer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 64px);
+  }
 }

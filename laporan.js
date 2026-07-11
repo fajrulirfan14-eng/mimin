@@ -8,6 +8,7 @@ window.initLaporanView = async function() {
 
   document.getElementById("topbarBackBtn")?.addEventListener("click", () => {
     document.getElementById("lapDetailWrapper")?.classList.remove("show");
+    if (window.innerWidth <= 768) history.pushState({ panel: true }, "", "");
     document.getElementById("topbarBackBtn").style.display = "none";
     lapActiveKurirUid = null;
     loadLapKurirList();

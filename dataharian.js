@@ -13,6 +13,7 @@ window.initDataharianView = async function() {
 
   document.getElementById("topbarBackBtn")?.addEventListener("click", () => {
     document.getElementById("dhDetailWrapper")?.classList.remove("show");
+    if (window.innerWidth <= 768) history.pushState({ panel: true }, "", "");
     document.getElementById("topbarBackBtn").style.display = "none";
     activeKurirUid  = null;
     activeKurirUser = null;

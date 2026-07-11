@@ -811,4 +811,13 @@
     transition: transform .25s ease-out;
   }
   .cust-right-panel.show { transform: translateX(0); }
+
+  .cust-list-body,
+  .cust-right-body,
+  .cust-detail-list {
+    padding-bottom: 84px;
+  }
+  .cust-edit-footer {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 64px);
+  }
 }

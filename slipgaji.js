@@ -58,7 +58,7 @@ window.openSlipGajiPanel = function() {
   document.getElementById("rekapDistribusiDetailWrapper")?.classList.remove("show");
   document.getElementById("assetsDetailWrapper")?.classList.remove("show");
   document.getElementById("slipGajiDetailWrapper")?.classList.add("show");
-
+  if (window.innerWidth <= 768) history.pushState({ panel: true }, "", "");
   document.getElementById("slipGajiFormWrap").style.display = "none";
   slipGajiSelectedUid = null;
 

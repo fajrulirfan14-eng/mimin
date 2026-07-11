@@ -141,6 +141,8 @@ window.showView = function(viewName) {
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.getElementById(`view-${viewName}`)?.classList.add("active");
   const tambahBtn = document.getElementById("topbarTambahCustomer");
+  const purchaseBtn = document.getElementById("topbarPurchase");
+  if (purchaseBtn) purchaseBtn.style.display = viewName === "customer" ? "none" : "flex";
   if (tambahBtn) tambahBtn.style.display = viewName === "customer" ? "flex" : "none";
 
   // update nav active
@@ -395,9 +397,21 @@ function initBottomNavMore() {
   const closeSheet = () => {
     sheet.classList.remove("show");
     sheet.style.transform = "";
+    const icon = moreBtn.querySelector("i");
+    if (icon) icon.className = "fa-solid fa-ellipsis";
   };
 
-  moreBtn.addEventListener("click", e => { e.stopPropagation(); openSheet(); });
+  const moreIcon = moreBtn.querySelector("i");
+  moreBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    if (sheet.classList.contains("show")) {
+      closeSheet();
+      moreIcon.className = "fa-solid fa-ellipsis";
+    } else {
+      openSheet();
+      moreIcon.className = "fa-solid fa-xmark";
+    }
+  });
   document.addEventListener("click", e => {
     if (sheet.classList.contains("show") && !e.target.closest("#bottomNavMoreSheet") && !e.target.closest("#bottomNavMoreBtn")) {
       closeSheet();
@@ -467,6 +481,96 @@ function setTopbarAvatar() {
     avatarEl.textContent = (user.nama || user.email || "A")[0].toUpperCase();
   }
 }
+
+/* ── ANDROID BACK BUTTON HANDLER ── */
+(function initBackButtonHandler() {
+  // push state awal
+  history.pushState({ view: "home" }, "", "");
+
+  // setiap buka view, push state
+  const originalShowView = window.showView;
+  window.showView = function(viewName) {
+    originalShowView(viewName);
+    if (viewName !== "home") {
+      history.pushState({ view: viewName }, "", "");
+    }
+  };
+
+  window.addEventListener("popstate", () => {
+    // 1. Cek popup/overlay yang terbuka — tutup dulu
+    const popups = [
+      // amplop konfirmasi
+      document.getElementById("amplopKonfirmasiOverlay"),
+      // hari libur
+      document.getElementById("hariLiburOverlay"),
+      // amplop detail
+      document.getElementById("amplopDetailOverlay"),
+      // stock opname popup
+      document.getElementById("soPopupMainOverlay"),
+      document.getElementById("soPopupPlusOverlay"),
+      // akun tambah
+      document.getElementById("akunTambahOverlay"),
+      // dsm foto/fee popup
+      document.getElementById("dsmFeeOverlay"),
+      // akun konfirmasi
+      document.getElementById("akunKonfirmasiOverlay"),
+      // amplop range
+      document.getElementById("amplopRangeOverlay"),
+    ];
+
+    for (const popup of popups) {
+      if (popup && (popup.style.display === "flex" || popup.style.display === "block" || popup.classList.contains("show"))) {
+        popup.style.display = "none";
+        popup.classList.remove("show");
+        history.pushState({ view: currentView }, "", "");
+        return;
+      }
+    }
+
+    // 2. Cek panel detail yang terbuka — tutup panel
+    const panels = [
+      // rekap distribusi panels
+      { wrapper: document.getElementById("rekapDistribusiDetailWrapper"), back: document.getElementById("rekapDistribusiBackBtn") },
+      { wrapper: document.getElementById("assetsDetailWrapper"), back: document.getElementById("assetsBackBtn") },
+      { wrapper: document.getElementById("slipGajiDetailWrapper"), back: document.getElementById("slipGajiToRekapBackBtn") },
+      // rekap produksi panel
+      { wrapper: document.getElementById("rekapProduksiDetailWrapper"), back: document.getElementById("rekapProduksiBackBtn") },
+      // akun panel kanan (mobile)
+      { wrapper: document.getElementById("akunPanelRight"), back: document.getElementById("akunBackBtn") },
+      // laporan detail
+      { wrapper: document.getElementById("lapDetailWrapper"), back: document.getElementById("lapDetailBackBtn") },
+      // data harian detail
+      { wrapper: document.getElementById("dhDetailWrapper"), back: document.getElementById("dhDetailBackBtn") },
+      // customer panels (right dulu, baru middle)
+      { wrapper: document.getElementById("custRightPanel"), back: document.getElementById("custRightBack") },
+      { wrapper: document.getElementById("custMiddlePanel"), back: document.getElementById("topbarBackBtn") },
+    ];
+
+    for (const panel of panels) {
+      if (panel.wrapper && panel.wrapper.classList.contains("show")) {
+        panel.wrapper.classList.remove("show");
+        if (panel.back) panel.back.style.display = "none";
+        history.pushState({ view: currentView }, "", "");
+        return;
+      }
+    }
+
+    // 3. Cek bottom sheet / overlay yang punya class .show
+    const overlays = document.querySelectorAll(".amplop-detail-overlay.show, .so-popup-overlay.show");
+    for (const overlay of overlays) {
+      overlay.classList.remove("show");
+      overlay.style.display = "none";
+      history.pushState({ view: currentView }, "", "");
+      return;
+    }
+
+    // 4. Kalau tidak ada panel/popup terbuka — kembali ke Home
+    if (currentView !== "home") {
+      window.showView("home");
+      history.pushState({ view: "home" }, "", "");
+    }
+  });
+})();
 
 /* ── VISIBILITY CHANGE ── */
 document.addEventListener("visibilitychange", () => {

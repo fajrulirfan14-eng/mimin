@@ -166,7 +166,7 @@ window.initRekapDistribusiView = function() {
       document.getElementById("rekapDistribusiEmpty").style.display   = "none";
       document.getElementById("rekapDistribusiContent").style.display = "flex";
       document.getElementById("rekapDistribusiDetailWrapper")?.classList.add("show");
-
+      if (window.innerWidth <= 768) history.pushState({ panel: true }, "", "");
       if (window.innerWidth <= 768) {
         const backBtn = document.getElementById("rekapDistribusiBackBtn");
         if (backBtn) backBtn.style.display = "flex";
