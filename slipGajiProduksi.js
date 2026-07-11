@@ -199,7 +199,7 @@ async function cekSlipGajiProdSudahDikirimBatch(uids) {
     const badge = document.getElementById(`slipGajiProdBadge-${uid}`);
     if (!badge) return;
     try {
-      const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGajiProduksi", periode));
+      const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGaji", periode));
       badge.style.display = snap.exists() ? "flex" : "none";
     } catch (err) {
       console.error("❌ cekSlipGajiProdSudahDikirim:", err);
@@ -443,7 +443,7 @@ async function simpanSlipGajiProd() {
     }
 
     await window.setDoc(
-      window.doc(window.db, "users", slipGajiProdSelectedUid, "slipGajiProduksi", periode),
+      window.doc(window.db, "users", slipGajiProdSelectedUid, "slipGaji", periode),
       {
         catatan,
         createdAt: window.serverTimestamp(),
