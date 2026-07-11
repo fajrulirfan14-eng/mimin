@@ -38,6 +38,7 @@
 <link rel="stylesheet" href="slipgajiprod.css">
 <link rel="stylesheet" href="rinciandistribusi.css">
 <link rel="stylesheet" href="akun.css">
+<link rel="stylesheet" href="profil.css">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -2407,6 +2408,82 @@
           </div>
           
         </div>
+        
+        <!-- PROFIL -->
+        <div class="view" id="view-profil">
+          <div class="view-scroll">
+            <div class="profil-page">
+
+              <!-- HEADER PROFIL -->
+              <div class="profil-header">
+                <div class="profil-foto-wrap">
+                  <img class="profil-foto" id="profilFoto" src="" alt="">
+                  <button class="profil-foto-btn" id="profilFotoBtn">
+                    <i class="fa-solid fa-camera"></i>
+                  </button>
+                  <input type="file" id="profilFotoInput" accept="image/*" style="display:none">
+                </div>
+                <div class="profil-nama" id="profilNama">-</div>
+                <div class="profil-role" id="profilRole">-</div>
+                <div class="profil-email" id="profilEmail">-</div>
+              </div>
+
+              <!-- INFO KANTOR CABANG -->
+              <div class="profil-section">
+                <div class="profil-section-title">Kantor Cabang</div>
+                <div class="profil-info-row">
+                  <span class="profil-info-label">Nama Cabang</span>
+                  <span class="profil-info-val" id="profilCabangNama">-</span>
+                </div>
+                <div class="profil-info-row">
+                  <span class="profil-info-label">ID Cabang</span>
+                  <span class="profil-info-val" id="profilCabangId">-</span>
+                </div>
+              </div>
+
+              <!-- EDIT PROFIL -->
+              <div class="profil-section">
+                <div class="profil-section-title">Edit Profil</div>
+                <div class="profil-form-group">
+                  <div class="profil-form-label">Nama</div>
+                  <input type="text" class="profil-form-input" id="profilInputNama" placeholder="Nama lengkap">
+                </div>
+                <div class="profil-form-group">
+                  <div class="profil-form-label">No Telpon</div>
+                  <input type="tel" class="profil-form-input" id="profilInputTelpon" placeholder="No telpon">
+                </div>
+                <div class="profil-form-group">
+                  <div class="profil-form-label">Alamat</div>
+                  <input type="text" class="profil-form-input" id="profilInputAlamat" placeholder="Alamat">
+                </div>
+                <button class="profil-save-btn" id="profilSaveBtn">Simpan Profil</button>
+              </div>
+
+              <!-- PENGATURAN -->
+              <div class="profil-section">
+                <div class="profil-section-title">Pengaturan</div>
+                <div class="profil-setting-row">
+                  <div class="profil-setting-info">
+                    <i class="fa-solid fa-moon"></i>
+                    <span>Dark Mode</span>
+                  </div>
+                  <label class="profil-toggle">
+                    <input type="checkbox" id="profilDarkModeToggle">
+                    <span class="profil-toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- LOGOUT -->
+              <div class="profil-section">
+                <button class="profil-logout-btn" id="profilLogoutBtn">
+                  <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
 
         <!-- POPUP INPUT HARI LIBUR -->
         <div class="amplop-konfirmasi-overlay" id="hariLiburOverlay" style="display:none">
@@ -2622,6 +2699,7 @@
 <script src="slipGajiProduksi.js"></script>
 <script src="rincianpemasukan.js"></script>
 <script src="akun.js"></script>
+<script src="profil.js"></script>
 
 </body>
 </html>

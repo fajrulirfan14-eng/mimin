@@ -1,3 +1,4 @@
+
 :root {
   /* Brand */
   --brand-dark:     #3b1f08;
@@ -54,4 +55,53 @@
   /* Layout */
   --sidebar-width:  260px;
   --topbar-height:  64px;
+}
+
+[data-theme="dark"] {
+  /* Brand — tetap sama */
+  --brand-dark:     #3b1f08;
+  --brand-primary:  #B08A5C;
+  --brand-mid:      #D4B185;
+  --brand-light:    #e8cba0;
+  --brand-pale:     rgba(176,138,92,0.15);
+
+  /* Background */
+  --bg-page:        #1a1a1e;
+  --bg-card:        #242428;
+  --bg-sidebar:     #1e1e22;
+  --bg-sidebar-hover: rgba(255,255,255,0.08);
+  --bg-sidebar-active: rgba(255,255,255,0.15);
+  --bg-topbar:      #1e1e22;
+  --bg-input:       #2a2a2e;
+  --bg-hover:       rgba(212,177,133,0.08);
+
+  /* Text */
+  --text-primary:   #e8e0d8;
+  --text-secondary: #a09585;
+  --text-muted:     #6d5f52;
+  --text-white:     #ffffff;
+  --text-sidebar:   rgba(255,255,255,0.75);
+  --text-sidebar-active: #ffffff;
+
+  /* Border */
+  --border-main:    rgba(212,177,133,0.12);
+  --border-card:    rgba(212,177,133,0.12);
+
+  /* Shadow */
+  --shadow-sm:      rgba(0,0,0,0.15);
+  --shadow-md:      rgba(0,0,0,0.25);
+  --shadow-lg:      rgba(0,0,0,0.35);
+  --shadow-sidebar: rgba(0,0,0,0.6);
+
+  /* Status */
+  --success:        #22c55e;
+  --success-bg:     rgba(34,197,94,0.12);
+  --warning:        #eab308;
+  --warning-bg:     rgba(234,179,8,0.12);
+  --danger:         #ef4444;
+  --danger-bg:      rgba(239,68,68,0.12);
+  --info:           #3b82f6;
+  --info-bg:        rgba(59,130,246,0.12);
+  --accent:         #a78bfa;
+  --accent-bg:      rgba(167,139,250,0.12);
 }

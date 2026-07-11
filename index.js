@@ -81,7 +81,8 @@ const VIEW_TITLES = {
   amplop:       "Amplop",
   rekapdistribusi: "Rekap Distribusi",
   rekapproduksi: "Rekap Produksi",
-  akun:         "Akun"
+  akun:         "Akun",
+  profil: "Profil"
 };
 
 // views yang tampilkan topbar reload
@@ -223,6 +224,10 @@ function lazyInitView(viewName) {
       _inited.akun = true;
       window.initAkunView?.();
       break;
+    case "profil":
+      _inited.profil = true;
+      window.initProfilView?.();
+      break;
   }
 }
 
@@ -304,7 +309,7 @@ function initTopbar() {
 
   // avatar
   document.getElementById("topbarAvatar")?.addEventListener("click", () => {
-    showView("akun");
+    showView("profil");
   });
 }
 function initPurchaseSheet() {
@@ -599,3 +604,21 @@ window.compressImage = function(blob, maxWidth = 1280, quality = 0.78) {
     img.src = url;
   });
 };
+
+/* ── DARK MODE ── */
+function initDarkMode() {
+  const saved = localStorage.getItem("theme");
+  if (saved === "dark") document.documentElement.setAttribute("data-theme", "dark");
+
+  window.toggleDarkMode = function() {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    if (isDark) {
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("theme", "light");
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+      localStorage.setItem("theme", "dark");
+    }
+  };
+}
+initDarkMode();
