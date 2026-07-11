@@ -13,6 +13,7 @@ const SLIP_GAJI_PROD_TEMPLATE = {
 let slipGajiProdData = null;
 let slipGajiProdSelectedRole = null;
 let slipGajiProdPendapatanTotal = 0;
+let slipGajiProdPendapatanDetail = {}; // { jenisLoyang: { qty, harga, pembayaran, hari } }
 
 window.initSlipGajiProdView = function() {
   document.getElementById("slipGajiProdReloadBtn")?.addEventListener("click", async () => {
@@ -235,9 +236,25 @@ async function pilihKurirSlipGajiProd(uid, nama, role) {
   if (role === "produksi") {
     await renderSlipGajiProdPendapatanTable(uid);
   } else {
-    // adminCabang: Pendapatan cuma "Gaji Pokok" input manual
+    // adminCabang: Pendapatan cuma "Gaji Pokok" input manual,
+    // coba load nilai yang pernah disimpan sebelumnya untuk periode ini
+    slipGajiProdPendapatanDetail = {};
+    let gajiPokokValue = 0;
+
+    try {
+      const periode = `${rekapProdTahun}-${String(rekapProdBulan + 1).padStart(2, "0")}`;
+      const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGaji", periode));
+      if (snap.exists()) {
+        const slipArr = snap.data()?.slipGaji || [];
+        const pendapatanObj = slipArr.find(s => s && s.pendapatan)?.pendapatan || {};
+        gajiPokokValue = Number(pendapatanObj?.gajiPokok?.pembayaran) || 0;
+      }
+    } catch (err) {
+      console.error("❌ load gajiPokok existing (skip, pakai default 0):", err);
+    }
+
     slipGajiProdData.pendapatan = [
-      { key: "gajiPokok", label: "Gaji Pokok", pembayaran: 0, fixed: true },
+      { key: "gajiPokok", label: "Gaji Pokok", pembayaran: gajiPokokValue, fixed: true },
     ];
     renderSlipGajiProdPendapatanManual();
   }
@@ -250,6 +267,7 @@ async function renderSlipGajiProdPendapatanTable(uid) {
   if (!bodyEl) return;
 
   bodyEl.innerHTML = `<tr><td colspan="4" class="slipgajiprod-empty-cell">Memuat...</td></tr>`;
+  slipGajiProdPendapatanDetail = {};
 
   try {
     const kantorCabang = await window.idb.getKantorCabang();
@@ -273,11 +291,16 @@ async function renderSlipGajiProdPendapatanTable(uid) {
     }
 
     let total = 0;
+    const detailMap = {};
+
     bodyEl.innerHTML = jenisList.map(jenis => {
       const qty   = qtyMap[jenis]   || 0;
       const harga = hargaMap[jenis] || 0;
       const upah  = qty * harga;
       total += upah;
+
+      detailMap[jenis] = { qty, harga, pembayaran: upah, hari: qty };
+
       return `
         <tr>
           <td>${jenis}</td>
@@ -292,10 +315,12 @@ async function renderSlipGajiProdPendapatanTable(uid) {
       </tr>`;
 
     slipGajiProdPendapatanTotal = total;
+    slipGajiProdPendapatanDetail = detailMap;
   } catch (err) {
     console.error("❌ renderSlipGajiProdPendapatanTable:", err);
     bodyEl.innerHTML = `<tr><td colspan="4" class="slipgajiprod-empty-cell">Gagal memuat</td></tr>`;
     slipGajiProdPendapatanTotal = 0;
+    slipGajiProdPendapatanDetail = {};
   }
 
   hitungTotalPenerimaanProd();
@@ -426,21 +451,24 @@ async function simpanSlipGajiProd() {
     const catatan      = document.getElementById("slipGajiProdCatatan").value.trim();
 
     const toObj = arr => arr.reduce((acc, item) => {
-      acc[item.key] = { hari: item.hari, pembayaran: item.pembayaran };
+      acc[item.key] = { hari: item.hari ?? "-", pembayaran: Number(item.pembayaran) || 0 };
       return acc;
     }, {});
 
     const sum = arr => arr.reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
     const totalPenerimaan = slipGajiProdPendapatanTotal + sum(slipGajiProdData.bonus) - sum(slipGajiProdData.potongan);
 
+    // pendapatan: untuk produksi pakai rincian per jenis loyang (qty/harga/upah),
+    // untuk adminCabang pakai rincian manual (Gaji Pokok)
+    const pendapatanObj = slipGajiProdSelectedRole === "produksi"
+      ? slipGajiProdPendapatanDetail
+      : toObj(slipGajiProdData.pendapatan);
+
     const slipGajiPayload = [
-      { bonus:    toObj(slipGajiProdData.bonus) },
-      { potongan: toObj(slipGajiProdData.potongan) },
+      { pendapatan: pendapatanObj },
+      { bonus:      toObj(slipGajiProdData.bonus) },
+      { potongan:   toObj(slipGajiProdData.potongan) },
     ];
-    // adminCabang: pendapatan manual (Gaji Pokok) ikut disimpan sebagai rincian
-    if (slipGajiProdSelectedRole !== "produksi") {
-      slipGajiPayload.unshift({ pendapatan: toObj(slipGajiProdData.pendapatan) });
-    }
 
     await window.setDoc(
       window.doc(window.db, "users", slipGajiProdSelectedUid, "slipGaji", periode),
