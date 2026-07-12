@@ -5,6 +5,7 @@ window.initCustomerView = async function() {
   }
   await loadCustGroups();
   loadRollingBadge();
+  updateVerifikasiBadge();
   document.getElementById("topbarBackBtn")?.addEventListener("click", () => {
     const rightPanel  = document.getElementById("custRightPanel");
     const middlePanel = document.getElementById("custMiddlePanel");
@@ -455,18 +456,206 @@ async function loadCustGroups() {
       item.classList.add("active");
 
       const menu = item.dataset.menu;
-      const titles = { rolling: "Rolling Customer", nonaktif: "Non Aktif", history: "History Customer" };
+      const titles = { rolling: "Rolling Customer", nonaktif: "Non Aktif", history: "History Customer", verifikasi: "Verifikasi" };
       if (menu === "nonaktif") {
         showNonAktifView();
       } else if (menu === "history") {
         showHistoryView();
       } else if (menu === "rolling") {
         showRollingView();
+      } else if (menu === "verifikasi") {
+        showVerifikasiView();
       } else {
         showCustDetail(titles[menu] || menu, null, menu);
       }
     });
   });
+}
+async function updateVerifikasiBadge() {
+  try {
+    const kantorCabang = await window.idb.getKantorCabang();
+    const idCabang     = kantorCabang?.id || "";
+    if (!idCabang) return;
+
+    // ⚠️ ASUMSI nama field: "idCabangTujuan" — koreksi kalau beda
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "requestCabang"),
+      window.where("idCabangTujuan", "==", idCabang),
+      window.where("status", "==", "pending")
+    ));
+
+    const count = snap.size;
+    const menuItem = document.querySelector(".cust-menu-item[data-menu='verifikasi']");
+    if (!menuItem) return;
+
+    let badge = menuItem.querySelector(".cust-rolling-menu-badge");
+    if (count === 0) {
+      badge?.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement("span");
+      badge.className = "cust-rolling-menu-badge";
+      menuItem.appendChild(badge);
+    }
+    badge.textContent = count;
+  } catch (err) {
+    console.error("❌ updateVerifikasiBadge:", err);
+  }
+}
+window.updateVerifikasiBadge = updateVerifikasiBadge;
+async function showVerifikasiView() {
+  resetCustRightPanel();
+  if (window.innerWidth <= 768) {
+    document.getElementById("custMiddlePanel")?.classList.add("show");
+    if (window.innerWidth <= 768) history.pushState({ panel: true }, "", "");
+    const backBtn = document.getElementById("topbarBackBtn");
+    if (backBtn) backBtn.style.display = "flex";
+  }
+
+  const empty   = document.getElementById("custDetailEmpty");
+  const content = document.getElementById("custDetailContent");
+  const titleEl = document.getElementById("custDetailTitle");
+  if (empty)   empty.style.display   = "none";
+  if (content) content.style.display = "flex";
+  if (titleEl) titleEl.textContent   = "Verifikasi";
+
+  document.getElementById("custHariChips").style.display = "none";
+  document.getElementById("custReloadBtn").style.display = "none";
+
+  const searchWrap = document.querySelector(".cust-search-wrap");
+  if (searchWrap) searchWrap.style.display = "none";
+
+  const list = document.getElementById("custDetailList");
+  if (!list) return;
+  list.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
+
+  try {
+    const kantorCabang = await window.idb.getKantorCabang();
+    const idCabang     = kantorCabang?.id || "";
+
+    // ⚠️ ASUMSI nama field: "idCabangTujuan" — koreksi kalau beda
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "requestCabang"),
+      window.where("idCabangTujuan", "==", idCabang),
+      window.where("status", "==", "pending")
+    ));
+
+    if (snap.empty) {
+      list.innerHTML = `<div class="dh-ringkasan-empty">Tidak ada permintaan pindah cabang</div>`;
+      return;
+    }
+
+    const requests = [];
+    for (const docSnap of snap.docs) {
+      const reqData = docSnap.data();
+      const staffUid = reqData.idHunter;
+
+      // fetch role & foto dari users/{uid} (nama & cabang sudah ada langsung di requestCabang)
+      let userData = null;
+      if (staffUid) {
+        try {
+          const userSnap = await window.getDoc(window.doc(window.db, "users", staffUid));
+          if (userSnap.exists()) userData = userSnap.data();
+        } catch (err) {
+          console.error("❌ fetch user verifikasi:", err);
+        }
+      }
+
+      requests.push({
+        requestId: docSnap.id,
+        uid: staffUid,
+        nama: reqData.namaHunter || userData?.nama || "Tanpa Nama",
+        role: userData?.role || "Hunter",
+        namaCabangAsal: reqData.namaCabangAsal || "-",
+        foto: userData?.foto || "",
+      });
+    }
+
+    renderVerifikasiList(requests);
+
+  } catch (err) {
+    console.error("❌ showVerifikasiView:", err);
+    list.innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat data</div>`;
+  }
+}
+function renderVerifikasiList(requests) {
+  const list = document.getElementById("custDetailList");
+  if (!list) return;
+
+  list.innerHTML = requests.map(r => {
+    const inisial = (r.nama || "?").trim().charAt(0).toUpperCase();
+    const avatar  = r.foto
+      ? `<img src="${esc(r.foto)}" alt="">`
+      : inisial;
+
+    return `
+      <div class="cust-verifikasi-card" data-request-id="${esc(r.requestId)}">
+        <div class="cust-verifikasi-avatar">${avatar}</div>
+        <div class="cust-verifikasi-info">
+          <div class="cust-verifikasi-nama">${esc(r.nama)}</div>
+          <div class="cust-verifikasi-role">${esc(r.role)} · dari cabang ${esc(r.namaCabangAsal)}</div>
+        </div>
+        <div class="cust-verifikasi-actions">
+          <button class="cust-verifikasi-btn tolak" data-action="tolak" data-request-id="${esc(r.requestId)}">Tolak</button>
+          <button class="cust-verifikasi-btn setuju" data-action="setuju" data-request-id="${esc(r.requestId)}" data-uid="${esc(r.uid)}">Setujui</button>
+        </div>
+      </div>`;
+  }).join("");
+
+  list.querySelectorAll(".cust-verifikasi-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const requestId = btn.dataset.requestId;
+      const action    = btn.dataset.action;
+      const uid       = btn.dataset.uid;
+
+      btn.disabled = true;
+      if (action === "setuju") {
+        await approveVerifikasi(requestId, uid);
+      } else {
+        await rejectVerifikasi(requestId);
+      }
+    });
+  });
+}
+async function approveVerifikasi(requestId, uid) {
+  try {
+    const kantorCabang = await window.idb.getKantorCabang();
+    const idCabang     = kantorCabang?.id || "";
+    const adminUid = window.auth?.currentUser?.uid;
+    await window.setDoc(
+      window.doc(window.db, "users", uid),
+      { idCabang, kantorCabang: kantorCabang?.namaCabang || "", createdBy: adminUid },
+      { merge: true }
+    );
+    await window.setDoc(
+      window.doc(window.db, "requestCabang", requestId),
+      { status: "approved", updatedAt: window.serverTimestamp() },
+      { merge: true }
+    );
+    window.showToast("Permintaan pindah cabang disetujui", "success");
+    await showVerifikasiView();
+    await updateVerifikasiBadge();
+  } catch (err) {
+    console.error("❌ approveVerifikasi:", err);
+    window.showToast("Gagal menyetujui permintaan", "error");
+  }
+}
+async function rejectVerifikasi(requestId) {
+  try {
+    await window.setDoc(
+      window.doc(window.db, "requestCabang", requestId),
+      { status: "rejected", updatedAt: window.serverTimestamp() },
+      { merge: true }
+    );
+
+    window.showToast("Permintaan pindah cabang ditolak", "success");
+    await showVerifikasiView();
+    await updateVerifikasiBadge();
+  } catch (err) {
+    console.error("❌ rejectVerifikasi:", err);
+    window.showToast("Gagal menolak permintaan", "error");
+  }
 }
 
 async function showHistoryView() {

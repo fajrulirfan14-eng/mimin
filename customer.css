@@ -781,6 +781,68 @@
 .cust-rolling-target-count {
   font-size: 11px; color: var(--text-muted); margin-top: 1px;
 }
+
+.cust-verifikasi-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+.cust-verifikasi-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--brand-pale);
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 15px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.cust-verifikasi-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.cust-verifikasi-info { flex: 1; min-width: 0; }
+.cust-verifikasi-nama { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.cust-verifikasi-role { font-size: 11px; color: var(--text-muted); margin-top: 2px; text-transform: capitalize; }
+
+.cust-verifikasi-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cust-verifikasi-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cust-verifikasi-btn.setuju {
+  background: var(--success);
+  color: #fff;
+}
+
+.cust-verifikasi-btn.tolak {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.cust-verifikasi-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (min-width: 769px) {
   .cust-add-overlay {
     align-items: center; justify-content: center;
