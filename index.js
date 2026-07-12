@@ -445,9 +445,8 @@ function initTopbar() {
   });
   // notif
   document.getElementById("topbarNotif")?.addEventListener("click", () => {
-    showToast("Notifikasi coming soon", "");
+    openNotifSheet();
   });
-
   // avatar
   document.getElementById("topbarAvatar")?.addEventListener("click", () => {
     showView("profil");
@@ -518,6 +517,7 @@ function initPurchaseSheet() {
   sheet.addEventListener("touchmove", onTouchMove, { passive: false });
   sheet.addEventListener("touchend", onTouchEnd);
 }
+
 /* ── TOPBAR AVATAR ── */
 function setTopbarAvatar() {
   const user    = window.currentUser;

@@ -604,19 +604,48 @@ function renderVerifikasiList(requests) {
   }).join("");
 
   list.querySelectorAll(".cust-verifikasi-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const requestId = btn.dataset.requestId;
       const action    = btn.dataset.action;
       const uid       = btn.dataset.uid;
+      const card      = btn.closest(".cust-verifikasi-card");
+      const nama      = card?.querySelector(".cust-verifikasi-nama")?.textContent || "-";
 
-      btn.disabled = true;
       if (action === "setuju") {
-        await approveVerifikasi(requestId, uid);
+        konfirmasiApproveVerifikasi(requestId, uid, nama, btn);
       } else {
-        await rejectVerifikasi(requestId);
+        rejectVerifikasi(requestId);
       }
     });
   });
+}
+function konfirmasiApproveVerifikasi(requestId, uid, nama, btn) {
+  const existing = document.getElementById("custApproveOverlay");
+  if (existing) existing.remove();
+
+  const el = document.createElement("div");
+  el.id = "custApproveOverlay";
+  el.className = "lap-frozen-overlay";
+  el.innerHTML = `
+    <div class="lap-frozen-box">
+      <div class="lap-frozen-icon">⚖︎</div>
+      <div class="lap-frozen-title">Setujui Pindah Cabang?</div>
+      <div class="lap-frozen-desc">
+        <strong>${esc(nama)}</strong> akan dipindahkan ke cabang ini.
+      </div>
+      <div class="lap-frozen-footer">
+        <button class="lap-frozen-btn-cancel" id="custApproveNo">Batal</button>
+        <button class="lap-frozen-btn-save" id="custApproveYes">Ya, Setujui</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+
+  document.getElementById("custApproveNo").onclick = () => el.remove();
+  document.getElementById("custApproveYes").onclick = async () => {
+    el.remove();
+    if (btn) btn.disabled = true;
+    await approveVerifikasi(requestId, uid);
+  };
 }
 async function approveVerifikasi(requestId, uid) {
   try {

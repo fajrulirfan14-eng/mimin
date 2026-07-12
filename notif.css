@@ -1,0 +1,158 @@
+/* ── NOTIF SHEET ── */
+#notifSheetOverlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.4);
+  z-index: 9998; opacity: 0; pointer-events: none;
+  transition: opacity .25s ease;
+}
+#notifSheetOverlay.show { opacity: 1; pointer-events: auto; }
+#notifSheetPanel {
+  position: fixed; top: 0; right: 0; height: 100%;
+  width: 380px; max-width: 100%;
+  background: var(--bg-card);
+  border-radius: 18px 0 0 18px;
+  box-shadow: -4px 0 24px rgba(0,0,0,.15);
+  z-index: 9999;
+  transform: translateX(100%);
+  transition: transform .28s cubic-bezier(.32,1,.23,1);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+#notifSheetOverlay.show #notifSheetPanel { transform: translateX(0); }
+@media (max-width: 768px) {
+  #notifSheetPanel { width: 80%; }
+}
+.notif-sheet-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid var(--border-card);
+  flex-shrink: 0;
+}
+.notif-sheet-title { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+.notif-sheet-close {
+  width: 32px; height: 32px; border-radius: 10px; border: none;
+  background: transparent; color: var(--text-muted);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 16px;
+}
+.notif-sheet-body {
+  flex: 1; overflow-y: auto; padding: 8px 0;
+}
+.notif-sheet-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 10px; color: var(--text-muted); font-size: 13px;
+  padding: 40px 20px; text-align: center;
+}
+.notif-sheet-empty i { font-size: 32px; opacity: .4; }
+
+.notif-sheet-tabs {
+  display: flex; gap: 4px; padding: 10px 14px 0;
+  flex-shrink: 0;
+}
+.notif-sheet-tab {
+  flex: 1; border: none; background: var(--bg-hover);
+  color: var(--text-muted); font-size: 12px; font-weight: 700;
+  padding: 9px 0; border-radius: 10px 10px 0 0; cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+}
+.notif-sheet-tab.active { background: var(--bg-page); color: var(--brand-primary); }
+
+.notif-tab-panel { display: none; padding: 14px 16px; }
+.notif-tab-panel.active { display: block; }
+
+.notif-form-photo-wrap { margin-bottom: 14px; }
+.notif-form-photo {
+  width: 100%; height: 120px; border-radius: 12px;
+  background: var(--bg-hover); border: 1px dashed var(--border-card);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; cursor: pointer;
+}
+.notif-form-photo img { width: 100%; height: 100%; object-fit: cover; }
+.notif-form-photo-placeholder {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  color: var(--text-muted); font-size: 12px;
+}
+.notif-form-photo-placeholder i { font-size: 22px; }
+
+.notif-form-group { margin-bottom: 14px; }
+.notif-form-label {
+  font-size: 12px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 6px; display: block;
+}
+.notif-form-input, .notif-form-textarea {
+  width: 100%; border: 1px solid var(--border-card); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; color: var(--text-primary);
+  background: var(--bg-card); box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+.notif-form-textarea { resize: vertical; }
+.notif-form-input:focus, .notif-form-textarea:focus {
+  outline: none; border-color: var(--brand-primary);
+}
+
+.notif-form-send-btn {
+  width: 100%; height: 44px; border: none; border-radius: 12px;
+  background: linear-gradient(135deg, var(--brand-primary), var(--brand-mid));
+  color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: 'Poppins', sans-serif;
+}
+.notif-form-send-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.notif-histori-card {
+  display: flex; gap: 10px; padding: 10px 16px;
+  border-bottom: 1px solid var(--border-card);
+}
+.notif-histori-photo {
+  width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex-shrink: 0;
+}
+.notif-histori-info { min-width: 0; flex: 1; }
+.notif-histori-judul { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.notif-histori-pesan {
+  font-size: 12px; color: var(--text-secondary);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin: 2px 0 4px;
+}
+.notif-histori-meta {
+  display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted);
+}
+.notif-histori-dibaca { font-weight: 600; color: var(--brand-primary); }
+
+.notif-histori-card {
+  position: relative;
+  cursor: pointer;
+  transition: background var(--transition-fast, .15s);
+}
+.notif-histori-card.selected { background: rgba(176,138,92,0.12); }
+
+.notif-histori-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--border-card); flex-shrink: 0;
+  display: none; align-items: center; justify-content: center;
+  color: #fff; font-size: 11px; margin-right: 2px;
+}
+.notif-sheet-body.select-mode .notif-histori-check { display: flex; }
+.notif-histori-card.selected .notif-histori-check {
+  background: var(--brand-primary); border-color: var(--brand-primary);
+}
+
+.notif-sheet-header-select {
+  display: none;
+  align-items: center; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid var(--border-card);
+  flex-shrink: 0;
+}
+.notif-sheet-header-select.show { display: flex; }
+.notif-sheet-header.hide { display: none; }
+.notif-select-count { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.notif-select-actions { display: flex; align-items: center; gap: 8px; }
+.notif-select-cancel {
+  border: none; background: transparent; color: var(--text-muted);
+  font-size: 13px; font-weight: 600; cursor: pointer; padding: 8px 10px;
+  font-family: 'Poppins', sans-serif;
+}
+.notif-select-delete {
+  border: none; background: var(--danger); color: #fff;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  padding: 8px 14px; border-radius: 10px;
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Poppins', sans-serif;
+}
+.notif-select-delete:disabled { opacity: .5; cursor: not-allowed; }
