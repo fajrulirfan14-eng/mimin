@@ -516,7 +516,7 @@ async function renderDsmTable() {
     if (!varianList.length) colgroup += `<col style="width:${REKAP_COL_VAR}px">`;
   });
   ["","","",""].forEach(() => colgroup += `<col style="width:50px">`);
-  colgroup += `<col></colgroup>`;
+  colgroup += `<col style="min-width:110px"></colgroup>`;
 
   // ── REKAP HEADER ──
   let rekapThead = `<tr>
@@ -525,7 +525,7 @@ async function renderDsmTable() {
     rekapThead += `<th colspan="${V}" class="dsm-th-group ${DSM_REKAP_CLASS[gi]}">${g}</th>`;
   });
   rekapThead += `<th colspan="4" class="dsm-th-group dsm-rk-customer">Customer</th>`;
-  rekapThead += `<th class="dsm-th-group dsm-rk-omset" style="width:100%">Omset</th></tr>`;
+  rekapThead += `<th class="dsm-th-group dsm-rk-omset" style="min-width:110px">Omset</th></tr>`;
   rekapThead += `<tr><th class="dsm-th-base" colspan="2"></th>`;
   rekapGroups2.forEach((g, gi) => {
     varianList.forEach(v => { rekapThead += `<th class="dsm-th-sub ${DSM_REKAP_CLASS[gi]}">${v}</th>`; });

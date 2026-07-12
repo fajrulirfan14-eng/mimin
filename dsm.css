@@ -313,6 +313,9 @@ th.dsm-rk-omset    { background:#2d6b2d; }
 
 /* ── MOBILE ── */
 @media (max-width: 768px) {
+  .dsm-layout {
+    padding-bottom: 80px;
+  }
   .dsm-toolbar {
     flex-wrap: wrap; padding: 8px 10px;
     overflow: visible;

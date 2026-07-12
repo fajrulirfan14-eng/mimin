@@ -91,8 +91,74 @@ const RELOAD_VIEWS = ["dataharian", "customer", "dsm", "laporan", "customerbaru"
 /* ── STATE ── */
 let currentView = "home";
 let _inited     = {};
+let unlockedPages = {};
+const PAGE_PASSWORD_VIEWS = ["rekapdistribusi", "rekapproduksi"];
+const PAGE_PASSWORD_COOLDOWN_MS = 15 * 60 * 1000;
+function isPageUnlocked(viewName) {
+  const unlockedAt = unlockedPages[viewName];
+  if (!unlockedAt) return false;
+  return (Date.now() - unlockedAt) < PAGE_PASSWORD_COOLDOWN_MS;
+}
+window.requestView = function(viewName) {
+  if (PAGE_PASSWORD_VIEWS.includes(viewName) && !isPageUnlocked(viewName)) {
+    openPagePasswordPopup(viewName);
+    return;
+  }
+  showView(viewName);
+};
+function openPagePasswordPopup(viewName) {
+  const overlay = document.getElementById("pagePasswordOverlay");
+  const input   = document.getElementById("pagePasswordInput");
+  const errEl   = document.getElementById("pagePasswordError");
+  if (!overlay || !input) return;
+  input.value = "";
+  if (errEl) errEl.style.display = "none";
+  overlay.dataset.targetView = viewName;
+  overlay.classList.add("show");
+  setTimeout(() => input.focus(), 100);
+}
+function closePagePasswordPopup() {
+  document.getElementById("pagePasswordOverlay")?.classList.remove("show");
+}
+async function verifyPagePassword() {
+  const overlay    = document.getElementById("pagePasswordOverlay");
+  const input      = document.getElementById("pagePasswordInput");
+  const errEl      = document.getElementById("pagePasswordError");
+  const targetView = overlay?.dataset.targetView;
+  if (!targetView) return;
 
-/* ── AUTH ── */
+  let kantor = null;
+  try { kantor = await window.idb.getKantorCabang(); } catch (err) { console.error("❌ getKantorCabang:", err); }
+  const savedPass = kantor?.pagePassword || "";
+
+  if (!savedPass) {
+    unlockedPages[targetView] = Date.now();
+    closePagePasswordPopup();
+    showView(targetView);
+    return;
+  }
+  if (input.value === savedPass) {
+    unlockedPages[targetView] = Date.now();
+    closePagePasswordPopup();
+    showView(targetView);
+  } else {
+    if (errEl) errEl.style.display = "block";
+    input.value = "";
+    input.focus();
+  }
+}
+function initPagePasswordPopup() {
+  const overlay = document.getElementById("pagePasswordOverlay");
+  overlay?.addEventListener("click", e => {
+    if (e.target === overlay) closePagePasswordPopup();
+  });
+  document.getElementById("pagePasswordCancelBtn")?.addEventListener("click", closePagePasswordPopup);
+  document.getElementById("pagePasswordSubmitBtn")?.addEventListener("click", verifyPagePassword);
+  document.getElementById("pagePasswordInput")?.addEventListener("keydown", e => {
+    if (e.key === "Enter") verifyPagePassword();
+  });
+}
+
 onAuthStateChanged(auth, async user => {
   if (!user) { window.location.href = "login.html"; return; }
   try {
@@ -111,70 +177,49 @@ onAuthStateChanged(auth, async user => {
   initApp();
 });
 
-/* ── INIT APP ── */
 function initApp() {
   setTopbarAvatar();
   initSidebar();
   initTopbar();
   initBottomNav();
-
-  // restore last view
+  initPagePasswordPopup();
   const last = localStorage.getItem("lastView") || "home";
   showView(last);
-
-  // show app
   requestAnimationFrame(() => {
     document.getElementById("app").style.visibility = "visible";
   });
 }
-
-/* ── SHOW VIEW ── */
 window.showView = function(viewName) {
   if (!document.getElementById(`view-${viewName}`)) viewName = "home";
-  // cleanup view lama sebelum ganti
   if (currentView === "amplop") window.onAmplopViewHide?.();
   currentView = viewName;
-  // restart listener kalau balik ke amplop
   if (viewName === "amplop" && _inited.amplop) {
     window.loadAmplopList?.();
   }
-  // switch view
   document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
   document.getElementById(`view-${viewName}`)?.classList.add("active");
   const tambahBtn = document.getElementById("topbarTambahCustomer");
   const purchaseBtn = document.getElementById("topbarPurchase");
   if (purchaseBtn) purchaseBtn.style.display = viewName === "customer" ? "none" : "flex";
   if (tambahBtn) tambahBtn.style.display = viewName === "customer" ? "flex" : "none";
-
-  // update nav active
   document.querySelectorAll(".nav-item, .bottom-nav-item").forEach(n => {
     n.classList.toggle("active", n.dataset.view === viewName);
   });
 
-  // topbar title
   const titleEl = document.getElementById("topbarTitle");
   if (titleEl) titleEl.textContent = VIEW_TITLES[viewName] || viewName;
-  // tabel btn
   const tabelBtn = document.getElementById("topbarTabel");
   if (tabelBtn) tabelBtn.style.display = viewName === "dataharian" ? "flex" : "none";
   const lapTabelBtn = document.getElementById("lapTopbarTabel");
   if (lapTabelBtn) lapTabelBtn.style.display = viewName === "laporan" ? "flex" : "none";
-  // back btn — reset
   const backBtn = document.getElementById("topbarBackBtn");
   if (backBtn) backBtn.style.display = "none";
-
-  // save
   localStorage.setItem("lastView", viewName);
-
-  // mobile: tutup sidebar
   if (window.innerWidth <= 768) closeSidebar();
-
-  // lazy init view
   lazyInitView(viewName);
 };
 function lazyInitView(viewName) {
   if (_inited[viewName]) return;
-
   switch (viewName) {
     case "home":
       _inited.home = true;
@@ -241,7 +286,7 @@ function initSidebar() {
   document.querySelectorAll(".nav-item[data-view], .bottom-nav-item[data-view]").forEach(item => {
     item.addEventListener("click", () => {
       const view = item.dataset.view;
-      if (view) showView(view);
+      if (view) requestView(view);
     });
   });
 
@@ -275,10 +320,106 @@ function closeSidebar() {
   overlay?.classList.remove("show");
   localStorage.setItem("sidebarOpen", "false");
 }
+/* ── BOTTOM NAV ── */
+function initBottomNav() {
+  document.querySelectorAll(".bottom-nav-item[data-view]").forEach(item => {
+    item.addEventListener("click", () => {
+      const view = item.dataset.view;
+      if (view) showView(view);
+    });
+  });
+
+  initBottomNavMore();
+}
+function initBottomNavMore() {
+  const moreBtn = document.getElementById("bottomNavMoreBtn");
+  const sheet   = document.getElementById("bottomNavMoreSheet");
+  const handle  = sheet?.querySelector(".bottom-nav-more-handle");
+  if (!moreBtn || !sheet) return;
+
+  const openSheet  = () => {
+    sheet.classList.add("show");
+    sheet.style.transform = "";
+  };
+  const closeSheet = () => {
+    sheet.classList.remove("show");
+    sheet.style.transform = "";
+    const icon = moreBtn.querySelector("i");
+    if (icon) icon.className = "fa-solid fa-ellipsis";
+  };
+
+  const moreIcon = moreBtn.querySelector("i");
+  moreBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    if (sheet.classList.contains("show")) {
+      closeSheet();
+      moreIcon.className = "fa-solid fa-ellipsis";
+    } else {
+      openSheet();
+      moreIcon.className = "fa-solid fa-xmark";
+    }
+  });
+  document.addEventListener("click", e => {
+    if (sheet.classList.contains("show") && !e.target.closest("#bottomNavMoreSheet") && !e.target.closest("#bottomNavMoreBtn")) {
+      closeSheet();
+    }
+  });
+
+  document.querySelectorAll(".bottom-nav-more-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const view = item.dataset.view;
+      closeSheet();
+      if (view) requestView(view);
+    });
+  });
+
+  // ── SWIPE DOWN TO CLOSE ──
+  let startY = 0;
+  let currentY = 0;
+  let dragging = false;
+
+  const onTouchStart = e => {
+    startY = e.touches[0].clientY;
+    currentY = startY;
+    dragging = true;
+    sheet.style.transition = "none";
+  };
+
+  const onTouchMove = e => {
+    if (!dragging) return;
+    currentY = e.touches[0].clientY;
+    const delta = currentY - startY;
+    if (delta > 0) {
+      sheet.style.transform = `translateY(${delta}px)`;
+      e.preventDefault();
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (!dragging) return;
+    dragging = false;
+    sheet.style.transition = "";
+    const delta = currentY - startY;
+    const threshold = sheet.getBoundingClientRect().height * 0.25;
+
+    if (delta > threshold) {
+      closeSheet();
+    } else {
+      sheet.style.transform = "";
+    }
+  };
+
+  handle?.addEventListener("touchstart", onTouchStart, { passive: true });
+  handle?.addEventListener("touchmove", onTouchMove, { passive: false });
+  handle?.addEventListener("touchend", onTouchEnd);
+
+  sheet.addEventListener("touchstart", onTouchStart, { passive: true });
+  sheet.addEventListener("touchmove", onTouchMove, { passive: false });
+  sheet.addEventListener("touchend", onTouchEnd);
+}
 
 /* ── TOPBAR ── */
 function initTopbar() {
-  // reload
   initPurchaseSheet();
   document.getElementById("lapTopbarTabel")?.addEventListener("click", () => {
     const wrapper = document.getElementById("lapTabelWrapper");
@@ -343,7 +484,6 @@ function initPurchaseSheet() {
   const onTouchStart = e => {
     const target = e.target;
     const isFromBody = bodyEl?.contains(target);
-    // hanya izinkan mulai drag kalau dari handle/header, atau body-nya sudah di posisi paling atas
     allowDrag = !isFromBody || (bodyEl && bodyEl.scrollTop <= 0);
     if (!allowDrag) return;
     startY = e.touches[0].clientY;
@@ -368,103 +508,6 @@ function initPurchaseSheet() {
     const threshold = sheet.getBoundingClientRect().height * 0.25;
     if (allowDrag && delta > threshold) closeSheet();
     else sheet.style.transform = "";
-  };
-
-  handle?.addEventListener("touchstart", onTouchStart, { passive: true });
-  handle?.addEventListener("touchmove", onTouchMove, { passive: false });
-  handle?.addEventListener("touchend", onTouchEnd);
-
-  sheet.addEventListener("touchstart", onTouchStart, { passive: true });
-  sheet.addEventListener("touchmove", onTouchMove, { passive: false });
-  sheet.addEventListener("touchend", onTouchEnd);
-}
-/* ── BOTTOM NAV ── */
-function initBottomNav() {
-  document.querySelectorAll(".bottom-nav-item[data-view]").forEach(item => {
-    item.addEventListener("click", () => {
-      const view = item.dataset.view;
-      if (view) showView(view);
-    });
-  });
-
-  initBottomNavMore();
-}
-function initBottomNavMore() {
-  const moreBtn = document.getElementById("bottomNavMoreBtn");
-  const sheet   = document.getElementById("bottomNavMoreSheet");
-  const handle  = sheet?.querySelector(".bottom-nav-more-handle");
-  if (!moreBtn || !sheet) return;
-
-  const openSheet  = () => {
-    sheet.classList.add("show");
-    sheet.style.transform = "";
-  };
-  const closeSheet = () => {
-    sheet.classList.remove("show");
-    sheet.style.transform = "";
-    const icon = moreBtn.querySelector("i");
-    if (icon) icon.className = "fa-solid fa-ellipsis";
-  };
-
-  const moreIcon = moreBtn.querySelector("i");
-  moreBtn.addEventListener("click", e => {
-    e.stopPropagation();
-    if (sheet.classList.contains("show")) {
-      closeSheet();
-      moreIcon.className = "fa-solid fa-ellipsis";
-    } else {
-      openSheet();
-      moreIcon.className = "fa-solid fa-xmark";
-    }
-  });
-  document.addEventListener("click", e => {
-    if (sheet.classList.contains("show") && !e.target.closest("#bottomNavMoreSheet") && !e.target.closest("#bottomNavMoreBtn")) {
-      closeSheet();
-    }
-  });
-
-  document.querySelectorAll(".bottom-nav-more-item").forEach(item => {
-    item.addEventListener("click", () => {
-      const view = item.dataset.view;
-      closeSheet();
-      if (view) showView(view);
-    });
-  });
-
-  // ── SWIPE DOWN TO CLOSE ──
-  let startY = 0;
-  let currentY = 0;
-  let dragging = false;
-
-  const onTouchStart = e => {
-    startY = e.touches[0].clientY;
-    currentY = startY;
-    dragging = true;
-    sheet.style.transition = "none";
-  };
-
-  const onTouchMove = e => {
-    if (!dragging) return;
-    currentY = e.touches[0].clientY;
-    const delta = currentY - startY;
-    if (delta > 0) {
-      sheet.style.transform = `translateY(${delta}px)`;
-      e.preventDefault();
-    }
-  };
-
-  const onTouchEnd = () => {
-    if (!dragging) return;
-    dragging = false;
-    sheet.style.transition = "";
-    const delta = currentY - startY;
-    const threshold = sheet.getBoundingClientRect().height * 0.25;
-
-    if (delta > threshold) {
-      closeSheet();
-    } else {
-      sheet.style.transform = "";
-    }
   };
 
   handle?.addEventListener("touchstart", onTouchStart, { passive: true });

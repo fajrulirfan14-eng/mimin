@@ -24,6 +24,165 @@ window.initDataharianView = async function() {
 let activeKurirUid  = null;
 let activeKurirUser = null;
 let dhOmsetAktif = 0;
+let _hunterVarianList = [];
+let _hunterTotalClosing = {};
+
+window._custBaruHunterCache = window._custBaruHunterCache || {};
+
+async function fetchCustomerBaruHunterRAM(uidHunter, tanggal) {
+  const idCabang = window.currentUser?.idCabang || "";
+  const key = `${uidHunter}_${tanggal}`;
+  try {
+    const snap = await window.getDocs(window.query(
+      window.collectionGroup(window.db, "customerBaruHunter"),
+      window.where("idCabang", "==", idCabang),
+      window.where("tanggal", "==", tanggal),
+      window.where("pemilik", "==", uidHunter)
+    ));
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    window._custBaruHunterCache[key] = list;
+    return list;
+  } catch (err) {
+    console.error("❌ fetchCustomerBaruHunterRAM:", err);
+    window._custBaruHunterCache[key] = [];
+    return [];
+  }
+}
+
+function getVarianAktifCabang() {
+  const admin = (window.usersCache || []).find(u => u.role === "adminCabang");
+  return (admin?.varian || [])
+    .filter(v => { const k = Object.keys(v)[0]; return k && v[k]?.isAktif; })
+    .map(v => Object.keys(v)[0]);
+}
+
+function renderVarianBoxRow(obj, jenisCls, varianList) {
+  return varianList.map(kode => {
+    const qty = Number(obj?.[kode]) || 0;
+    const isEmpty = qty <= 0;
+    return `
+      <div class="dh-hunter-varian-box hunter-${jenisCls}">
+        ${isEmpty ? esc(kode) : qty.toLocaleString("id-ID")}
+      </div>`;
+  }).join("");
+}
+function updateHunterSisaBarangDisplay() {
+  if (activeKurirUser?.role !== "hunter") return;
+  _hunterVarianList.forEach(v => {
+    const orderInput = document.querySelector(`.dh-form-input[data-type="order"][data-varian="${v}"]`);
+    const orderVal = Number(orderInput?.value) || 0;
+    const closingVal = _hunterTotalClosing[v] || 0;
+    const sisa = orderVal - closingVal;
+
+    const box = document.getElementById(`dhHunterSisa-${v}`);
+    if (box) {
+      const strongEl = box.querySelector("strong");
+      if (strongEl) strongEl.textContent = sisa;
+    }
+  });
+}
+
+function renderCustomerBaruHunterList(body, list) {
+  if (!list || !list.length) {
+    body.innerHTML = `<div class="dh-ringkasan-empty">Belum ada customer baru untuk tanggal ini. Klik reload untuk memuat.</div>`;
+    return;
+  }
+
+  const varianList = getVarianAktifCabang();
+
+  const totalKonsinyasi = {};
+  const totalCash = {};
+  varianList.forEach(v => { totalKonsinyasi[v] = 0; totalCash[v] = 0; });
+  list.forEach(c => {
+    varianList.forEach(v => {
+      totalKonsinyasi[v] += Number(c.konsinyasi?.[v]) || 0;
+      totalCash[v] += Number(c.cash?.[v]) || 0;
+    });
+  });
+
+  const totalClosing = {};
+  varianList.forEach(v => { totalClosing[v] = totalKonsinyasi[v] + totalCash[v]; });
+  _hunterVarianList = varianList;
+  _hunterTotalClosing = totalClosing;
+  
+  const summaryHtml = `
+    <div class="dh-hunter-summary">
+      <div class="dh-hunter-summary-total">
+        <span class="dh-hunter-summary-label">Jumlah Customer</span>
+        <span class="dh-hunter-summary-val">${list.length}</span>
+      </div>
+      <div class="dh-hunter-summary-row">
+        <span class="dh-hunter-summary-tag konsinyasi">Konsinyasi</span>
+        <div class="dh-hunter-summary-varian">
+          ${varianList.map(v => `
+            <div class="dh-hunter-summary-box konsinyasi">
+              <span>${esc(v)}</span>
+              <strong>${totalKonsinyasi[v]}</strong>
+            </div>`).join("")}
+        </div>
+      </div>
+      <div class="dh-hunter-summary-row">
+        <span class="dh-hunter-summary-tag cash">Cash</span>
+        <div class="dh-hunter-summary-varian">
+          ${varianList.map(v => `
+            <div class="dh-hunter-summary-box cash">
+              <span>${esc(v)}</span>
+              <strong>${totalCash[v]}</strong>
+            </div>`).join("")}
+        </div>
+      </div>
+      <div class="dh-hunter-summary-row dh-hunter-summary-closing">
+        <span class="dh-hunter-summary-tag">Total Closing</span>
+        <div class="dh-hunter-summary-varian">
+          ${varianList.map(v => `
+            <div class="dh-hunter-summary-box closing">
+              <span>${esc(v)}</span>
+              <strong>${totalClosing[v]}</strong>
+            </div>`).join("")}
+        </div>
+      </div>
+      <div class="dh-hunter-summary-row">
+        <span class="dh-hunter-summary-tag">Sisa Barang</span>
+        <div class="dh-hunter-summary-varian" id="dhHunterSisaBarang">
+          ${varianList.map(v => `
+            <div class="dh-hunter-summary-box sisa" id="dhHunterSisa-${esc(v)}">
+              <span>${esc(v)}</span>
+              <strong>-</strong>
+            </div>`).join("")}
+        </div>
+      </div>
+    </div>`;
+
+  body.innerHTML = `
+    ${summaryHtml}
+    <div class="dh-hunter-cust-list">
+      ${list.map(c => {
+        const nama    = c.namaCustomer || "Tanpa Nama";
+        const inisial = nama.trim().charAt(0).toUpperCase();
+        const avatar  = c.foto
+          ? `<img src="${esc(c.foto)}" alt="${esc(nama)}">`
+          : `<span>${esc(inisial)}</span>`;
+        const adaKonsinyasi = Object.values(c.konsinyasi || {}).some(v => Number(v) > 0);
+        const adaCash       = Object.values(c.cash || {}).some(v => Number(v) > 0);
+
+        return `
+          <div class="dh-hunter-cust-item">
+            <div class="dh-hunter-cust-avatar">${avatar}</div>
+            <div class="dh-hunter-cust-info">
+              <div class="dh-hunter-cust-nama-row">
+                <div class="dh-hunter-cust-nama">${esc(nama)}</div>
+                <div class="dh-hunter-cust-badges">
+                  ${adaKonsinyasi ? `<span class="dh-hunter-badge konsinyasi">Konsinyasi</span>` : ""}
+                  ${adaCash ? `<span class="dh-hunter-badge cash">Cash</span>` : ""}
+                </div>
+              </div>
+              <div class="dh-hunter-cust-alamat">${esc(c.alamatCustomer || "-")}</div>
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+}
 
 /* ── LOAD KURIR LIST ── */
 async function loadDhKurirList() {
@@ -140,9 +299,19 @@ async function selectDhKurir(user) {
       reloadBtn.classList.add("spinning");
       reloadBtn.disabled = true;
       const tanggal = document.getElementById("dhDetailDate")?.value || getTanggalLocal();
-      await window.idb.clearDataHarian(activeKurirUid, tanggal);
-      await renderDhRingkasan(true);
-      hitungTagihan();
+
+      if (activeKurirUser?.role === "hunter") {
+        const list = await fetchCustomerBaruHunterRAM(activeKurirUid, tanggal);
+        if (!list.length) {
+          window.showToast("Tidak ada customer baru untuk tanggal ini", "");
+        }
+        await renderDhRingkasan();
+      } else {
+        await window.idb.clearDataHarian(activeKurirUid, tanggal);
+        await renderDhRingkasan(true);
+        hitungTagihan();
+      }
+
       reloadBtn.classList.remove("spinning");
       reloadBtn.disabled = false;
     };
@@ -505,18 +674,29 @@ function hitungClosing() {
     el.textContent = get("order") - get("fee") - get("offflavor") - get("sisabarang") || "0";
   });
   hitungTagihan();
+  updateHunterSisaBarangDisplay();
 }
 
 /* ── RENDER RINGKASAN ── */
 async function renderDhRingkasan(forceReload = false) {
   const body = document.getElementById("dhRingkasanBody");
   if (!body) return;
-
   body.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
-
   const tanggal  = document.getElementById("dhDetailDate")?.value || getTanggalLocal();
   const uidKurir = activeKurirUid;
+  // khusus hunter
+  if (activeKurirUser?.role === "hunter") {
+    const key = `${uidKurir}_${tanggal}`;
+    let list = window._custBaruHunterCache[key];
 
+    if (forceReload || !list) {
+      list = await fetchCustomerBaruHunterRAM(uidKurir, tanggal);
+    }
+
+    dhOmsetAktif = 0;
+    renderCustomerBaruHunterList(body, list);
+    return;
+  }
   let data = await window.idb.getDataHarian(uidKurir, tanggal);
 
   if (forceReload) {

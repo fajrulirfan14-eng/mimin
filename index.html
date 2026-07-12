@@ -152,10 +152,6 @@
         <div class="bottom-nav-more-icon"><i class="fa-solid fa-users"></i></div>
         <span>Customer</span>
       </a>
-      <a class="bottom-nav-more-item" data-view="rekapdistribusi">
-        <div class="bottom-nav-more-icon"><i class="fa-solid fa-chart-pie"></i></div>
-        <span>Rekap Distribusi</span>
-      </a>
       <a class="bottom-nav-more-item" data-view="stockopname">
         <div class="bottom-nav-more-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
         <span>Stock Opname</span>
@@ -167,6 +163,10 @@
       <a class="bottom-nav-more-item" data-view="amplop">
         <div class="bottom-nav-more-icon"><i class="fa-solid fa-envelope"></i></div>
         <span>Amplop</span>
+      </a>
+      <a class="bottom-nav-more-item" data-view="rekapdistribusi">
+        <div class="bottom-nav-more-icon"><i class="fa-solid fa-chart-pie"></i></div>
+        <span>Rekap Distribusi</span>
       </a>
       <a class="bottom-nav-more-item" data-view="rekapproduksi">
         <div class="bottom-nav-more-icon"><i class="fa-solid fa-industry"></i></div>
@@ -2552,6 +2552,20 @@
 
     <button class="purchase-save-btn" id="purchaseSaveBtn">Simpan Purchase Order</button>
     <div class="purchase-status" id="purchaseStatus"></div>
+  </div>
+</div>
+
+<div class="page-password-overlay" id="pagePasswordOverlay">
+  <div class="page-password-box">
+    <div class="page-password-icon"><i class="fa-solid fa-lock"></i></div>
+    <div class="page-password-title">Masukkan Password</div>
+    <div class="page-password-sub">Halaman ini dilindungi password kantor cabang</div>
+    <input type="password" id="pagePasswordInput" class="page-password-input" placeholder="Password">
+    <div class="page-password-error" id="pagePasswordError">Password salah</div>
+    <div class="page-password-actions">
+      <button class="page-password-cancel" id="pagePasswordCancelBtn">Batal</button>
+      <button class="page-password-submit" id="pagePasswordSubmitBtn">Buka</button>
+    </div>
   </div>
 </div>
 

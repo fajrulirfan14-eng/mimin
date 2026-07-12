@@ -796,16 +796,28 @@
 
 /* ── MOBILE ── */
 @media (max-width: 768px) {
-  .cust-list-panel { width: 100%; border-right: none; }
+  .cust-layout {
+    height: auto; overflow: visible;
+  }
+  .cust-list-body { padding-bottom: 84px; }
+  .cust-list-panel {
+    width: 100%; border-right: none;
+    height: auto; overflow: visible;
+  }
+  .cust-list-body {
+    overflow: visible; flex: none;
+  }
   .cust-middle-panel {
-    position: absolute; inset: 0; z-index: 10; width: 100%;
+    position: fixed; top: 80px; left: 0; right: 0; bottom: 0;
+    z-index: 10; width: 100%;
     background: var(--bg-page);
     transform: translateX(100%);
     transition: transform .25s ease-out;
   }
   .cust-middle-panel.show { transform: translateX(0); }
   .cust-right-panel {
-    position: absolute; inset: 0; z-index: 20; width: 100%;
+    position: fixed; top: 60px; left: 0; right: 0; bottom: 0;
+    z-index: 20; width: 100%;
     background: var(--bg-page);
     transform: translateX(100%);
     transition: transform .25s ease-out;

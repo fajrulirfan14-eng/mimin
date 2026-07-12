@@ -1579,6 +1579,7 @@ function renderCustExpand(containerId, users, role) {
   if (document.getElementById("mapRollingWrap")) window.closeMapRolling?.();
   el.querySelectorAll(".cust-sub-item").forEach(item => {
     item.addEventListener("click", () => {
+      if (document.getElementById("mapRollingWrap")) window.closeMapRolling?.();
       document.querySelectorAll(".cust-sub-item").forEach(s => s.classList.remove("active"));
       document.querySelectorAll(".cust-menu-item").forEach(i => i.classList.remove("active"));
       item.classList.add("active");
@@ -1586,7 +1587,6 @@ function renderCustExpand(containerId, users, role) {
       const uid  = item.dataset.uid;
       const user = window.usersCache.find(u => u.uid === uid);
       showCustDetail(user?.nama || "Customer", user, null);
-
       if (window.innerWidth <= 768) {
         document.getElementById("custMiddlePanel")?.classList.add("show");
         const backBtn = document.getElementById("topbarBackBtn");
@@ -1893,30 +1893,9 @@ function renderCustCards(customers = []) {
       const id       = card.dataset.id;
       const customer = customers.find(c => c.id === id);
       if (!customer) return;
-
-      // jika mode rolling aktif — flyTo pin di map, tidak buka detail
       const mapWrap = document.getElementById("mapRollingWrap");
-      if (mapWrap && window.rollingMap) {
-        const lat = customer.lokasiCustomer?.latitude  || customer.lokasiCustomer?._lat;
-        const lng = customer.lokasiCustomer?.longitude || customer.lokasiCustomer?._long;
-        if (lat && lng) {
-          if (window.innerWidth <= 768) {
-            document.getElementById("custRightPanel")?.classList.add("show");
-            setTimeout(() => window.rollingMap?.invalidateSize(), 150);
-          }
-          window.rollingMap.flyTo([lat, lng], 14, { animate: true, duration: 0.8 });
-          setTimeout(() => {
-            const target = window._rollingAllMarkers?.find(m => m._petaId === customer.id);
-            if (target) {
-              target.openPopup();
-              if (target.setStyle) {
-                target.setStyle({ radius: 12, weight: 3 });
-                setTimeout(() => target.setStyle({ radius: 7, weight: 2 }), 1500);
-              }
-            }
-          }, 900);
-        }
-        return; // selalu return saat mode rolling aktif
+      if (mapWrap) {
+        window.closeMapRolling?.();
       }
 
       openCustDetail(customer);
