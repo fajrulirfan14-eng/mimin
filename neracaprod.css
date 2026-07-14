@@ -1,0 +1,314 @@
+
+/* ── NERACA SALDO: DETAIL WRAPPER ── */
+.neracaprod-detail-wrapper {
+  flex: 1;
+  padding: 0;
+  background: var(--bg-page);
+  overflow: hidden;
+  display: none;
+}
+
+.neracaprod-detail-wrapper.show {
+  display: flex;
+}
+.neraca-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+}
+.neraca-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-card);
+}
+.neraca-card-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.neraca-save-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--brand-primary);
+  color: var(--text-white);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.neraca-section {
+  margin-bottom: 4px;
+}
+.neraca-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--brand-primary);
+  margin-bottom: 10px;
+}
+.neraca-list-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-card);
+}
+.neraca-list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-main);
+}
+.neraca-input-nama,
+.neraca-input-nilai {
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-input);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  padding: 8px 10px;
+  outline: none;
+}
+.neraca-input-nama {
+  flex: 1;
+  min-width: 0;
+}
+.neraca-input-nama:focus,
+.neraca-input-nilai:focus {
+  box-shadow: 0 0 0 1.5px var(--brand-primary);
+}
+.neraca-input-nilai {
+  width: 110px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.neraca-list-empty {
+  padding: 14px 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.neraca-tambah-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 10px 0 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--brand-primary);
+  cursor: pointer;
+}
+.neraca-section-divider {
+  height: 1px;
+  background: var(--border-card);
+  margin: 18px 0 16px;
+}
+.neracaprod-detail-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-page);
+}
+
+.neracaprod-detail-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 20px;
+}
+.neracaprod-empty-icon {
+  font-size: 40px;
+  color: var(--border-card);
+  margin-bottom: 12px;
+}
+.neracaprod-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.neracaprod-empty-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.neracaprod-detail-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.neracaprod-detail-header {
+  flex-shrink: 0;
+  padding: 16px 16px 0;
+}
+.neracaprod-detail-header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-card);
+}
+.neracaprod-detail-back-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--bg-hover);
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.neracaprod-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.neracaprod-detail-nama {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.neracaprod-detail-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.neraca-row-clickable {
+  cursor: pointer;
+}
+
+.neraca-row-clickable:hover td {
+  background: var(--bg-hover);
+}
+.neraca-body-layout {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.neraca-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.neraca-delete-btn {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 6px;
+  background: var(--danger-bg);
+  color: var(--danger);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+.neraca-card-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 2px solid var(--brand-primary);
+}
+.neraca-card-total-row span:first-child {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.neraca-card-total-row span:last-child {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--brand-primary);
+}
+#neracaKpiRow {
+  margin-bottom: 16px;
+}
+.neraca-laba-card {
+  margin-bottom: 16px;
+  background: var(--accent-bg);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.neraca-laba-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.neraca-laba-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--brand-primary);
+}
+
+@media (max-width: 768px) {
+  .neraca-body-layout {
+    flex-direction: column;
+  }
+  .neraca-col {
+    width: 100%;
+    flex: none;
+  }
+}
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .neracaprod-detail-wrapper {
+    padding: 0;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: var(--bg-page);
+    transform: translateX(100%);
+    transition: transform var(--transition-slow);
+  }
+  .neracaprod-detail-wrapper.show {
+    display: flex !important;
+    transform: translateX(0);
+  }
+  .neracaprod-detail-panel {
+    border-radius: 0;
+  }
+  .neracaprod-detail-body {
+    padding-bottom: 100px;
+  }
+}

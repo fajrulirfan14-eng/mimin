@@ -36,6 +36,9 @@
 <link rel="stylesheet" href="rekapproduksi.css">
 <link rel="stylesheet" href="rincianproduksi.css">
 <link rel="stylesheet" href="auditprod.css">
+<link rel="stylesheet" href="pembelian.css">
+<link rel="stylesheet" href="assetprod.css">
+<link rel="stylesheet" href="neracaprod.css">
 <link rel="stylesheet" href="slipgajiprod.css">
 <link rel="stylesheet" href="rinciandistribusi.css">
 <link rel="stylesheet" href="akun.css">
@@ -1952,17 +1955,9 @@
                 <div class="lap-detail-body">
 
                   <div class="rincian-summary-row">
-                    <div class="rincian-summary-card" data-tipe="pemasukan">
-                      <div class="rincian-summary-label">Total Pemasukan</div>
-                      <div class="rincian-summary-total">Rp 0</div>
-                    </div>
-                    <div class="rincian-summary-card" data-tipe="pengeluaran">
-                      <div class="rincian-summary-label">Total Pengeluaran</div>
-                      <div class="rincian-summary-total">Rp 0</div>
-                    </div>
                     <div class="rincian-summary-card" data-tipe="selisih">
-                      <div class="rincian-summary-label">Selisih</div>
-                      <div class="rincian-summary-total">Rp 0</div>
+                      <div class="rincian-summary-label">Total Aset</div>
+                      <div class="rincian-summary-total" id="neracaTotalAset">Rp 0</div>
                     </div>
                   </div>
 
@@ -2043,6 +2038,30 @@
                   </div>
                   <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
                 </div>
+                <div class="lap-kurir-item" data-id="pembelian">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-truck-fast"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Pembelian Bahan Baku</div>
+                    <div class="lap-kurir-role">Riwayat pembelian paket loyang</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
+                <div class="lap-kurir-item" data-id="asset">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-boxes-packing"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Assets</div>
+                    <div class="lap-kurir-role">Data aset & peralatan produksi</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
+                <div class="lap-kurir-item" data-id="neraca">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-scale-balanced"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Neraca Saldo</div>
+                    <div class="lap-kurir-role">Aset lancar & aset tetap</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
                 <div class="lap-kurir-item" data-id="slipgaji">
                   <div class="lap-kurir-avatar"><i class="fa-solid fa-file-invoice-dollar"></i></div>
                   <div class="lap-kurir-info">
@@ -2053,8 +2072,152 @@
                 </div>
               </div>
             </div>
+            
+            <!-- KANAN: DETAIL NERACA SALDO -->
+            <div class="neracaprod-detail-wrapper" id="neracaProduksiDetailWrapper">
+              <div class="neracaprod-detail-panel">
+            
+                <div class="neracaprod-detail-empty" id="neracaProduksiEmpty">
+                  <div class="neracaprod-empty-icon"><i class="fa-solid fa-scale-balanced"></i></div>
+                  <div class="neracaprod-empty-title">Pilih Neraca Saldo</div>
+                  <div class="neracaprod-empty-sub">Klik untuk melihat aset lancar & aset tetap.</div>
+                </div>
+            
+                <div class="neracaprod-detail-content" id="neracaProduksiContent" style="display:none;">
+                  <div class="neracaprod-detail-header">
+                    <div class="neracaprod-detail-header-top">
+                      <button class="neracaprod-detail-back-btn" id="neracaProduksiBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="neracaprod-detail-info">
+                        <div class="neracaprod-detail-nama">Neraca Saldo</div>
+                      </div>
+                      <div class="rekap-dist-filter-wrap">
+                        <button class="rekap-dist-filter-btn" id="neracaBulanBtn">
+                          <i class="fa-solid fa-calendar"></i>
+                          <span id="neracaBulanLabel">Juli</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="neracaBulanDropdown" style="display:none">
+                          <div class="rekap-dist-dropdown-option" data-bulan="0">Januari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="1">Februari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="2">Maret</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="3">April</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="4">Mei</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="5">Juni</div>
+                          <div class="rekap-dist-dropdown-option selected" data-bulan="6">Juli</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="7">Agustus</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="8">September</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="9">Oktober</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="10">November</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="11">Desember</div>
+                        </div>
+                        <button class="rekap-dist-filter-btn" id="neracaTahunBtn">
+                          <span id="neracaTahunLabel">2026</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="neracaTahunDropdown" style="display:none"></div>
+                        <button class="rekap-dist-filter-btn" id="neracaReloadBtn" title="Reload">
+                          <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                        <button class="neraca-save-btn" id="neracaSaveBtn">
+                          <i class="fa-solid fa-floppy-disk"></i> Simpan
+                        </button>
+                      </div>
+                    </div>
+                  </div>
 
-            <!-- KANAN: DETAIL -->
+                  <div class="neracaprod-detail-body">
+                    <div class="rekap-prod-kpi-row" id="neracaKpiRow"></div>
+
+                    <div class="neraca-laba-card">
+                      <div class="neraca-laba-label">Laba Berjalan</div>
+                      <div class="neraca-laba-value" id="neracaLabaBerjalan">Rp 0</div>
+                    </div>
+
+                    <div class="neraca-body-layout">
+                      <div class="neraca-card neraca-col">
+                        <div class="neraca-card-header">
+                          <span class="neraca-card-title">Total Aset</span>
+                        </div>
+
+                        <div class="neraca-section">
+                          <div class="neraca-section-title">Aset Lancar</div>
+                          <div class="neraca-list-header">
+                            <span>Nama Akun</span>
+                            <span>Liquidity</span>
+                          </div>
+                          <div class="neraca-list" id="neracaListLancar"></div>
+                          <button class="neraca-tambah-link" id="neracaAddLancarBtn">
+                            <i class="fa-solid fa-plus"></i> Tambah
+                          </button>
+                        </div>
+
+                        <div class="neraca-section-divider"></div>
+
+                        <div class="neraca-section">
+                          <div class="neraca-section-title">Aset Tetap</div>
+                          <div class="neraca-list-header">
+                            <span>Nama Akun</span>
+                            <span>Liquidity</span>
+                          </div>
+                          <div class="neraca-list" id="neracaListTetap"></div>
+                          <button class="neraca-tambah-link" id="neracaAddTetapBtn">
+                            <i class="fa-solid fa-plus"></i> Tambah Akun
+                          </button>
+                        </div>
+
+                        <div class="neraca-card-total-row">
+                          <span>Total Liquidity</span>
+                          <span id="neracaTotalKiri">Rp 0</span>
+                        </div>
+                      </div>
+
+                      <div class="neraca-card neraca-col">
+                        <div class="neraca-card-header">
+                          <span class="neraca-card-title">Liabilitas & Ekuitas</span>
+                        </div>
+
+                        <div class="neraca-section">
+                          <div class="neraca-section-title">Liabilitas</div>
+                          <div class="neraca-list-header">
+                            <span>Nama Akun</span>
+                            <span>Liquidity</span>
+                          </div>
+                          <div class="neraca-list" id="neracaListLiabilitas"></div>
+                          <button class="neraca-tambah-link" id="neracaAddLiabilitasBtn">
+                            <i class="fa-solid fa-plus"></i> Tambah
+                          </button>
+                        </div>
+
+                        <div class="neraca-section-divider"></div>
+
+                        <div class="neraca-section">
+                          <div class="neraca-section-title">Ekuitas</div>
+                          <div class="neraca-list-header">
+                            <span>Nama Akun</span>
+                            <span>Liquidity</span>
+                          </div>
+                          <div class="neraca-list" id="neracaListEkuitas"></div>
+                          <button class="neraca-tambah-link" id="neracaAddEkuitasBtn">
+                            <i class="fa-solid fa-plus"></i> Tambah
+                          </button>
+                        </div>
+
+                        <div class="neraca-card-total-row">
+                          <span>Total Liquidity</span>
+                          <span id="neracaTotalKanan">Rp 0</span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- KANAN: DETAIL REKAPITULASI-->
             <div class="rekapprod-detail-wrapper" id="rekapProduksiDetailWrapper">
               <div class="rekapprod-detail-panel">
 
@@ -2266,13 +2429,476 @@
                       <div class="auditprod-detail-info">
                         <div class="auditprod-detail-nama">Audit Barang Mentah</div>
                       </div>
+                      <div class="rekap-dist-filter-wrap">
+                        <button class="rekap-dist-filter-btn" id="auditBulanBtn">
+                          <i class="fa-solid fa-calendar"></i>
+                          <span id="auditBulanLabel">Juli</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="auditBulanDropdown" style="display:none">
+                          <div class="rekap-dist-dropdown-option" data-bulan="0">Januari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="1">Februari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="2">Maret</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="3">April</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="4">Mei</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="5">Juni</div>
+                          <div class="rekap-dist-dropdown-option selected" data-bulan="6">Juli</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="7">Agustus</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="8">September</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="9">Oktober</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="10">November</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="11">Desember</div>
+                        </div>
+                        <button class="rekap-dist-filter-btn" id="auditTahunBtn">
+                          <span id="auditTahunLabel">2026</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="auditTahunDropdown" style="display:none"></div>
+                        <button class="rekap-dist-filter-btn" id="auditReloadBtn" title="Reload">
+                          <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div class="auditprod-detail-body">
-                    <div class="auditprod-placeholder">Placeholder — konten audit barang mentah menyusul</div>
+                    <div class="audit-toolbar">
+                      <div class="audit-toolbar-title">Bahan Baku</div>
+                      <div class="audit-toolbar-actions">
+                        <button class="audit-add-btn" id="auditAddBtn">
+                          <i class="fa-solid fa-plus"></i>
+                          <span>Tambah Bahan</span>
+                        </button>
+                        <button class="audit-save-btn" id="auditSaveBtn">
+                          <i class="fa-solid fa-floppy-disk"></i>
+                          <span>Simpan</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="audit-table-wrap">
+                      <table class="audit-table" id="auditTable">
+                        <thead>
+                          <tr>
+                            <th class="audit-th-jenis">Jenis Bahan Baku</th>
+                            <th class="audit-th-input">Stock Awal</th>
+                            <th class="audit-th-input">Belanja</th>
+                            <th class="audit-th-input">Hpp Real</th>
+                            <th class="audit-th-readonly">Saldo</th>
+                            <th class="audit-th-readonly">Stock Akhir</th>
+                          </tr>
+                        </thead>
+                        <tbody id="auditTableBody">
+                          <!-- baris di-inject JS -->
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div class="audit-preview-card">
+                      <div class="audit-preview-title">
+                        <i class="fa-solid fa-eye"></i>
+                        Preview Data Tersimpan
+                      </div>
+                      <div class="audit-preview-body" id="auditPreviewBody">
+                        <div class="audit-preview-empty">Memuat...</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
+              </div>
+            </div>
+            
+            <!-- KANAN: DETAIL PEMBELIAN BAHAN BAKU -->
+            <div class="pembelianprod-detail-wrapper" id="pembelianProduksiDetailWrapper">
+              <div class="pembelianprod-detail-panel">
+            
+                <div class="pembelianprod-detail-empty" id="pembelianProduksiEmpty">
+                  <div class="pembelianprod-empty-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                  <div class="pembelianprod-empty-title">Pilih Pembelian Bahan Baku</div>
+                  <div class="pembelianprod-empty-sub">Klik untuk melihat riwayat pembelian paket loyang.</div>
+                </div>
+            
+                <div class="pembelianprod-detail-content" id="pembelianProduksiContent" style="display:none;">
+                  <div class="pembelianprod-detail-header">
+                    <div class="pembelianprod-detail-header-top">
+                      <button class="pembelianprod-detail-back-btn" id="pembelianProduksiBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="pembelianprod-detail-info">
+                        <div class="pembelianprod-detail-nama">Pembelian Bahan Baku</div>
+                      </div>
+                      <div class="rekap-dist-filter-wrap">
+                        <button class="rekap-dist-filter-btn" id="pembelianBulanBtn">
+                          <i class="fa-solid fa-calendar"></i>
+                          <span id="pembelianBulanLabel">Juli</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="pembelianBulanDropdown" style="display:none">
+                          <div class="rekap-dist-dropdown-option" data-bulan="0">Januari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="1">Februari</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="2">Maret</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="3">April</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="4">Mei</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="5">Juni</div>
+                          <div class="rekap-dist-dropdown-option selected" data-bulan="6">Juli</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="7">Agustus</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="8">September</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="9">Oktober</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="10">November</div>
+                          <div class="rekap-dist-dropdown-option" data-bulan="11">Desember</div>
+                        </div>
+                        <button class="rekap-dist-filter-btn" id="pembelianTahunBtn">
+                          <span id="pembelianTahunLabel">2026</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="rekap-dist-dropdown" id="pembelianTahunDropdown" style="display:none"></div>
+                        <button class="rekap-dist-filter-btn" id="pembelianReloadBtn" title="Reload">
+                          <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+            
+                  <div class="pembelianprod-detail-body">
+                    <div class="rincian-summary-row">
+                      <div class="rincian-summary-card" data-tipe="pemasukan">
+                        <div class="rincian-summary-label">Total Pembelian</div>
+                        <div class="rincian-summary-total" id="pembelianTotalBeli">Rp 0</div>
+                      </div>
+                      <div class="rincian-summary-card" data-tipe="pengeluaran">
+                        <div class="rincian-summary-label">Total Dibayar</div>
+                        <div class="rincian-summary-total" id="pembelianTotalDibayar">Rp 0</div>
+                      </div>
+                      <div class="rincian-summary-card" data-tipe="selisih">
+                        <div class="rincian-summary-label">Total Sisa Hutang</div>
+                        <div class="rincian-summary-total" id="pembelianTotalSisa">Rp 0</div>
+                      </div>
+                    </div>
+            
+                    <div class="audit-toolbar">
+                      <div class="audit-toolbar-title">Riwayat Pembelian</div>
+                      <div class="audit-toolbar-actions">
+                        <div class="pembelian-select-wrap" id="pembelianFilterJenisWrap">
+                          <button type="button" class="pembelian-select-btn" id="pembelianFilterJenisBtn">
+                            <span id="pembelianFilterJenisBtnLabel">Semua Jenis</span>
+                            <i class="fa-solid fa-chevron-down"></i>
+                          </button>
+                          <div class="pembelian-select-dropdown" id="pembelianFilterJenisDropdown"></div>
+                        </div>
+                        <button class="audit-add-btn" id="pembelianAddBtn">
+                          <i class="fa-solid fa-plus"></i>
+                          <span>Catat Pembelian</span>
+                        </button>
+                      </div>
+                    </div>
+            
+                    <div class="audit-table-wrap">
+                      <table class="audit-table" id="pembelianTable">
+                        <thead>
+                          <tr>
+                            <th class="audit-th-jenis">Tanggal</th>
+                            <th class="audit-th-jenis">Jenis Paket</th>
+                            <th class="audit-th-input">Qty</th>
+                            <th class="audit-th-input">Harga/Paket</th>
+                            <th class="audit-th-readonly">Total</th>
+                            <th class="audit-th-readonly">Dibayar</th>
+                            <th class="audit-th-readonly">Status</th>
+                            <th class="audit-th-readonly">Sisa</th>
+                          </tr>
+                        </thead>
+                        <tbody id="pembelianTableBody">
+                          <!-- baris di-inject JS -->
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+            
+                <!-- SHEET: CATAT PEMBELIAN -->
+                <div class="pembelian-sheet-overlay" id="pembelianAddModalOverlay">
+                  <div class="pembelian-sheet-box">
+                    <div class="pembelian-sheet-drag-handle"></div>
+                    <div class="pembelian-sheet-header">
+                      <span class="pembelian-sheet-title">Catat Pembelian Paket</span>
+                      <button class="pembelian-sheet-close-btn" id="pembelianAddModalCancel">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </div>
+                    <div class="pembelian-sheet-body">
+                      <<label class="audit-modal-label">Jenis Paket</label>
+                      <div class="pembelian-select-wrap" id="pembelianJenisWrap" style="margin-bottom:12px;">
+                        <button type="button" class="pembelian-select-btn" id="pembelianJenisBtn">
+                          <span id="pembelianJenisBtnLabel">Pilih Jenis Paket</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="pembelian-select-dropdown" id="pembelianJenisDropdown"></div>
+                      </div>
+                      <label class="audit-modal-label">Qty (jumlah paket)</label>
+                      <input type="number" min="1" id="pembelianModalQty" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
+            
+                      <label class="audit-modal-label">Harga per Paket</label>
+                      <input type="text" inputmode="numeric" id="pembelianModalHarga" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
+                      <label class="audit-modal-label">Total</label>
+                      <div class="pembelian-readonly-box" id="pembelianModalTotal" style="margin-bottom:12px;">Rp 0</div>
+            
+                      <label class="audit-modal-label">Dibayar (boleh 0 kalau belum bayar)</label>
+                      <input type="text" inputmode="numeric" id="pembelianModalDibayar" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
+            
+                      <label class="audit-modal-label">Status</label>
+                      <div class="pembelian-readonly-box" id="pembelianModalStatusBox" style="margin-bottom:12px;">
+                        <span class="pembelian-status-badge" id="pembelianModalStatusBadge">-</span>
+                      </div>
+            
+                      <label class="audit-modal-label">Keterangan</label>
+                      <div class="pembelian-readonly-box" id="pembelianModalKeterangan">Rp 0</div>
+                    </div>
+                    <div class="pembelian-sheet-footer">
+                      <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianAddModalConfirm" style="width:100%;">Simpan</button>
+                    </div>
+                  </div>
+                </div>
+            
+                <!-- SHEET: UPDATE PEMBAYARAN -->
+                <div class="pembelian-sheet-overlay" id="pembelianBayarModalOverlay">
+                  <div class="pembelian-sheet-box">
+                    <div class="pembelian-sheet-drag-handle"></div>
+                    <div class="pembelian-sheet-header">
+                      <span class="pembelian-sheet-title">Update Pembayaran</span>
+                      <button class="pembelian-sheet-close-btn" id="pembelianBayarModalCancel">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </div>
+                    <div class="pembelian-sheet-body">
+            
+                      <div class="pembelian-riwayat-title">Edit Data Pembelian</div>
+            
+                      <label class="audit-modal-label">Jenis Paket</label>
+                      <div class="pembelian-select-wrap" id="pembelianEditJenisWrap" style="margin-bottom:12px;">
+                        <button type="button" class="pembelian-select-btn" id="pembelianEditJenisBtn">
+                          <span id="pembelianEditJenisBtnLabel">Pilih Jenis Paket</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="pembelian-select-dropdown" id="pembelianEditJenisDropdown"></div>
+                      </div>
+            
+                      <label class="audit-modal-label">Qty (jumlah paket)</label>
+                      <input type="number" min="1" id="pembelianEditQty" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
+            
+                      <label class="audit-modal-label">Harga per Paket</label>
+                      <input type="text" inputmode="numeric" id="pembelianEditHarga" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
+            
+                      <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianEditSaveBtn" style="width:100%; margin-bottom:20px;">Simpan Perubahan</button>
+            
+                      <div class="pembelian-bayar-info" id="pembelianBayarInfo"></div>
+            
+                      <label class="audit-modal-label">Nominal Bayar (cicilan kali ini)</label>
+                      <input type="text" inputmode="numeric" id="pembelianBayarModalInput" class="audit-modal-input" placeholder="0" style="margin-bottom:16px;">
+            
+                      <div class="pembelian-riwayat-title">Riwayat Cicilan</div>
+                      <div class="pembelian-riwayat-list" id="pembelianRiwayatList">
+                        <div class="audit-preview-empty">Belum ada cicilan</div>
+                      </div>
+                    </div>
+                    <div class="pembelian-sheet-footer" style="display:flex; flex-direction:column; gap:8px;">
+                      <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianBayarModalConfirm" style="width:100%;">Tambah Cicilan</button>
+                      <button class="pembelian-delete-btn" id="pembelianDeleteBtn" style="width:100%;">
+                        <i class="fa-solid fa-trash"></i> Hapus Pembelian
+                      </button>
+                    </div>
+                  </div>
+                </div>
+            
+              </div>
+              <!-- MODAL: KONFIRMASI HAPUS -->
+              <div class="audit-modal-overlay" id="pembelianConfirmOverlay">
+                <div class="audit-modal-box">
+                  <div class="audit-modal-header">
+                    <span class="audit-modal-title" id="pembelianConfirmTitle">Konfirmasi Hapus</span>
+                  </div>
+                  <div class="audit-modal-body">
+                    <p id="pembelianConfirmMessage" style="font-size:13.5px; color:var(--text-secondary); margin:0;"></p>
+                  </div>
+                  <div class="audit-modal-footer">
+                    <button class="audit-modal-btn audit-modal-btn-cancel" id="pembelianConfirmCancel">Batal</button>
+                    <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianConfirmYes" style="background:var(--danger);">Hapus</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- KANAN: DETAIL ASSETS -->
+            <div class="assetprod-detail-wrapper" id="assetProduksiDetailWrapper">
+              <div class="assetprod-detail-panel">
+            
+                <div class="assetprod-detail-empty" id="assetProduksiEmpty">
+                  <div class="assetprod-empty-icon"><i class="fa-solid fa-boxes-packing"></i></div>
+                  <div class="assetprod-empty-title">Pilih Assets</div>
+                  <div class="assetprod-empty-sub">Klik untuk melihat data aset & peralatan produksi.</div>
+                </div>
+            
+                <div class="assetprod-detail-content" id="assetProduksiContent" style="display:none;">
+                  <div class="assetprod-detail-header">
+                    <div class="assetprod-detail-header-top">
+                      <button class="assetprod-detail-back-btn" id="assetProduksiBackBtn" style="display:none">
+                        <i class="fa-solid fa-arrow-left"></i>
+                      </button>
+                      <div class="assetprod-detail-info">
+                        <div class="assetprod-detail-nama">Assets</div>
+                      </div>
+                      <button class="audit-add-btn" id="assetAddBtn">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Tambah Barang</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="assetprod-detail-body assetprod-body-layout">
+                    <div class="assetprod-main-col">
+                      <div class="audit-toolbar">
+                        <div class="audit-toolbar-title">Peralatan Produksi</div>
+                      </div>
+                      <div class="audit-table-wrap" style="margin-bottom:24px;">
+                        <table class="audit-table" id="assetTableProduksi">
+                          <thead>
+                            <tr>
+                              <th class="audit-th-jenis">Update</th>
+                              <th class="audit-th-jenis">Nama Barang</th>
+                              <th class="audit-th-input">Qty</th>
+                              <th class="audit-th-input">Harga</th>
+                            </tr>
+                          </thead>
+                          <tbody id="assetTableBodyProduksi"></tbody>
+                        </table>
+                      </div>
+            
+                     <div class="audit-toolbar">
+                      <div class="audit-toolbar-title">Perlengkapan Distribusi</div>
+                      </div>
+                      <div class="audit-table-wrap">
+                        <table class="audit-table" id="assetTableDistribusi">
+                          <thead>
+                            <tr>
+                              <th class="audit-th-jenis">Update</th>
+                              <th class="audit-th-jenis">Nama Barang</th>
+                              <th class="audit-th-input">Qty</th>
+                              <th class="audit-th-input">Harga</th>
+                            </tr>
+                          </thead>
+                          <tbody id="assetTableBodyDistribusi"></tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="assetprod-aside-col">
+                      <div class="assetprod-aside-card">
+                        <div class="assetprod-aside-header">
+                          <div class="assetprod-aside-title">Ringkasan</div>
+                          <button class="assetprod-penyusutan-btn" id="assetPenyusutanBtn" title="Input Penyusutan">
+                            <i class="fa-solid fa-chart-line"></i>
+                          </button>
+                        </div>
+            
+                        <div class="assetprod-ringkasan-group">
+                          <div class="assetprod-group-label">Produksi</div>
+                          <div class="assetprod-ringkasan-row">
+                            <span>Total Aset</span>
+                            <span id="assetTotalProduksi">Rp 0</span>
+                          </div>
+                          <div class="assetprod-ringkasan-row assetprod-row-minus">
+                            <span>Penyusutan Aset</span>
+                            <span id="assetPenyusutanProduksiVal">- Rp 0</span>
+                          </div>
+                          <div class="assetprod-ringkasan-row assetprod-row-total">
+                            <span>Total</span>
+                            <span id="assetNetProduksi">Rp 0</span>
+                          </div>
+                        </div>
+            
+                        <div class="assetprod-divider"></div>
+            
+                        <div class="assetprod-ringkasan-group">
+                          <div class="assetprod-group-label">Distribusi</div>
+                          <div class="assetprod-ringkasan-row">
+                            <span>Total Aset</span>
+                            <span id="assetTotalDistribusi">Rp 0</span>
+                          </div>
+                          <div class="assetprod-ringkasan-row assetprod-row-minus">
+                            <span>Penyusutan Aset</span>
+                            <span id="assetPenyusutanDistribusiVal">- Rp 0</span>
+                          </div>
+                          <div class="assetprod-ringkasan-row assetprod-row-total">
+                            <span>Total</span>
+                            <span id="assetNetDistribusi">Rp 0</span>
+                          </div>
+                        </div>
+            
+                        <div class="assetprod-divider assetprod-divider-bold"></div>
+            
+                        <div class="assetprod-ringkasan-grand">
+                          <span>Total Aset</span>
+                          <span id="assetTotalJumlah">Rp 0</span>
+                        </div>
+            
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- MODAL: TAMBAH/EDIT ASSET -->
+                <div class="audit-modal-overlay" id="assetFormModalOverlay">
+                  <div class="audit-modal-box">
+                    <div class="audit-modal-header">
+                      <span class="audit-modal-title" id="assetFormModalTitle">Tambah Barang</span>
+                    </div>
+                    <div class="audit-modal-body">
+                      <label class="audit-modal-label">Kategori</label>
+                      <div class="pembelian-select-wrap" id="assetKategoriWrap" style="margin-bottom:12px;">
+                        <button type="button" class="pembelian-select-btn" id="assetKategoriBtn">
+                          <span id="assetKategoriBtnLabel">Pilih Kategori</span>
+                          <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+                        <div class="pembelian-select-dropdown" id="assetKategoriDropdown">
+                          <div class="pembelian-select-option" data-kategori="produksi">Peralatan Produksi</div>
+                          <div class="pembelian-select-option" data-kategori="distribusi">Perlengkapan Distribusi</div>
+                        </div>
+                      </div>
+            
+                      <label class="audit-modal-label">Nama Barang</label>
+                      <input type="text" id="assetFormNama" class="audit-modal-input" placeholder="Contoh: Freezer Box" style="margin-bottom:12px;">
+            
+                      <label class="audit-modal-label">Qty</label>
+                      <input type="number" min="0" id="assetFormQty" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
+            
+                      <label class="audit-modal-label">Harga</label>
+                      <input type="text" inputmode="numeric" id="assetFormHarga" class="audit-modal-input" placeholder="0">
+                    </div>
+                    <div class="audit-modal-footer">
+                      <button class="audit-modal-btn audit-modal-btn-cancel" id="assetFormModalCancel">Batal</button>
+                      <button class="audit-modal-btn audit-modal-btn-confirm" id="assetFormModalConfirm">Simpan</button>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- MODAL: INPUT PENYUSUTAN -->
+                <div class="audit-modal-overlay" id="assetPenyusutanModalOverlay">
+                  <div class="audit-modal-box">
+                    <div class="audit-modal-header">
+                      <span class="audit-modal-title">Input Penyusutan Aset</span>
+                    </div>
+                    <div class="audit-modal-body">
+                      <label class="audit-modal-label">Penyusutan Aset Produksi</label>
+                      <input type="text" inputmode="numeric" id="assetPenyusutanProduksiInput" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
+                
+                      <label class="audit-modal-label">Penyusutan Aset Distribusi</label>
+                      <input type="text" inputmode="numeric" id="assetPenyusutanDistribusiInput" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
+                
+                      <label class="audit-modal-label">Total</label>
+                      <div class="pembelian-readonly-box" id="assetPenyusutanTotalPreview">Rp 0</div>
+                    </div>
+                    <div class="audit-modal-footer">
+                      <button class="audit-modal-btn audit-modal-btn-cancel" id="assetPenyusutanCancel">Batal</button>
+                      <button class="audit-modal-btn audit-modal-btn-confirm" id="assetPenyusutanConfirm">Simpan</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2576,6 +3202,23 @@
   </div>
 </div>
 
+<!-- ── AUDIT: MODAL TAMBAH BAHAN BAKU ── -->
+<div class="audit-modal-overlay" id="auditAddModalOverlay">
+  <div class="audit-modal-box">
+    <div class="audit-modal-header">
+      <span class="audit-modal-title">Tambah Bahan Baku</span>
+    </div>
+    <div class="audit-modal-body">
+      <label class="audit-modal-label">Nama Bahan Baku</label>
+      <input type="text" id="auditAddModalInput" class="audit-modal-input" placeholder="Contoh: Susu UHT">
+    </div>
+    <div class="audit-modal-footer">
+      <button class="audit-modal-btn audit-modal-btn-cancel" id="auditAddModalCancel">Batal</button>
+      <button class="audit-modal-btn audit-modal-btn-confirm" id="auditAddModalConfirm">Tambah</button>
+    </div>
+  </div>
+</div>
+
 <!-- PETA GLOBAL -->
 <div id="petaGlobalOverlay" class="peta-global-overlay" style="display:none">
   <div id="petaGlobalWrap" class="peta-global-wrap">
@@ -2718,6 +3361,9 @@
 <script src="rekapproduksi.js"></script>
 <script src="rincianproduksi.js"></script>
 <script src="auditprod.js"></script>
+<script src="pembelian.js"></script>
+<script src="assetprod.js"></script>
+<script src="neracaprod.js"></script>
 <script src="slipGajiProduksi.js"></script>
 <script src="rincianpemasukan.js"></script>
 <script src="akun.js"></script>

@@ -34,8 +34,20 @@ function activateRekapProdPanel(targetWrapperId) {
     target.classList.add("show");
     target.style.setProperty("display", "flex", "important");
   }
+
+  // MOBILE: paksa sembunyikan list panel supaya overlay bener-bener full screen
+  if (window.innerWidth <= 768) {
+    const listPanel = document.querySelector('#view-rekapproduksi .lap-list-panel');
+    if (listPanel) listPanel.style.setProperty("display", "none", "important");
+  }
 }
 window.activateRekapProdPanel = activateRekapProdPanel;
+
+function showRekapProdListMobile() {
+  const listPanel = document.querySelector('#view-rekapproduksi .lap-list-panel');
+  if (listPanel) listPanel.style.removeProperty("display");
+}
+window.showRekapProdListMobile = showRekapProdListMobile;
 
 function getPrevMonthTanggal(bulan, tahun) {
   let prevBulan = bulan - 1;
@@ -474,6 +486,9 @@ window.initRekapProduksiView = function() {
   initRekapProdFilter();
   window.initRincianProduksiView?.();
   window.initAuditProduksiView?.();
+  window.initPembelianBahanBakuView?.();
+  window.initAssetProduksiView?.();
+  window.initNeracaSaldoView?.();
   window.initSlipGajiProdView?.();
 
   document.querySelectorAll("#rekapProduksiList .lap-kurir-item[data-id='rekapitulasi']").forEach(item => {
