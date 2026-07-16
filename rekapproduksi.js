@@ -490,6 +490,7 @@ window.initRekapProduksiView = function() {
   window.initAssetProduksiView?.();
   window.initNeracaSaldoView?.();
   window.initSlipGajiProdView?.();
+  window.initEkuitasProduksiView?.();
 
   document.querySelectorAll("#rekapProduksiList .lap-kurir-item[data-id='rekapitulasi']").forEach(item => {
     item.addEventListener("click", async () => {
@@ -515,6 +516,7 @@ window.initRekapProduksiView = function() {
     document.getElementById("rekapProduksiDetailWrapper")?.classList.remove("show");
     document.getElementById("rekapProduksiBackBtn").style.display = "none";
     document.querySelectorAll("#rekapProduksiList .lap-kurir-item").forEach(x => x.classList.remove("active"));
+    window.showRekapProdListMobile?.();
   });
 
   document.getElementById("rekapProdReloadBtn")?.addEventListener("click", async () => {

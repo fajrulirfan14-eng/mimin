@@ -1,0 +1,588 @@
+
+/* ── EKUITAS: DETAIL WRAPPER & PANEL ── */
+.ekuitasprod-detail-wrapper {
+  flex: 1;
+  padding: 0;
+  background: var(--bg-page);
+  overflow: hidden;
+  display: none;
+}
+.ekuitasprod-detail-wrapper.show {
+  display: flex;
+}
+.ekuitasprod-detail-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: var(--bg-page);
+}
+.ekuitasprod-detail-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 20px;
+}
+.ekuitasprod-empty-icon {
+  font-size: 40px;
+  color: var(--border-card);
+  margin-bottom: 12px;
+}
+.ekuitasprod-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.ekuitasprod-empty-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── EKUITAS: CONTENT & INVESTOR LIST ── */
+.ekuitasprod-detail-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-card);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+.ekuitasprod-detail-header-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ekuitasprod-detail-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.ekuitasprod-detail-info {
+  flex: 1;
+  min-width: 0;
+}
+.ekuitasprod-detail-nama {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ekuitasprod-detail-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 16px;
+}
+.ekuitas-investor-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.ekuitas-investor-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color var(--transition-fast, 0.15s), background var(--transition-fast, 0.15s);
+}
+.ekuitas-investor-item:hover {
+  border-color: var(--brand-primary, #6366f1);
+  background: var(--bg-hover, var(--bg-card));
+}
+.ekuitas-investor-item.active {
+  border-color: var(--brand-primary, #6366f1);
+  background: var(--bg-active, var(--bg-card));
+}
+.ekuitas-investor-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-page);
+  border: 1px solid var(--border-card);
+  color: var(--text-muted);
+  font-size: 16px;
+}
+.ekuitas-investor-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ekuitas-investor-info {
+  flex: 1;
+  min-width: 0;
+}
+.ekuitas-investor-nama {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ekuitas-investor-cabang {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.ekuitas-investor-nominal {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-primary, #6366f1);
+  margin-top: 3px;
+}
+.ekuitas-investor-kosong {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 30px 16px;
+}
+
+/* ── EKUITAS: CARDS GRID (INFO LENGKAP & ROI) ── */
+.ekuitas-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.ekuitas-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ekuitas-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ekuitas-card-title i {
+  color: var(--brand-primary, #6366f1);
+  font-size: 13px;
+}
+.ekuitas-card-body {
+  min-height: 60px;
+}
+.ekuitas-card-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 16px 8px;
+}
+
+/* ── EKUITAS: INFO LENGKAP ROWS ── */
+.ekuitas-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-card);
+}
+.ekuitas-info-row:last-child {
+  border-bottom: none;
+}
+.ekuitas-info-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.ekuitas-info-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.ekuitas-info-row-ttd {
+  align-items: center;
+}
+.ekuitas-info-ttd-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+.ekuitas-info-ttd-wrap img {
+  max-width: 90px;
+  max-height: 40px;
+  object-fit: contain;
+  border: 1px solid var(--border-card);
+  border-radius: 6px;
+  background: var(--bg-card);
+}
+
+/* ── EKUITAS: EDIT MODE ── */
+.ekuitas-card-title {
+  position: relative;
+}
+.ekuitas-edit-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--brand-primary, #6366f1);
+  background: transparent;
+  border: 1px solid var(--brand-primary, #6366f1);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ekuitas-info-value[contenteditable="true"] {
+  outline: none;
+  background: var(--bg-page);
+  border: 1px dashed var(--brand-primary, #6366f1);
+  border-radius: 6px;
+  padding: 3px 8px;
+  min-width: 60px;
+}
+.ekuitas-info-ttd-wrap.editing {
+  cursor: pointer;
+  border: 1px dashed var(--brand-primary, #6366f1);
+  border-radius: 8px;
+  padding: 4px;
+}
+.ekuitas-save-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--brand-primary, #6366f1);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ekuitas-save-btn:active {
+  opacity: 0.85;
+}
+
+/* ── EKUITAS: MODAL KONFIRMASI ── */
+.ekuitas-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.ekuitas-modal-box {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: 24px 20px;
+  width: 100%;
+  max-width: 320px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+.ekuitas-modal-icon {
+  font-size: 34px;
+  color: var(--brand-primary, #6366f1);
+  margin-bottom: 10px;
+}
+.ekuitas-modal-msg {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 18px;
+}
+.ekuitas-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+.ekuitas-modal-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+.ekuitas-modal-btn-cancel {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  border: 1px solid var(--border-card);
+}
+.ekuitas-modal-btn-confirm {
+  background: var(--brand-primary, #6366f1);
+  color: #fff;
+}
+
+/* ── EKUITAS: TOAST ── */
+.ekuitas-toast-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.ekuitas-toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+.ekuitas-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.ekuitas-toast-success {
+  background: #16a34a;
+}
+.ekuitas-toast-error {
+  background: #dc2626;
+}
+
+/* ── Tombol Tambah Akun ── */
+.ekuitas-tambah-akun-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #2f6fed;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+.ekuitas-tambah-akun-btn:hover { background: #2559c4; }
+.ekuitas-tambah-akun-btn:active { transform: scale(0.97); }
+
+/* ── Overlay ── */
+.ekuitas-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease;
+  z-index: 4000;
+}
+.ekuitas-sheet-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Sheet base ── */
+.ekuitas-sheet {
+  position: fixed;
+  background: #fff;
+  z-index: 9999999;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 24px rgba(0,0,0,0.2);
+}
+.ekuitas-sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+.ekuitas-sheet-title { font-size: 16px; font-weight: 700; }
+.ekuitas-sheet-close {
+  border: none;
+  background: #f2f2f2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+}
+.ekuitas-sheet-body {
+  padding: 18px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ── EKUITAS: KPI RETURN (ROI) ── */
+.ekuitas-roi-kpi {
+  background: var(--success-bg);
+  border: 1px solid var(--success);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.ekuitas-roi-kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+.ekuitas-roi-kpi-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ekuitas-roi-kpi-nominal {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--success);
+}
+.ekuitas-roi-kpi-persen {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.ekuitas-roi-modal-box {
+  text-align: left;
+}
+.ekuitas-roi-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+.ekuitas-roi-modal-periode {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+/* ── EKUITAS: RIWAYAT RETURN PER PERIODE ── */
+.ekuitas-roi-riwayat-list {
+  margin-top: 14px;
+}
+.ekuitas-roi-riwayat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-main);
+  font-size: 13px;
+}
+.ekuitas-roi-riwayat-row:last-child {
+  border-bottom: none;
+}
+.ekuitas-roi-riwayat-label {
+  color: var(--text-secondary);
+}
+.ekuitas-roi-riwayat-value {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.ekuitas-roi-riwayat-empty {
+  padding: 14px 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  .ekuitasprod-detail-wrapper {
+    padding: 0;
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: var(--bg-page);
+    transform: translateX(100%);
+    transition: transform var(--transition-slow);
+  }
+  .ekuitasprod-detail-wrapper.show {
+    display: flex !important;
+    transform: translateX(0);
+  }
+  .ekuitasprod-detail-panel {
+    border-radius: 0;
+  }
+  .ekuitas-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .ekuitasprod-detail-content {
+    padding-bottom: 90px;
+  }
+  .ekuitas-sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 20px 20px 0 0;
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+  }
+  .ekuitas-sheet.open {
+    transform: translateY(0);
+  }
+  .ekuitas-sheet.dragging {
+    transition: none; /* biar ngikutin jari pas drag */
+  }
+  .ekuitas-sheet-handle {
+    width: 40px;
+    height: 5px;
+    background: #d6d6d6;
+    border-radius: 3px;
+    margin: 10px auto 4px;
+    flex-shrink: 0;
+  }
+}
+@media (min-width: 769px) {
+  .ekuitas-sheet {
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: 400px;
+    max-width: 90vw;
+    transform: translateX(100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+    border-radius: 16px 0 0 16px;
+  }
+  .ekuitas-sheet.open {
+    transform: translateX(0);
+  }
+  .ekuitas-sheet-handle { display: none; }
+}

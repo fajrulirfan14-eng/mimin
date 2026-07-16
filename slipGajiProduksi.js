@@ -60,6 +60,7 @@ window.initSlipGajiProdView = function() {
     document.getElementById("slipgajiProduksiDetailWrapper")?.classList.remove("show");
     document.getElementById("slipgajiProduksiBackBtn").style.display = "none";
     document.querySelectorAll("#rekapProduksiList .lap-kurir-item[data-id='slipgaji']").forEach(x => x.classList.remove("active"));
+    window.showRekapProdListMobile?.();
   });
 };
 

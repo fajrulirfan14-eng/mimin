@@ -581,8 +581,16 @@ function setTopbarAvatar() {
       { wrapper: document.getElementById("rekapDistribusiDetailWrapper"), back: document.getElementById("rekapDistribusiBackBtn") },
       { wrapper: document.getElementById("assetsDetailWrapper"), back: document.getElementById("assetsBackBtn") },
       { wrapper: document.getElementById("slipGajiDetailWrapper"), back: document.getElementById("slipGajiToRekapBackBtn") },
-      // rekap produksi panel
-      { wrapper: document.getElementById("rekapProduksiDetailWrapper"), back: document.getElementById("rekapProduksiBackBtn") },
+      // rekap produksi: sub-panel detail (harus dicek SEBELUM wrapper induk)
+      { wrapper: document.getElementById("rincianProduksiDetailWrapper"), back: document.getElementById("rincianProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
+      { wrapper: document.getElementById("ekuitasProduksiDetailWrapper"), back: document.getElementById("ekuitasProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
+      { wrapper: document.getElementById("slipgajiProduksiDetailWrapper"), back: document.getElementById("slipgajiProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
+      { wrapper: document.getElementById("assetProduksiDetailWrapper"), back: document.getElementById("assetProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
+      { wrapper: document.getElementById("neracaProduksiDetailWrapper"), back: document.getElementById("neracaProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
+      { wrapper: document.getElementById("pembelianProduksiDetailWrapper"), back: document.getElementById("pembelianProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
+      { wrapper: document.getElementById("auditProduksiDetailWrapper"), back: document.getElementById("auditProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
+      // rekap produksi panel induk
+      { wrapper: document.getElementById("rekapProduksiDetailWrapper"), back: document.getElementById("rekapProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
       // akun panel kanan (mobile)
       { wrapper: document.getElementById("akunPanelRight"), back: document.getElementById("akunBackBtn") },
       // laporan detail
@@ -595,9 +603,15 @@ function setTopbarAvatar() {
     ];
 
     for (const panel of panels) {
-      if (panel.wrapper && panel.wrapper.classList.contains("show")) {
+      const isShowing = panel.wrapper && (
+        panel.wrapper.classList.contains("show") ||
+        panel.wrapper.style.display === "flex"
+      );
+      if (isShowing) {
         panel.wrapper.classList.remove("show");
+        panel.wrapper.style.setProperty("display", "none", "important");
         if (panel.back) panel.back.style.display = "none";
+        panel.listRestore?.();
         history.pushState({ view: currentView }, "", "");
         return;
       }
@@ -620,7 +634,7 @@ function setTopbarAvatar() {
   });
 })();
 
-/* ── VISIBILITY CHANGE ── */
+/* ── VISIBILITY CHANGE REFRESH ── */
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     const last = Number(sessionStorage.getItem("lastActiveAt") || 0);

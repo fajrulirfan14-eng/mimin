@@ -1,4 +1,4 @@
-/* ── PEMBELIAN BAHAN BAKU: DETAIL WRAPPER ── */
+
 .pembelianprod-detail-wrapper {
   flex: 1;
   padding: 0;
@@ -6,11 +6,9 @@
   overflow: hidden;
   display: none;
 }
-
 .pembelianprod-detail-wrapper.show {
   display: flex;
 }
-
 .pembelianprod-detail-panel {
   display: flex;
   flex-direction: column;
@@ -30,20 +28,17 @@
   color: var(--text-muted);
   padding: 40px 20px;
 }
-
 .pembelianprod-empty-icon {
   font-size: 40px;
   color: var(--border-card);
   margin-bottom: 12px;
 }
-
 .pembelianprod-empty-title {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
-
 .pembelianprod-empty-sub {
   font-size: 13px;
   color: var(--text-muted);
@@ -55,12 +50,10 @@
   display: flex;
   flex-direction: column;
 }
-
 .pembelianprod-detail-header {
   flex-shrink: 0;
   padding: 16px 16px 0;
 }
-
 .pembelianprod-detail-header-top {
   display: flex;
   align-items: center;
@@ -68,7 +61,6 @@
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border-card);
 }
-
 .pembelianprod-detail-back-btn {
   width: 32px;
   height: 32px;
@@ -84,17 +76,71 @@
   margin-right: 8px;
 }
 
+.pembelian-select-wrap {
+  position: relative;
+}
+.pembelian-select-btn {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--bg-input);
+  font-size: 13.5px;
+  font-family: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.pembelian-select-btn i {
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+.pembelian-select-wrap.open .pembelian-select-btn i {
+  transform: rotate(180deg);
+}
+.pembelian-select-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px var(--shadow-md);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.pembelian-select-wrap.open .pembelian-select-dropdown {
+  display: block;
+}
+.pembelian-select-option {
+  padding: 10px 14px;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.pembelian-select-option:hover {
+  background: var(--bg-hover);
+}
+.pembelian-select-option.selected {
+  color: var(--brand-primary);
+  font-weight: 700;
+}
+
 .pembelianprod-detail-info {
   flex: 1;
   min-width: 0;
 }
-
 .pembelianprod-detail-nama {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
 }
-
 .pembelianprod-detail-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -110,20 +156,18 @@
   font-size: 11.5px;
   font-weight: 700;
 }
-
 .pembelian-status-lunas {
   background: var(--success-bg);
   color: var(--success);
 }
-
 .pembelian-status-belum {
   background: var(--danger-bg);
   color: var(--danger);
 }
-
 .pembelian-row-clickable {
   cursor: pointer;
 }
+
 /* ── PEMBELIAN: SIDE SHEET (geser dari kanan ke kiri) ── */
 .pembelian-sheet-overlay {
   visibility: hidden;
@@ -151,7 +195,7 @@
   right: 0;
   height: 100dvh;
   width: 88%;
-  max-width: 380px;
+  max-width: 480px;
   background: var(--bg-card);
   border-top-left-radius: 18px;
   border-bottom-left-radius: 18px;
@@ -162,11 +206,9 @@
   transform: translateX(100%);
   transition: transform var(--transition-slow);
 }
-
 .pembelian-sheet-overlay.show .pembelian-sheet-box {
   transform: translateX(0);
 }
-
 .pembelian-sheet-drag-handle {
   width: 40px;
   height: 4px;
@@ -184,7 +226,6 @@
   padding: 12px 18px 14px;
   border-bottom: 1px solid var(--border-card);
 }
-
 .pembelian-sheet-title {
   font-size: 15px;
   font-weight: 700;
@@ -229,10 +270,32 @@
   color: var(--text-primary);
 }
 
-/* ── PEMBELIAN: CUSTOM SELECT JENIS PAKET ── */
-.pembelian-select-wrap {
-  position: relative;
+/* ── DATA PEMBELIAN: readonly list, bukan form ── */
+.pembelian-data-summary {
+  margin-bottom: 50px;
 }
+.pembelian-data-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border-card);
+}
+.pembelian-data-row:last-child {
+  border-bottom: none;
+}
+.pembelian-data-row .label {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+.pembelian-data-row .value {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
+}
+
 .pembelian-select-btn {
   width: 100%;
   box-sizing: border-box;
@@ -248,17 +311,14 @@
   color: var(--text-primary);
   cursor: pointer;
 }
-
 .pembelian-select-btn i {
   font-size: 11px;
   color: var(--text-muted);
   transition: transform var(--transition-fast);
 }
-
 .pembelian-select-wrap.open .pembelian-select-btn i {
   transform: rotate(180deg);
 }
-
 .pembelian-select-dropdown {
   display: none;
   position: absolute;
@@ -272,26 +332,23 @@
   overflow-y: auto;
   z-index: 10;
 }
-
 .pembelian-select-wrap.open .pembelian-select-dropdown {
   display: block;
 }
-
 .pembelian-select-option {
   padding: 10px 14px;
   font-size: 13.5px;
   color: var(--text-primary);
   cursor: pointer;
 }
-
 .pembelian-select-option:hover {
   background: var(--bg-hover);
 }
-
 .pembelian-select-option.selected {
   color: var(--brand-primary);
   font-weight: 700;
 }
+
 .pembelian-bayar-info {
   display: flex;
   justify-content: space-between;
@@ -302,167 +359,267 @@
   color: var(--text-secondary);
   margin-bottom: 16px;
 }
-
 .pembelian-bayar-info b {
   color: var(--text-primary);
+}
+.pembelian-sisa-minus {
+  color: var(--danger) !important;
+  font-weight: 700;
+}
+.pembelian-bayar-warning {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-top: 6px;
+  margin-bottom: 16px;
+}
+#pembelianBayarModalConfirm:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.3);
 }
 
 .pembelian-riwayat-title {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
-
 .pembelian-riwayat-list {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+.pembelian-riwayat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  padding: 28px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-card);
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+.pembelian-riwayat-empty i {
+  font-size: 18px;
+  opacity: 0.6;
 }
 
+/* ── ITEM CARD ── */
 .pembelian-riwayat-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
   background: var(--bg-page);
   border: 1px solid var(--border-card);
+  border-left: 3px solid var(--success);
   font-size: 13px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  animation: pembelianRiwayatFadeIn 0.2s ease both;
+}
+.pembelian-riwayat-item:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+.pembelian-riwayat-item.belum-diterima {
+  border-left-color: var(--danger);
+  background: var(--danger-bg);
 }
 
 .pembelian-riwayat-item .info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  min-width: 0;
+}
+.pembelian-riwayat-item .tanggal {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.pembelian-riwayat-item .nominal {
+  font-weight: 700;
+  color: var(--success);
+  font-size: 14px;
+}
+.pembelian-riwayat-item.belum-diterima .nominal {
+  color: var(--text-primary, var(--text-secondary));
 }
 
+.pembelian-riwayat-item .baris-atas {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.pembelian-riwayat-diterima-badge {
+  width: fit-content;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+.pembelian-riwayat-diterima-badge.sudah {
+  background: var(--success-bg, rgba(16, 185, 129, 0.12));
+  color: var(--success);
+}
+.pembelian-riwayat-diterima-badge.belum {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* ── ACTIONS (tombol edit) ── */
 .pembelian-riwayat-actions {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
 }
-
 .pembelian-riwayat-icon-btn {
-  width: 26px;
-  height: 26px;
+  width: 40px;
+  height: 40px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--bg-hover);
   color: var(--text-muted);
-  font-size: 11px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease, color 0.15s ease;
+}
+.pembelian-riwayat-icon-btn:hover {
+  background: var(--brand-primary);
+  color: var(--text-white);
+}
+.pembelian-riwayat-icon-btn:active {
+  transform: scale(0.92);
 }
 
-.pembelian-riwayat-icon-btn.danger {
-  background: var(--danger-bg);
-  color: var(--danger);
-}
-
+/* ── EDIT MODE ── */
 .pembelian-riwayat-edit-row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 12px;
   background: var(--bg-page);
-  border: 1px solid var(--brand-primary);
+  border: 1.5px solid var(--brand-primary);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  animation: pembelianEditRowIn 0.18s ease both;
 }
-
 .pembelian-riwayat-edit-row .row-inputs {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
-
-.pembelian-riwayat-edit-row input {
+.pembelian-riwayat-field {
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
-  border: none;
-  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pembelian-riwayat-field .field-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding-left: 2px;
+}
+.pembelian-riwayat-edit-row input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
   background: var(--bg-input);
-  font-size: 12.5px;
+  font-size: 13px;
   font-family: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pembelian-riwayat-edit-row input:focus {
+  outline: none;
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 3px rgba(var(--brand-primary-rgb, 37, 99, 235), 0.12);
 }
 
 .pembelian-riwayat-edit-row .row-actions {
   display: flex;
   gap: 8px;
+  margin-top: 2px;
 }
-
 .pembelian-riwayat-edit-row .row-actions button {
   flex: 1;
-  padding: 6px 0;
+  padding: 9px 0;
   border: none;
-  border-radius: 6px;
-  font-size: 12px;
+  border-radius: 15px;
+  font-size: 12.5px;
   font-weight: 700;
   cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.1s ease;
 }
-
+.pembelian-riwayat-edit-row .row-actions button:active {
+  transform: scale(0.97);
+}
 .pembelian-riwayat-save-btn {
   background: var(--brand-primary);
   color: var(--text-white);
 }
-
 .pembelian-riwayat-cancel-btn {
   background: var(--bg-hover);
   color: var(--text-secondary);
 }
-.pembelian-riwayat-item .tanggal {
-  color: var(--text-muted);
+.pembelian-riwayat-save-btn:hover,
+.pembelian-riwayat-cancel-btn:hover {
+  opacity: 0.85;
 }
 
-.pembelian-riwayat-item .nominal {
-  font-weight: 700;
-  color: var(--success);
+/* ── ANIMASI ── */
+@keyframes pembelianRiwayatFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.pembelian-delete-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 0;
-  border: none;
-  border-radius: 8px;
-  background: var(--danger-bg);
-  color: var(--danger);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
+@keyframes pembelianEditRowIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
-#pembelianConfirmOverlay {
-  z-index: 4000;
-}
-.pembelian-select-wrap#pembelianFilterJenisWrap {
-  width: 160px;
-  flex-shrink: 0;
-}
+
 .pembelian-total-row td {
   font-weight: 700;
   background: var(--brand-light);
   border-top: 2px solid var(--border-card);
 }
-
-@media (max-width: 768px) {
-  .pembelian-sheet-footer {
-    padding-bottom: calc(18px + 90px);
-  }
+.pembelian-riwayat-item.belum-diterima {
+  background: rgba(220, 38, 38, 0.06);
+  border-color: rgba(220, 38, 38, 0.2);
+}
+.pembelian-riwayat-diterima-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.pembelian-riwayat-diterima-badge.sudah {
+  background: rgba(34, 197, 94, 0.15);
+  color: #16a34a;
+}
+.pembelian-riwayat-diterima-badge.belum {
+  background: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
 }
 
 @media (max-width: 768px) {
   .pembelian-sheet-box {
     width: 92%;
-    max-width: 420px;
+    max-width: 350px;
   }
-}
-
-/* ── MOBILE ── */
-@media (max-width: 768px) {
   .pembelianprod-detail-wrapper {
     padding: 0;
     position: absolute;

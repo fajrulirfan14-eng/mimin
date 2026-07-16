@@ -39,6 +39,7 @@
 <link rel="stylesheet" href="pembelian.css">
 <link rel="stylesheet" href="assetprod.css">
 <link rel="stylesheet" href="neracaprod.css">
+<link rel="stylesheet" href="ekuitas.css">
 <link rel="stylesheet" href="slipgajiprod.css">
 <link rel="stylesheet" href="rinciandistribusi.css">
 <link rel="stylesheet" href="akun.css">
@@ -2070,6 +2071,14 @@
                   </div>
                   <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
                 </div>
+                <div class="lap-kurir-item" data-id="ekuitas">
+                  <div class="lap-kurir-avatar"><i class="fa-solid fa-chart-line"></i></div>
+                  <div class="lap-kurir-info">
+                    <div class="lap-kurir-nama">Ekuitas</div>
+                    <div class="lap-kurir-role">Pemilik Ekuitas</div>
+                  </div>
+                  <i class="fa-solid fa-chevron-right lap-kurir-arrow"></i>
+                </div>
               </div>
             </div>
             
@@ -2493,9 +2502,19 @@
                       </table>
                     </div>
 
+                    <div class="audit-kpi-row">
+                      <div class="audit-kpi-card kpi-hppreal">
+                        <span class="audit-kpi-label">Hpp Real</span>
+                        <span class="audit-kpi-value" id="auditKpiHppReal">-</span>
+                      </div>
+                      <div class="audit-kpi-card kpi-hasilaudit">
+                        <span class="audit-kpi-label">Hasil Audit</span>
+                        <span class="audit-kpi-value" id="auditKpiHasilAudit">-</span>
+                      </div>
+                    </div>
+
                     <div class="audit-preview-card">
                       <div class="audit-preview-title">
-                        <i class="fa-solid fa-eye"></i>
                         Preview Data Tersimpan
                       </div>
                       <div class="audit-preview-body" id="auditPreviewBody">
@@ -2585,10 +2604,6 @@
                           </button>
                           <div class="pembelian-select-dropdown" id="pembelianFilterJenisDropdown"></div>
                         </div>
-                        <button class="audit-add-btn" id="pembelianAddBtn">
-                          <i class="fa-solid fa-plus"></i>
-                          <span>Catat Pembelian</span>
-                        </button>
                       </div>
                     </div>
             
@@ -2613,51 +2628,7 @@
                     </div>
                   </div>
                 </div>
-            
-                <!-- SHEET: CATAT PEMBELIAN -->
-                <div class="pembelian-sheet-overlay" id="pembelianAddModalOverlay">
-                  <div class="pembelian-sheet-box">
-                    <div class="pembelian-sheet-drag-handle"></div>
-                    <div class="pembelian-sheet-header">
-                      <span class="pembelian-sheet-title">Catat Pembelian Paket</span>
-                      <button class="pembelian-sheet-close-btn" id="pembelianAddModalCancel">
-                        <i class="fa-solid fa-xmark"></i>
-                      </button>
-                    </div>
-                    <div class="pembelian-sheet-body">
-                      <<label class="audit-modal-label">Jenis Paket</label>
-                      <div class="pembelian-select-wrap" id="pembelianJenisWrap" style="margin-bottom:12px;">
-                        <button type="button" class="pembelian-select-btn" id="pembelianJenisBtn">
-                          <span id="pembelianJenisBtnLabel">Pilih Jenis Paket</span>
-                          <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div class="pembelian-select-dropdown" id="pembelianJenisDropdown"></div>
-                      </div>
-                      <label class="audit-modal-label">Qty (jumlah paket)</label>
-                      <input type="number" min="1" id="pembelianModalQty" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
-            
-                      <label class="audit-modal-label">Harga per Paket</label>
-                      <input type="text" inputmode="numeric" id="pembelianModalHarga" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
-                      <label class="audit-modal-label">Total</label>
-                      <div class="pembelian-readonly-box" id="pembelianModalTotal" style="margin-bottom:12px;">Rp 0</div>
-            
-                      <label class="audit-modal-label">Dibayar (boleh 0 kalau belum bayar)</label>
-                      <input type="text" inputmode="numeric" id="pembelianModalDibayar" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
-            
-                      <label class="audit-modal-label">Status</label>
-                      <div class="pembelian-readonly-box" id="pembelianModalStatusBox" style="margin-bottom:12px;">
-                        <span class="pembelian-status-badge" id="pembelianModalStatusBadge">-</span>
-                      </div>
-            
-                      <label class="audit-modal-label">Keterangan</label>
-                      <div class="pembelian-readonly-box" id="pembelianModalKeterangan">Rp 0</div>
-                    </div>
-                    <div class="pembelian-sheet-footer">
-                      <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianAddModalConfirm" style="width:100%;">Simpan</button>
-                    </div>
-                  </div>
-                </div>
-            
+
                 <!-- SHEET: UPDATE PEMBAYARAN -->
                 <div class="pembelian-sheet-overlay" id="pembelianBayarModalOverlay">
                   <div class="pembelian-sheet-box">
@@ -2669,30 +2640,28 @@
                       </button>
                     </div>
                     <div class="pembelian-sheet-body">
-            
-                      <div class="pembelian-riwayat-title">Edit Data Pembelian</div>
-            
-                      <label class="audit-modal-label">Jenis Paket</label>
-                      <div class="pembelian-select-wrap" id="pembelianEditJenisWrap" style="margin-bottom:12px;">
-                        <button type="button" class="pembelian-select-btn" id="pembelianEditJenisBtn">
-                          <span id="pembelianEditJenisBtnLabel">Pilih Jenis Paket</span>
-                          <i class="fa-solid fa-chevron-down"></i>
-                        </button>
-                        <div class="pembelian-select-dropdown" id="pembelianEditJenisDropdown"></div>
+                      <div class="pembelian-riwayat-title">Data Pembelian</div>
+
+                      <div class="pembelian-data-summary">
+                        <div class="pembelian-data-row">
+                          <span class="label">Jenis Paket</span>
+                          <span class="value" id="pembelianEditJenisReadonly">-</span>
+                        </div>
+                        <div class="pembelian-data-row">
+                          <span class="label">Jumlah Paket Bahan Baku</span>
+                          <span class="value" id="pembelianEditQtyReadonly">-</span>
+                        </div>
+                        <div class="pembelian-data-row">
+                          <span class="label">Harga per Paket</span>
+                          <span class="value" id="pembelianEditHargaReadonly">-</span>
+                        </div>
                       </div>
-            
-                      <label class="audit-modal-label">Qty (jumlah paket)</label>
-                      <input type="number" min="1" id="pembelianEditQty" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
-            
-                      <label class="audit-modal-label">Harga per Paket</label>
-                      <input type="text" inputmode="numeric" id="pembelianEditHarga" class="audit-modal-input" placeholder="0" style="margin-bottom:12px;">
-            
-                      <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianEditSaveBtn" style="width:100%; margin-bottom:20px;">Simpan Perubahan</button>
             
                       <div class="pembelian-bayar-info" id="pembelianBayarInfo"></div>
             
-                      <label class="audit-modal-label">Nominal Bayar (cicilan kali ini)</label>
-                      <input type="text" inputmode="numeric" id="pembelianBayarModalInput" class="audit-modal-input" placeholder="0" style="margin-bottom:16px;">
+                      <label class="audit-modal-label">Input Pembayaran / Cicilan</label>
+                      <input type="text" inputmode="numeric" id="pembelianBayarModalInput" class="audit-modal-input" placeholder="0">
+                      <div class="pembelian-bayar-warning" id="pembelianBayarWarning" style="display:none;">Nominal melebihi batas total</div>
             
                       <div class="pembelian-riwayat-title">Riwayat Cicilan</div>
                       <div class="pembelian-riwayat-list" id="pembelianRiwayatList">
@@ -2700,29 +2669,11 @@
                       </div>
                     </div>
                     <div class="pembelian-sheet-footer" style="display:flex; flex-direction:column; gap:8px;">
-                      <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianBayarModalConfirm" style="width:100%;">Tambah Cicilan</button>
-                      <button class="pembelian-delete-btn" id="pembelianDeleteBtn" style="width:100%;">
-                        <i class="fa-solid fa-trash"></i> Hapus Pembelian
-                      </button>
+                      <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianBayarModalConfirm" style="width:100%; border-radius: 15px;">Tambah Cicilan</button>
                     </div>
                   </div>
                 </div>
             
-              </div>
-              <!-- MODAL: KONFIRMASI HAPUS -->
-              <div class="audit-modal-overlay" id="pembelianConfirmOverlay">
-                <div class="audit-modal-box">
-                  <div class="audit-modal-header">
-                    <span class="audit-modal-title" id="pembelianConfirmTitle">Konfirmasi Hapus</span>
-                  </div>
-                  <div class="audit-modal-body">
-                    <p id="pembelianConfirmMessage" style="font-size:13.5px; color:var(--text-secondary); margin:0;"></p>
-                  </div>
-                  <div class="audit-modal-footer">
-                    <button class="audit-modal-btn audit-modal-btn-cancel" id="pembelianConfirmCancel">Batal</button>
-                    <button class="audit-modal-btn audit-modal-btn-confirm" id="pembelianConfirmYes" style="background:var(--danger);">Hapus</button>
-                  </div>
-                </div>
               </div>
             </div>
             
@@ -3035,6 +2986,209 @@
                   </div>
                 </div>
 
+              </div>
+            </div>
+            
+            <!-- KANAN: DETAIL EKUITAS -->
+            <div class="ekuitasprod-detail-wrapper" id="ekuitasProduksiDetailWrapper">
+              <div class="ekuitasprod-detail-panel">
+
+                <div class="ekuitasprod-detail-header">
+                  <div class="ekuitasprod-detail-header-top">
+                    <button class="ekuitasprod-detail-back-btn" id="ekuitasProduksiBackBtn" style="display:none">
+                      <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <div class="ekuitasprod-detail-info">
+                      <div class="ekuitasprod-detail-nama">Ekuitas</div>
+                    </div>
+                    <div class="rekap-dist-filter-wrap">
+                      <button class="rekap-dist-filter-btn" id="ekuitasProdBulanBtn">
+                        <i class="fa-solid fa-calendar"></i>
+                        <span id="ekuitasProdBulanLabel">Juli</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <div class="rekap-dist-dropdown" id="ekuitasProdBulanDropdown" style="display:none"></div>
+
+                      <button class="rekap-dist-filter-btn" id="ekuitasProdTahunBtn">
+                        <span id="ekuitasProdTahunLabel">2026</span>
+                        <i class="fa-solid fa-chevron-down"></i>
+                      </button>
+                      <button class="ekuitas-tambah-akun-btn" id="ekuitasTambahAkunBtn">
+                        <i class="fa-solid fa-plus"></i>
+                        <span class="ekuitas-tambah-akun-label">Tambah Akun</span>
+                      </button>
+                      <div class="rekap-dist-dropdown" id="ekuitasProdTahunDropdown" style="display:none"></div>
+                    </div>
+                  </div>
+                </div>
+            
+                <div class="ekuitasprod-detail-empty" id="ekuitasProduksiEmpty">
+                  <div class="ekuitasprod-empty-icon"><i class="fa-solid fa-chart-line"></i></div>
+                  <div class="ekuitasprod-empty-title">Ekuitas</div>
+                  <div class="ekuitasprod-empty-sub">Data pemilik ekuitas belum tersedia.</div>
+                </div>
+
+                <div class="ekuitasprod-detail-content" id="ekuitasProduksiContent" style="display:none;">
+                  <div class="ekuitas-investor-list" id="ekuitasInvestorList"></div>
+
+                  <div class="ekuitas-cards-grid">
+                    <div class="ekuitas-card">
+                      <div class="ekuitas-card-title">
+                        <i class="fa-solid fa-circle-info"></i>
+                        Informasi Lengkap
+                        <button class="ekuitas-edit-btn" id="ekuitasEditBtn" style="display:none">
+                          <i class="fa-solid fa-pen" id="ekuitasEditBtnIcon"></i> <span id="ekuitasEditBtnLabel">Edit</span>
+                        </button>
+                      </div>
+                      <div class="ekuitas-card-body" id="ekuitasInfoLengkapBody">
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">Nama</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoNama">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">Ekuitas</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoNominal">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">Email</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoEmail">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">No. Telepon</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoTelepon">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">NIK</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoNik">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">Pekerjaan</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoPekerjaan">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">Tempat, Tanggal Lahir</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoTtl">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">Alamat</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoAlamat">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">Cabang</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoCabang">-</span>
+                        </div>
+                        <div class="ekuitas-info-row">
+                          <span class="ekuitas-info-label">Tanggal Investasi</span>
+                          <span class="ekuitas-info-value" id="ekuitasInfoTglInvest">-</span>
+                        </div>
+                        <div class="ekuitas-info-row ekuitas-info-row-ttd">
+                          <span class="ekuitas-info-label">Tanda Tangan</span>
+                          <span class="ekuitas-info-ttd-wrap" id="ekuitasInfoTtd">
+                            <span class="ekuitas-info-value">-</span>
+                          </span>
+                        </div>
+                        <input type="file" accept="image/*" id="ekuitasTtdFileInput" style="display:none">
+                      </div>
+                      <button class="ekuitas-save-btn" id="ekuitasSaveBtn" style="display:none">
+                        <i class="fa-solid fa-floppy-disk"></i> Simpan
+                      </button>
+                    </div>
+
+                    <div class="ekuitas-card">
+                      <div class="ekuitas-card-title">
+                        <i class="fa-solid fa-chart-line"></i>
+                        ROI
+                        <button class="ekuitas-edit-btn" id="ekuitasInputRoiBtn">
+                          <i class="fa-solid fa-plus"></i> Input ROI
+                        </button>
+                      </div>
+                      <div class="ekuitas-card-body" id="ekuitasRoiBody">
+                        <div class="ekuitas-roi-kpi">
+                          <div class="ekuitas-roi-kpi-label">Return</div>
+                          <div class="ekuitas-roi-kpi-row">
+                            <span class="ekuitas-roi-kpi-nominal" id="ekuitasRoiNominal">Rp 0</span>
+                            <span class="ekuitas-roi-kpi-persen" id="ekuitasRoiPersen">+0%</span>
+                          </div>
+                        </div>
+
+                        <div class="ekuitas-roi-riwayat-list" id="ekuitasRoiRiwayatList"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="ekuitas-modal-overlay" id="ekuitasConfirmModal" style="display:none">
+                <div class="ekuitas-modal-box">
+                  <div class="ekuitas-modal-icon"><i class="fa-solid fa-circle-question"></i></div>
+                  <div class="ekuitas-modal-msg" id="ekuitasConfirmMsg">Simpan perubahan?</div>
+                  <div class="ekuitas-modal-actions">
+                    <button class="ekuitas-modal-btn ekuitas-modal-btn-cancel" id="ekuitasConfirmNo">Batal</button>
+                    <button class="ekuitas-modal-btn ekuitas-modal-btn-confirm" id="ekuitasConfirmYes">Simpan</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ekuitas-modal-overlay" id="ekuitasRoiModalOverlay" style="display:none">
+                <div class="ekuitas-modal-box ekuitas-roi-modal-box">
+                  <div class="ekuitas-roi-modal-title">Return Of Investment</div>
+                  <div class="ekuitas-roi-modal-periode" id="ekuitasRoiModalPeriode">Periode -</div>
+
+                  <label class="audit-modal-label">Nominal</label>
+                  <input type="text" inputmode="numeric" id="ekuitasRoiModalNominal" class="audit-modal-input" placeholder="0">
+
+                  <div class="ekuitas-modal-actions" style="margin-top:18px;">
+                    <button class="ekuitas-modal-btn ekuitas-modal-btn-cancel" id="ekuitasRoiModalCancel">Batal</button>
+                    <button class="ekuitas-modal-btn ekuitas-modal-btn-confirm" id="ekuitasRoiModalSave">Simpan</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ekuitas-toast-container" id="ekuitasToastContainer"></div>
+              <div class="ekuitas-sheet-overlay" id="ekuitasSheetOverlay"></div>
+
+              <div class="ekuitas-sheet" id="ekuitasSheet">
+                <div class="ekuitas-sheet-handle" id="ekuitasSheetHandle"></div>
+                <div class="ekuitas-sheet-header">
+                  <div class="ekuitas-sheet-title">Tambah Akun Investor</div>
+                  <button class="ekuitas-sheet-close" id="ekuitasSheetCloseBtn">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
+                <div class="ekuitas-sheet-body" id="ekuitasSheetBody">
+                  <label class="audit-modal-label">Nama Investor</label>
+                  <input type="text" id="ekuitasTambahNama" class="audit-modal-input" placeholder="Contoh: Budi Santoso" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">Email</label>
+                  <input type="email" id="ekuitasTambahEmail" class="audit-modal-input" placeholder="investor@email.com" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">Password</label>
+                  <input type="password" id="ekuitasTambahPassword" class="audit-modal-input" placeholder="Minimal 6 karakter" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">Ekuitas (Nominal)</label>
+                  <input type="text" inputmode="numeric" id="ekuitasTambahNominal" class="audit-modal-input" placeholder="0" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">No. Telepon</label>
+                  <input type="text" id="ekuitasTambahTelepon" class="audit-modal-input" placeholder="08xxxxxxxxxx" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">NIK</label>
+                  <input type="text" id="ekuitasTambahNik" class="audit-modal-input" placeholder="Nomor Induk Kependudukan" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">Pekerjaan</label>
+                  <input type="text" id="ekuitasTambahPekerjaan" class="audit-modal-input" placeholder="Contoh: Wiraswasta" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">Tempat, Tanggal Lahir</label>
+                  <input type="text" id="ekuitasTambahTtl" class="audit-modal-input" placeholder="Contoh: Indramayu, 15 Januari 2000" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">Alamat</label>
+                  <input type="text" id="ekuitasTambahAlamat" class="audit-modal-input" placeholder="Alamat lengkap" style="margin-bottom:14px;">
+
+                  <label class="audit-modal-label">Tanggal Investasi</label>
+                  <input type="text" id="ekuitasTambahTglInvest" class="audit-modal-input" placeholder="Contoh: Senin, 1 Januari 2026" style="margin-bottom:20px;">
+
+                  <button class="ekuitas-tambah-akun-btn" id="ekuitasTambahSubmitBtn" style="width:100%; justify-content:center;">
+                    <span id="ekuitasTambahSubmitLabel">Buat Akun Investor</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -3364,6 +3518,7 @@
 <script src="pembelian.js"></script>
 <script src="assetprod.js"></script>
 <script src="neracaprod.js"></script>
+<script src="ekuitas.js"></script>
 <script src="slipGajiProduksi.js"></script>
 <script src="rincianpemasukan.js"></script>
 <script src="akun.js"></script>

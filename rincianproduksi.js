@@ -71,6 +71,31 @@ async function loadRincianPengeluaranAgg() {
   return result;
 }
 
+async function loadRincianPembelianBahanBakuAgg() {
+  const adminUid = window.auth?.currentUser?.uid;
+  if (!adminUid) return { qty: 0, nominal: 0 };
+
+  const periode = `${rekapProdTahun}-${String(rekapProdBulan + 1).padStart(2, "0")}`;
+
+  try {
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users", adminUid, "pembelianBahanBaku"),
+      window.where("periode", "==", periode)
+    ));
+
+    let qty = 0, nominal = 0;
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      qty     += Number(data.qty)     || 0;
+      nominal += Number(data.dibayar) || 0;
+    });
+
+    return { qty, nominal };
+  } catch (err) {
+    console.error("❌ loadRincianPembelianBahanBakuAgg:", err);
+    return { qty: 0, nominal: 0 };
+  }
+}
 async function loadRincianLaporanAgg() {
   const result = {};
   try {
@@ -102,7 +127,6 @@ async function loadRincianLaporanAgg() {
 
   return result;
 }
-
 async function loadRincianMarketingList() {
   try {
     const allUsers = await window.idb.getUsers();
@@ -191,14 +215,15 @@ function renderRincianProdTable() {
 
   return grandTotal.total;
 }
-
 async function refreshRincianProduksiData() {
   rincianProdVarianList     = await loadRincianVarianList();
   rincianProdMarketingList  = await loadRincianMarketingList();
   rincianProdLaporanAgg     = await loadRincianLaporanAgg();
   const totalPemasukan = renderRincianProdTable() || 0;
 
-  const pengeluaranAgg   = await loadRincianPengeluaranAgg();
+  const pengeluaranAgg = await loadRincianPengeluaranAgg();
+  await gabungkanPembelianBahanBakuKeVariable(pengeluaranAgg);
+  await gabungkanGajiKeRincianPengeluaran(pengeluaranAgg);
   const totalPengeluaran = renderRincianPengeluaranTable(pengeluaranAgg) || 0;
 
   const selisih = totalPemasukan - totalPengeluaran;
@@ -313,10 +338,68 @@ window.initRincianProduksiView = function() {
     document.getElementById("rincianProduksiDetailWrapper")?.classList.remove("show");
     document.getElementById("rincianProduksiBackBtn").style.display = "none";
     document.querySelectorAll("#rekapProduksiList .lap-kurir-item[data-id='rincian']").forEach(x => x.classList.remove("active"));
+    window.showRekapProdListMobile?.();
   });
-
 };
 
+async function gabungkanPembelianBahanBakuKeVariable(groupedData) {
+  const { qty, nominal } = await loadRincianPembelianBahanBakuAgg();
+  if (qty === 0 && nominal === 0) return;
+
+  if (!groupedData["variable"]) {
+    groupedData["variable"] = { qty: 0, nominal: 0, items: {} };
+  }
+
+  groupedData["variable"].qty     += qty;
+  groupedData["variable"].nominal += nominal;
+  groupedData["variable"].items["Pembelian Paket Bahan Baku"] = { qty, nominal };
+}
+
+async function loadRincianSlipGajiPerUser(employeeUid, periode) {
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", employeeUid, "slipGaji", periode));
+    if (!snap.exists()) return 0;
+
+    const data = snap.data();
+    return Number(data.totalPendapatan) || 0;
+  } catch (err) {
+    console.error(`❌ loadRincianSlipGajiPerUser (${employeeUid}):`, err);
+    return 0;
+  }
+}
+
+async function gabungkanGajiKeRincianPengeluaran(groupedData) {
+  const jenisGaji = "Total Pemberian Gaji";
+  const periode = `${rekapProdTahun}-${String(rekapProdBulan + 1).padStart(2, "0")}`;
+
+  try {
+    const allUsers = await window.idb.getUsers();
+    const relevantUsers = (allUsers || []).filter(
+      u => u.role === "adminCabang" || u.role === "produksi"
+    );
+
+    if (!relevantUsers.length) return;
+
+    const hasilPerUser = await Promise.all(
+      relevantUsers.map(async u => {
+        const nama  = u.nama || "Tanpa Nama";
+        const total = await loadRincianSlipGajiPerUser(u.uid, periode);
+        return { nama, total };
+      })
+    );
+
+    if (!groupedData[jenisGaji]) {
+      groupedData[jenisGaji] = { qty: 0, nominal: 0, items: {} };
+    }
+
+    hasilPerUser.forEach(({ nama, total }) => {
+      groupedData[jenisGaji].items[nama] = { qty: 0, nominal: total };
+      groupedData[jenisGaji].nominal += total;
+    });
+  } catch (err) {
+    console.error("❌ gabungkanGajiKeRincianPengeluaran:", err);
+  }
+}
 function renderRincianPengeluaranTable(groupedData) {
   const tbody = document.getElementById("rincianPengeluaranTableBody");
   if (!tbody) return;

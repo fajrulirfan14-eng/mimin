@@ -82,6 +82,32 @@ async function loadAuditPengeluaranAgg() {
   }
   return result;
 }
+async function loadAuditStockAkhirBulanLalu(periodeSekarang) {
+  const result = {};
+  const adminUid = window.auth?.currentUser?.uid;
+  if (!adminUid) return result;
+
+  try {
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users", adminUid, "audit"),
+      window.where("periode", "<", periodeSekarang),
+      window.orderBy("periode", "desc"),
+      window.limit(1)
+    ));
+
+    if (snap.empty) return result;
+
+    const docData = snap.docs[0].data();
+    const rows = docData.data || [];
+    rows.forEach(r => {
+      const key = `${r.kategori || "loyang"}::${r.nama || ""}`;
+      result[key] = Number(r.stockAkhir) || 0;
+    });
+  } catch (err) {
+    console.error("❌ loadAuditStockAkhirBulanLalu:", err);
+  }
+  return result;
+}
 async function loadAuditBahanList() {
   const kantorCabang = await idb.getKantorCabang();
   const loyangList    = kantorCabang?.loyang || [];
@@ -100,7 +126,8 @@ async function loadAuditBahanList() {
       stockAwal: 0,
       belanja: 0,
       hppReal: belanjaAgg[l.jenisLoyang] || 0,
-      stockAkhir: 0
+      stockAkhir: 0,
+      hargaPaket: Number(l.hargaPaket) || 0
     }));
 
   const dariVariable = variableList.map((v, i) => ({
@@ -110,7 +137,8 @@ async function loadAuditBahanList() {
     stockAwal: 0,
     belanja: pengeluaranAgg[v.jenis] || 0,
     hppReal: 0,
-    stockAkhir: 0
+    stockAkhir: 0,
+    harga: Number(v.harga) || 0
   }));
 
   const dariVarian = Object.entries(varianMap).map(([key, nama]) => ({
@@ -123,9 +151,34 @@ async function loadAuditBahanList() {
     stockAkhir: 0
   }));
 
-  auditBahanList = [...dariLoyang, ...dariVarian, ...dariVariable];
+  const gabungan = [...dariLoyang, ...dariVariable, ...dariVarian];
+
+  const periodeSekarang = `${auditTahun}-${String(auditBulan + 1).padStart(2, "0")}`;
+  const stockAwalMap = await loadAuditStockAkhirBulanLalu(periodeSekarang);
+
+  auditBahanList = gabungan.map(row => {
+    const key = `${row.kategori}::${row.nama}`;
+    const stockAwalBulanLalu = stockAwalMap[key];
+    return {
+      ...row,
+      stockAwal: stockAwalBulanLalu !== undefined ? stockAwalBulanLalu : row.stockAwal
+    };
+  });
+
+  urutkanAuditBahanListPerKategori();
 }
 
+function urutkanAuditBahanListPerKategori() {
+  const urutanKategori = ["loyang", "variable", "varian", "manual"];
+
+  auditBahanList.sort((a, b) => {
+    const idxA = urutanKategori.indexOf(a.kategori);
+    const idxB = urutanKategori.indexOf(b.kategori);
+
+    if (idxA !== idxB) return idxA - idxB;
+    return (b.nama || "").localeCompare(a.nama || "", "id");
+  });
+}
 function hitungAuditRow(row) {
   const stockAwal = Number(row.stockAwal) || 0;
   const belanja   = Number(row.belanja)   || 0;
@@ -153,7 +206,7 @@ function renderAuditTable() {
     const { saldo, hppReal } = hitungAuditRow(row);
     const belanja = Number(row.belanja) || 0;
     const belanjaCell = row.kategori === "manual"
-      ? `<input type="number" min="0" class="audit-input audit-input-belanja" data-id="${row.id}" value="${row.belanja || ""}" placeholder="0">`
+      ? `<input type="number" min="0" class="audit-input audit-input-belanja" data-id="${row.id}" value="${row.belanja || ""}">`
       : `<span class="audit-readonly-val audit-readonly-belanja">${belanja ? belanja.toLocaleString("id-ID") : ""}</span>`;
     return `
       <tr data-id="${row.id}">
@@ -161,7 +214,7 @@ function renderAuditTable() {
           <span>${row.nama}</span>
         </td>
         <td>
-          <input type="number" min="0" class="audit-input audit-input-stockawal" data-id="${row.id}" value="${row.stockAwal || ""}" placeholder="0">
+          <input type="number" min="0" class="audit-input audit-input-stockawal" data-id="${row.id}" value="${row.stockAwal || ""}">
         </td>
         <td>
           ${belanjaCell}
@@ -173,7 +226,7 @@ function renderAuditTable() {
           <span class="audit-readonly-val audit-readonly-saldo ${saldo < 0 ? "negative" : ""}">${saldo ? saldo.toLocaleString("id-ID") : ""}</span>
         </td>
         <td>
-          <input type="number" min="0" class="audit-input audit-input-stockakhir" data-id="${row.id}" value="${row.stockAkhir || ""}" placeholder="0">
+          <input type="number" min="0" class="audit-input audit-input-stockakhir" data-id="${row.id}" value="${row.stockAkhir || ""}">
         </td>
       </tr>`;
   }).join("");
@@ -304,6 +357,31 @@ function initAuditFilter() {
   });
 }
 
+function hitungHppRealDanHasilAudit(dataBahan) {
+  let hasilLoyang = 0;
+  let hasilVariable = 0;
+  let totalSaldoVarian = 0;
+  let totalStockAkhirVarian = 0;
+
+  dataBahan.forEach(row => {
+    if (row.kategori === "loyang") {
+      hasilLoyang += (Number(row.saldo) || 0) * (Number(row.hargaPaket) || 0);
+    }
+    if (row.kategori === "variable") {
+      hasilVariable += (Number(row.saldo) || 0) * (Number(row.harga) || 0);
+    }
+    if (row.kategori === "varian") {
+      totalSaldoVarian      += Number(row.saldo)      || 0;
+      totalStockAkhirVarian += Number(row.stockAkhir) || 0;
+    }
+  });
+
+  const hasilJumlah = hasilLoyang + hasilVariable;
+  const hppReal     = totalSaldoVarian !== 0 ? hasilJumlah / totalSaldoVarian : 0;
+  const hasilAudit  = hppReal * totalStockAkhirVarian;
+
+  return { hppReal, hasilAudit };
+}
 async function simpanAuditData() {
   const adminUid = window.auth?.currentUser?.uid;
   if (!adminUid) {
@@ -323,15 +401,21 @@ async function simpanAuditData() {
       belanja: Number(row.belanja) || 0,
       hppReal: hppReal,
       saldo: saldo,
-      stockAkhir: Number(row.stockAkhir) || 0
+      stockAkhir: Number(row.stockAkhir) || 0,
+      hargaPaket: Number(row.hargaPaket) || 0,
+      harga: Number(row.harga) || 0
     };
   });
+
+  const { hppReal, hasilAudit } = hitungHppRealDanHasilAudit(dataBahan);
 
   try {
     await window.setDoc(window.doc(window.db, "users", adminUid, "audit", periode), {
       periode,
       createdBy: adminUid,
       data: dataBahan,
+      hppReal,
+      hasilAudit,
       updatedAt: new Date().toISOString()
     });
     window.showToast("Data audit berhasil disimpan", "success");
@@ -341,9 +425,44 @@ async function simpanAuditData() {
     window.showToast("Gagal menyimpan data audit", "error");
   }
 }
+
+function updateAuditKpiCards(docData) {
+  const hppRealEl    = document.getElementById("auditKpiHppReal");
+  const hasilAuditEl = document.getElementById("auditKpiHasilAudit");
+  if (!hppRealEl || !hasilAuditEl) return;
+
+  if (!docData) {
+    hppRealEl.textContent    = "-";
+    hasilAuditEl.textContent = "-";
+    return;
+  }
+
+  const hppReal    = Number(docData.hppReal)    || 0;
+  const hasilAudit = Number(docData.hasilAudit) || 0;
+
+  hppRealEl.textContent    = `Rp ${hppReal.toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
+  hasilAuditEl.textContent = `Rp ${hasilAudit.toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
+}
+function updateAuditPreviewPeriodeLabel() {
+  const titleEl = document.querySelector(".audit-preview-title");
+  if (!titleEl) return;
+
+  const namaBulan = REKAP_PROD_BULAN_NAMA[auditBulan] || "";
+  const teks = `Periode : ${namaBulan} ${auditTahun}`;
+
+  let periodeEl = titleEl.querySelector(".audit-preview-periode");
+  if (!periodeEl) {
+    periodeEl = document.createElement("span");
+    periodeEl.className = "audit-preview-periode";
+    titleEl.appendChild(periodeEl);
+  }
+  periodeEl.textContent = teks;
+}
 async function loadAuditPreview() {
   const body = document.getElementById("auditPreviewBody");
   if (!body) return;
+
+  updateAuditPreviewPeriodeLabel();
 
   const adminUid = window.auth?.currentUser?.uid;
   if (!adminUid) return;
@@ -355,11 +474,14 @@ async function loadAuditPreview() {
 
     if (!snap.exists()) {
       body.innerHTML = `<div class="audit-preview-empty">Belum ada data tersimpan untuk periode ini</div>`;
+      updateAuditKpiCards(null);
       return;
     }
 
     const docData  = snap.data();
     const rows = docData.data || [];
+
+    updateAuditKpiCards(docData);
 
     if (!rows.length) {
       body.innerHTML = `<div class="audit-preview-empty">Belum ada data tersimpan untuk periode ini</div>`;
@@ -398,7 +520,6 @@ async function loadAuditPreview() {
         </thead>
         <tbody>${rowsHtml}</tbody>
       </table>
-      <div class="audit-preview-updated">Terakhir disimpan: ${docData.updatedAt ? new Date(docData.updatedAt).toLocaleString("id-ID") : "-"}</div>
     `;
   } catch (err) {
     console.error("❌ loadAuditPreview:", err);

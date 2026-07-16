@@ -666,12 +666,15 @@ async function loadSoData(forceReload = false) {
 
       // ── TARGET (rumus berantai CB -> BB -> BK -> MC) ──
       const targetMap = {};
-      const loyangNormal = Number(existing.jumlahLoyang || 0);
+      const totalSemuaLoyang = SO_LOYANG_LIST.reduce((total, jenis) => {
+        const fieldKey = jenis === "Original" ? "jumlahLoyang" : `jumlahLoyang${jenis}`;
+        return total + Number(existing[fieldKey] || 0);
+      }, 0);
       const inputCB = Number(existing.produksi?.CB || 0);
       const inputBB = Number(existing.produksi?.BB || 0);
       const inputBK = Number(existing.produksi?.BK || 0);
       const inputMC = Number(existing.produksi?.MC || 0);
-      targetMap.CB = loyangNormal * 230;
+      targetMap.CB = totalSemuaLoyang * 230;
       targetMap.BB = targetMap.CB - inputCB - inputBB;
       targetMap.BK = (targetMap.BB / 2) * 2.8;
       targetMap.MC = inputBK + inputMC - targetMap.BK;
