@@ -549,9 +549,88 @@ function initEkuitasEditHandlers() {
     reader.readAsDataURL(file);
   });
 }
+
+async function loadEkuitasNeracaPeriode() {
+  const adminUid = window.auth?.currentUser?.uid;
+  if (!adminUid) return null;
+
+  const periode = `${ekuitasProdTahun}-${String(ekuitasProdBulan + 1).padStart(2, "0")}`;
+
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "neracaSaldo", periode));
+    if (!snap.exists()) return null;
+    return snap.data();
+  } catch (err) {
+    console.error("❌ loadEkuitasNeracaPeriode:", err);
+    return null;
+  }
+}
+async function hitungEkuitasValuasi() {
+  const adminUid = window.auth?.currentUser?.uid;
+  if (!adminUid) return 0;
+
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "assetProd", "data"));
+    if (!snap.exists()) return 0;
+
+    const data = snap.data();
+    const distribusiArr = data.distribusi || [];
+    const produksiArr   = data.produksi   || [];
+    const penyusutan    = data.penyusutanAset || {};
+
+    const sumHargaDistribusi = distribusiArr.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+    const sumHargaProduksi   = produksiArr.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+    const totalPenyusutan    = (Number(penyusutan.distribusi) || 0) + (Number(penyusutan.produksi) || 0);
+
+    return sumHargaDistribusi + sumHargaProduksi - totalPenyusutan;
+  } catch (err) {
+    console.error("❌ hitungEkuitasValuasi:", err);
+    return 0;
+  }
+}
+function renderEkuitasLabaTable(valuasi, dividen) {
+  const wrap = document.getElementById("ekuitasLabaTableBody");
+  if (!wrap) return;
+
+  if (!ekuitasInvestorList.length) {
+    wrap.innerHTML = `<div class="ekuitas-laba-empty">Belum ada investor terdaftar</div>`;
+    return;
+  }
+
+  const list = ekuitasInvestorList.slice(0, 5);
+
+  wrap.innerHTML = list.map(u => {
+    const ekuitasNominal = Number(u.ekuitas) || 0;
+    const kepemilikanPersen = valuasi > 0 ? (ekuitasNominal / valuasi) * 100 : 0;
+    const roiNominal = (kepemilikanPersen / 100) * dividen;
+
+    return `
+      <div class="ekuitas-laba-table-row">
+        <span class="nama">${u.nama || "Tanpa Nama"}</span>
+        <span class="value">${valuasi > 0 ? kepemilikanPersen.toFixed(1) + "%" : "-"}</span>
+        <span class="value">Rp ${roiNominal.toLocaleString("id-ID")}</span>
+      </div>
+    `;
+  }).join("");
+}
+async function refreshEkuitasLabaCard() {
+  const neraca  = await loadEkuitasNeracaPeriode();
+  const valuasi = await hitungEkuitasValuasi();
+
+  const labaBersih = Number(neraca?.labaBerjalan) || 0;
+  const dividen    = Number(neraca?.pembagianLaba?.dividen) || 0;
+
+  document.getElementById("ekuitasLabaBersih").textContent  = `Rp ${labaBersih.toLocaleString("id-ID")}`;
+  document.getElementById("ekuitasLabaDividen").textContent = `Rp ${dividen.toLocaleString("id-ID")}`;
+  document.getElementById("ekuitasLabaValuasi").textContent = valuasi > 0 ? `Rp ${valuasi.toLocaleString("id-ID")}` : "-";
+
+  renderEkuitasLabaTable(valuasi, dividen);
+}
+
 async function refreshEkuitasInvestorData() {
   ekuitasInvestorList = await loadEkuitasInvestorList();
   renderEkuitasInvestorList();
+  await refreshEkuitasLabaCard();
 }
 async function submitTambahEkuitasInvestor() {
   const btn   = document.getElementById("ekuitasTambahSubmitBtn");

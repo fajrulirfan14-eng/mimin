@@ -51,6 +51,9 @@
   flex-direction: column;
 }
 .pembelianprod-detail-header {
+  background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-primary) 70%, var(--brand-mid) 100%);
+  color: var(--text-white);
+  position: relative; overflow: hidden;
   flex-shrink: 0;
   padding: 16px 16px 0;
 }
@@ -139,7 +142,6 @@
 .pembelianprod-detail-nama {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text-primary);
 }
 .pembelianprod-detail-body {
   flex: 1 1 auto;

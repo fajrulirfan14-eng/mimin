@@ -592,7 +592,7 @@
 }
 /* ── MOBILE ── */
 @media (max-width: 768px) {
-  .lap-list-panel { width: 100%; border-right: none; }
+  .lap-list-panel { width: 100%; border-right: none; padding-bottom: 120px; }
   .lap-detail-wrapper {
     padding: 0; position: absolute; inset: 0; z-index: 10;
     background: var(--bg-page);

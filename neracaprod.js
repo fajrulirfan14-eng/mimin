@@ -20,18 +20,168 @@ function attachFormatRibuanNeraca(inputId) {
   });
 }
 
+/* ── PREVIEW: data tersimpan (snapshot Firestore, terpisah dari array yang sedang diedit) ── */
+let neracaPreviewData = null;
+function renderNeracaPreviewList(list, elId) {
+  const wrap = document.getElementById(elId);
+  if (!wrap) return;
+
+  if (!list || !list.length) {
+    wrap.innerHTML = `<div class="neraca-preview-list-empty">Belum ada akun</div>`;
+    return;
+  }
+
+  wrap.innerHTML = list.map(item => `
+    <div class="neraca-preview-list-row">
+      <span class="nama">${item.nama || "-"}</span>
+      <span class="nilai">${item.nilai ? Number(item.nilai).toLocaleString("id-ID") : "-"}</span>
+    </div>
+  `).join("");
+}
+async function loadNeracaPreview() {
+  const adminUid = window.auth?.currentUser?.uid;
+  const namaBulan = REKAP_PROD_BULAN_NAMA[neracaBulan];
+  document.getElementById("neracaPreviewPeriodeLabel").textContent = `${namaBulan} ${neracaTahun}`;
+
+  if (!adminUid) { neracaPreviewData = null; renderNeracaPreview(); return; }
+
+  const periode = `${neracaTahun}-${String(neracaBulan + 1).padStart(2, "0")}`;
+
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "neracaSaldo", periode));
+    neracaPreviewData = snap.exists() ? snap.data() : null;
+  } catch (err) {
+    console.error("❌ loadNeracaPreview:", err);
+    neracaPreviewData = null;
+  }
+
+  renderNeracaPreview();
+}
+function renderNeracaPreview() {
+  const data = neracaPreviewData;
+
+  const asetLancar   = data?.asetLancar || [];
+  const asetTetap    = data?.asetTetap || [];
+  const liabilitas   = data?.liabilitas || [];
+  const ekuitas      = data?.ekuitas || [];
+  const labaBerjalan = Number(data?.labaBerjalan) || 0;
+
+  renderNeracaPreviewList(asetLancar, "neracaPreviewListLancar");
+  renderNeracaPreviewList(asetTetap, "neracaPreviewListTetap");
+  renderNeracaPreviewList(liabilitas, "neracaPreviewListLiabilitas");
+  renderNeracaPreviewList(ekuitas, "neracaPreviewListEkuitas");
+
+  const totalKiri  = hitungTotalNeraca(asetLancar) + hitungTotalNeraca(asetTetap);
+  const totalKanan = hitungTotalNeraca(liabilitas) + hitungTotalNeraca(ekuitas);
+
+  document.getElementById("neracaPreviewTotalKiri").textContent  = `Rp ${totalKiri.toLocaleString("id-ID")}`;
+  document.getElementById("neracaPreviewTotalKanan").textContent = `Rp ${totalKanan.toLocaleString("id-ID")}`;
+  document.getElementById("neracaPreviewLabaBerjalan").textContent = `Rp ${labaBerjalan.toLocaleString("id-ID")}`;
+}
+
 /* ── LOAD DATA ── */
-function getDefaultNeracaLancar() {
+async function getGrandTotalAssets() {
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return 0;
+
+    const periode = `${neracaTahun}-${String(neracaBulan + 1).padStart(2, "0")}`;
+    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "assets", periode));
+    if (!snap.exists()) return 0;
+
+    return Number(snap.data()?.grandTotal) || 0;
+  } catch (err) {
+    console.error("❌ getGrandTotalAssets:", err);
+    return 0;
+  }
+}
+async function getHasilAuditStockBahan() {
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return 0;
+
+    const periode = `${neracaTahun}-${String(neracaBulan + 1).padStart(2, "0")}`;
+    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "audit", periode));
+    if (!snap.exists()) return 0;
+
+    const nilai = Number(snap.data()?.hasilAudit) || 0;
+    return Math.round(nilai);
+  } catch (err) {
+    console.error("❌ getHasilAuditStockBahan:", err);
+    return 0;
+  }
+}
+async function getStockBarangJadi() {
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return 0;
+
+    const periode = `${neracaTahun}-${String(neracaBulan + 1).padStart(2, "0")}`;
+
+    // ambil hppReal dari dokumen audit periode ini (root field, sejajar hasilAudit)
+    const auditSnap = await window.getDoc(window.doc(window.db, "users", adminUid, "audit", periode));
+    const hppReal = auditSnap.exists() ? (Number(auditSnap.data()?.hppReal) || 0) : 0;
+
+    // jumlahkan Input semua varian jadi satu angka (dari IDB stock opname, field "produksi")
+    const allRecords = await window.idb.getAllStockOpname();
+    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(periode));
+
+    let totalInput = 0;
+    filtered.forEach(record => {
+      const produksiMap = record.data?.produksi || {};
+      Object.values(produksiMap).forEach(nilai => {
+        totalInput += Number(nilai) || 0;
+      });
+    });
+
+    return Math.round(totalInput * hppReal);
+  } catch (err) {
+    console.error("❌ getStockBarangJadi:", err);
+    return 0;
+  }
+}
+async function getDefaultNeracaLancar() {
+  const [modalPendam, stockBahanMentah, stockBarangJadi] = await Promise.all([
+    getGrandTotalAssets(),
+    getHasilAuditStockBahan(),
+    getStockBarangJadi()
+  ]);
+
   return [
-    { id: "default-saldokas",   nama: "Saldo Kas",         nilai: 0 },
-    { id: "default-stockbahan", nama: "Stock Bahan Baku",  nilai: 0 },
-    { id: "default-stockjadi",  nama: "Stock Barang Jadi", nilai: 0 },
-    { id: "default-modalpend",  nama: "Modal Pending",     nilai: 0 }
+    { id: "default-saldokas",   nama: "Saldo Kas",          nilai: 0 },
+    { id: "default-stockbahan", nama: "Stock Bahan Mentah", nilai: stockBahanMentah },
+    { id: "default-stockjadi",  nama: "Stock Barang Jadi",  nilai: stockBarangJadi },
+    { id: "default-modalpend",  nama: "Modal Pendam",       nilai: modalPendam }
   ];
 }
-function getDefaultNeracaTetap() {
+async function hitungNilaiAssetProd() {
+  const adminUid = window.auth?.currentUser?.uid;
+  if (!adminUid) return 0;
+
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "assetProd", "data"));
+    if (!snap.exists()) return 0;
+
+    const data = snap.data();
+    const distribusiArr = data.distribusi || [];
+    const produksiArr   = data.produksi   || [];
+    const penyusutan    = data.penyusutanAset || {};
+
+    const sumHargaDistribusi = distribusiArr.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+    const sumHargaProduksi   = produksiArr.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+    const totalPenyusutan    = (Number(penyusutan.distribusi) || 0) + (Number(penyusutan.produksi) || 0);
+
+    return sumHargaDistribusi + sumHargaProduksi - totalPenyusutan;
+  } catch (err) {
+    console.error("❌ hitungNilaiAssetProd:", err);
+    return 0;
+  }
+}
+async function getDefaultNeracaTetap() {
+  const nilaiPeralatan = await hitungNilaiAssetProd();
+
   return [
-    { id: "default-peralatan", nama: "Peralatan & Perlengkapan", nilai: 0 }
+    { id: "default-peralatan", nama: "Peralatan & Perlengkapan", nilai: nilaiPeralatan }
   ];
 }
 function getDefaultNeracaLiabilitas() {
@@ -40,31 +190,32 @@ function getDefaultNeracaLiabilitas() {
     { id: "default-hutangbank",  nama: "Hutang Bank",  nilai: 0 }
   ];
 }
-function getDefaultNeracaEkuitas() {
-  return [
-    { id: "default-modalinvestor", nama: "Modal Investor", nilai: 0 }
-  ];
+async function getDefaultNeracaEkuitas() {
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    const allUsers = await window.idb.getUsers();
+    const adminData = allUsers.find(u => u.uid === adminUid);
+    const idCabangAdmin = adminData?.idCabang;
+    if (!idCabangAdmin) return [];
+
+    const investorList = allUsers.filter(u => u.role === "investor" && u.idCabang === idCabangAdmin);
+
+    return investorList.map(u => ({
+      id: "default-investor-" + u.uid,
+      nama: u.nama || "Investor",
+      nilai: Number(u.ekuitas) || 0
+    }));
+  } catch (err) {
+    console.error("❌ getDefaultNeracaEkuitas:", err);
+    return [];
+  }
 }
 async function loadNeracaData() {
-  const adminUid = window.auth?.currentUser?.uid;
-  if (!adminUid) { neracaDataLancar = []; neracaDataTetap = []; return; }
-
-  const periode = `${neracaTahun}-${String(neracaBulan + 1).padStart(2, "0")}`;
-
   try {
-    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "neracaSaldo", periode));
-    if (snap.exists()) {
-      const data = snap.data();
-      neracaDataLancar     = data.asetLancar || [];
-      neracaDataTetap      = data.asetTetap || [];
-      neracaDataLiabilitas = data.liabilitas || [];
-      neracaDataEkuitas    = data.ekuitas || [];
-    } else {
-      neracaDataLancar = getDefaultNeracaLancar();
-      neracaDataTetap = getDefaultNeracaTetap();
-      neracaDataLiabilitas = getDefaultNeracaLiabilitas();
-      neracaDataEkuitas = getDefaultNeracaEkuitas();
-    }
+    neracaDataLancar     = await getDefaultNeracaLancar();
+    neracaDataTetap      = await getDefaultNeracaTetap();
+    neracaDataLiabilitas = getDefaultNeracaLiabilitas();
+    neracaDataEkuitas    = await getDefaultNeracaEkuitas();
   } catch (err) {
     console.error("❌ loadNeracaData:", err);
     neracaDataLancar = [];
@@ -206,13 +357,25 @@ async function simpanNeracaSemua() {
   const userData = allUsers.find(u => u.uid === adminUid);
   const idCabang = userData?.idCabang || "";
 
+  const labaBerjalan = hitungLabaBerjalan();
+  const persenManager = Number(userData?.pembagianLabaBersih?.manager) || 0;
+  const persenKas      = Number(userData?.pembagianLabaBersih?.kas)     || 0;
+  const persenDividen  = Number(userData?.pembagianLabaBersih?.dividen) || 0;
+
+  const pembagianLaba = {
+    manager: (persenManager / 100) * labaBerjalan,
+    kas:     (persenKas     / 100) * labaBerjalan,
+    dividen: (persenDividen / 100) * labaBerjalan
+  };
+
   try {
     await window.setDoc(window.doc(window.db, "users", adminUid, "neracaSaldo", periode), {
       asetLancar: neracaDataLancar,
       asetTetap: neracaDataTetap,
       liabilitas: neracaDataLiabilitas,
       ekuitas: neracaDataEkuitas,
-      labaBerjalan: hitungLabaBerjalan(),
+      labaBerjalan,
+      pembagianLaba,
       createdBy: adminUid,
       idCabang,
       periode,
@@ -220,6 +383,7 @@ async function simpanNeracaSemua() {
     }, { merge: true });
 
     window.showToast("Neraca saldo berhasil disimpan", "success");
+    await loadNeracaPreview();
   } catch (err) {
     console.error("❌ simpanNeracaSemua:", err);
     window.showToast("Gagal menyimpan neraca saldo", "error");
@@ -269,6 +433,7 @@ function initNeracaFilter() {
       closeAll();
       await loadNeracaData();
       renderNeracaAll();
+      await loadNeracaPreview();
     });
   });
 
@@ -283,6 +448,7 @@ function initNeracaFilter() {
     closeAll();
     await loadNeracaData();
     renderNeracaAll();
+    await loadNeracaPreview();
   });
 
   document.getElementById("neracaReloadBtn")?.addEventListener("click", async () => {
@@ -290,6 +456,7 @@ function initNeracaFilter() {
     btn.classList.add("spinning");
     await loadNeracaData();
     renderNeracaAll();
+    await loadNeracaPreview();
     btn.classList.remove("spinning");
   });
 }
@@ -315,6 +482,7 @@ window.initNeracaSaldoView = function() {
 
       await loadNeracaData();
       renderNeracaAll();
+      await loadNeracaPreview();
     });
   });
 
