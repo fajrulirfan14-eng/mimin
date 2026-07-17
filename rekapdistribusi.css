@@ -191,26 +191,44 @@
 }
 
 .rekap-dist-table th:first-child {
-  width: 55%;
+  width: 33.33%;
+  text-align: left;
 }
 
-.rekap-dist-table th:not(:first-child) {
-  width: 22.5%;
+.rekap-dist-table th:nth-child(2) {
+  width: 33.33%;
+  text-align: center;
+}
+
+.rekap-dist-table th:nth-child(3) {
+  width: 33.33%;
   text-align: right;
+}
+#assetsPenyusutanInput {
+  width: 100% !important;
+  max-width: 160px !important;
 }
 
 .rekap-dist-table td {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-primary);
-  padding: 5px 6px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border-card);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.rekap-dist-table td:not(:first-child) {
+.rekap-dist-table td:first-child {
+  text-align: left;
+}
+
+.rekap-dist-table td:nth-child(2) {
+  text-align: center;
+}
+
+.rekap-dist-table td:nth-child(3) {
   text-align: right;
 }
 

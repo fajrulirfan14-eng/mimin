@@ -108,7 +108,6 @@ function initHariLiburPopup() {
     }
   });
 }
-
 async function openHariLiburPopup() {
   const overlay = document.getElementById("hariLiburOverlay");
   const label   = document.getElementById("hariLiburPeriodeLabel");

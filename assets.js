@@ -132,6 +132,7 @@ function syncAssetsFilterLabel(shouldRerender = true) {
   }
 }
 let perKurirData = [];
+let assetsPenyusutanValue = 0;
 async function renderAssetsGrid() {
   perKurirData = [];
   const gridEl = document.getElementById("assetsGrid");
@@ -310,7 +311,15 @@ async function renderAssetsGrid() {
           <table class="rekap-dist-table">
             <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
             <tbody>
-              <tr><td>Total Asset</td><td>-</td><td>${grandTotalNominal ? grandTotalNominal.toLocaleString("id-ID") : "-"}</td></tr>
+              <tr>
+                <td>Penyusutan Aset</td>
+                <td>-</td>
+                <td>
+                  <input type="number" id="assetsPenyusutanInput" class="assets-extra-input" style="width:100%; text-align:right;" placeholder="0">
+                </td>
+              </tr>
+              <tr><td>Jumlah Aset</td><td>-</td><td id="assetsJumlahAsetCell">-</td></tr>
+              <tr><td>Total Asset</td><td>-</td><td id="assetsGrandTotalCell">${grandTotalNominal ? grandTotalNominal.toLocaleString("id-ID") : "-"}</td></tr>
             </tbody>
           </table>
         </div>
@@ -361,6 +370,47 @@ async function renderAssetsGrid() {
   });
 
   cekAssetsSudahDisimpan();
+  initAssetsPenyusutan();
+}
+
+async function initAssetsPenyusutan() {
+  const input = document.getElementById("assetsPenyusutanInput");
+  if (!input) return;
+
+  // ganti tipe input jadi text biar bisa nampilin titik ribuan
+  input.type = "text";
+  input.inputMode = "numeric";
+
+  // load nilai tersimpan sesuai periode filter aktif (kalau ada)
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    const periode  = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
+    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "assets", periode));
+    assetsPenyusutanValue = snap.exists() ? (Number(snap.data()?.penyusutanAset) || 0) : 0;
+  } catch (err) {
+    console.error("❌ initAssetsPenyusutan (load):", err);
+    assetsPenyusutanValue = 0;
+  }
+
+  input.value = assetsPenyusutanValue ? assetsPenyusutanValue.toLocaleString("id-ID") : "";
+  updateAssetsJumlahAset();
+
+  input.addEventListener("input", () => {
+    const angka = Number(input.value.replace(/\D/g, "")) || 0;
+    input.value = angka ? angka.toLocaleString("id-ID") : "";
+    assetsPenyusutanValue = angka;
+    updateAssetsJumlahAset();
+  });
+}
+
+function updateAssetsJumlahAset() {
+  const grandTotalCell = document.getElementById("assetsGrandTotalCell");
+  const jumlahCell     = document.getElementById("assetsJumlahAsetCell");
+  if (!grandTotalCell || !jumlahCell) return;
+
+  const grandTotal = Number(String(grandTotalCell.textContent).replace(/\D/g, "")) || 0;
+  const jumlahAset = grandTotal + assetsPenyusutanValue;
+  jumlahCell.textContent = jumlahAset ? jumlahAset.toLocaleString("id-ID") : "-";
 }
 let assetsExtraCards = [];
 function initAssetsTambahCard(varianList) {
@@ -552,10 +602,11 @@ function recalculateTotalAssetsCard(varianList) {
     }
   });
 
-  const totalAssetRow = totalCard.querySelectorAll(".rekap-dist-card-body > div")[2]?.querySelector("tbody tr td:last-child");
-  if (totalAssetRow) {
-    totalAssetRow.textContent = grandTotal ? grandTotal.toLocaleString("id-ID") : "-";
+  const grandTotalCell = document.getElementById("assetsGrandTotalCell");
+  if (grandTotalCell) {
+    grandTotalCell.textContent = grandTotal ? grandTotal.toLocaleString("id-ID") : "-";
   }
+  updateAssetsJumlahAset();
 }
 function buildFinalAssetsData(varianList, base) {
   const kantorCabang = window._assetsKantorCabangCache;
@@ -660,6 +711,8 @@ async function simpanAssetsSnapshot(perKurirData, totalData) {
     const adminUid = window.auth?.currentUser?.uid;
     const periode  = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
 
+    const jumlahAset = totalData.grandTotalNominal + assetsPenyusutanValue;
+
     await window.setDoc(
       window.doc(window.db, "users", adminUid, "assets", periode),
       {
@@ -670,6 +723,8 @@ async function simpanAssetsSnapshot(perKurirData, totalData) {
         totalModalQty: totalData.totalModalQty,
         totalModalNominal: totalData.totalModalNominal,
         grandTotal: totalData.grandTotalNominal,
+        penyusutanAset: assetsPenyusutanValue,
+        jumlahAset,
         savedAt: window.serverTimestamp(),
       }
     );

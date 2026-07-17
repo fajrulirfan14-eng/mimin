@@ -581,6 +581,7 @@ function setTopbarAvatar() {
       { wrapper: document.getElementById("rekapDistribusiDetailWrapper"), back: document.getElementById("rekapDistribusiBackBtn") },
       { wrapper: document.getElementById("assetsDetailWrapper"), back: document.getElementById("assetsBackBtn") },
       { wrapper: document.getElementById("slipGajiDetailWrapper"), back: document.getElementById("slipGajiToRekapBackBtn") },
+      { wrapper: document.getElementById("rincianPemasukanDetailWrapper"), back: document.getElementById("rincianPemasukanBackBtn") },
       // rekap produksi: sub-panel detail (harus dicek SEBELUM wrapper induk)
       { wrapper: document.getElementById("rincianProduksiDetailWrapper"), back: document.getElementById("rincianProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
       { wrapper: document.getElementById("ekuitasProduksiDetailWrapper"), back: document.getElementById("ekuitasProduksiBackBtn"), listRestore: window.showRekapProdListMobile },
@@ -609,7 +610,7 @@ function setTopbarAvatar() {
       );
       if (isShowing) {
         panel.wrapper.classList.remove("show");
-        panel.wrapper.style.setProperty("display", "none", "important");
+        panel.wrapper.style.removeProperty("display");
         if (panel.back) panel.back.style.display = "none";
         panel.listRestore?.();
         history.pushState({ view: currentView }, "", "");

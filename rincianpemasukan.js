@@ -267,7 +267,50 @@ async function hitungPemasukanPay() {
 
   return result;
 }
+async function loadRincianDistSlipGajiPerUser(kurirUid, periode) {
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", kurirUid, "slipGaji", periode));
+    if (!snap.exists()) return 0;
 
+    const data = snap.data();
+    return Number(data.totalPenerimaan) || 0;
+  } catch (err) {
+    console.error(`❌ loadRincianDistSlipGajiPerUser (${kurirUid}):`, err);
+    return 0;
+  }
+}
+async function gabungkanGajiKeRincianPengeluaranDistribusi(groupedData) {
+  const jenisGaji = "Total Pemberian Gaji";
+  const periode = `${rincianPemasukanTahun}-${String(rincianPemasukanBulan + 1).padStart(2, "0")}`;
+
+  try {
+    if (!window.usersCache?.length) {
+      window.usersCache = await window.idb.getUsers();
+    }
+    const kurirList = (window.usersCache || []).filter(u => u.role === "kurir");
+
+    if (!kurirList.length) return;
+
+    const hasilPerKurir = await Promise.all(
+      kurirList.map(async u => {
+        const nama = u.nama || "Tanpa Nama";
+        const nominal = await loadRincianDistSlipGajiPerUser(u.uid, periode);
+        return { nama, nominal };
+      })
+    );
+
+    if (!groupedData[jenisGaji]) {
+      groupedData[jenisGaji] = { qty: 0, nominal: 0, items: {} };
+    }
+
+    hasilPerKurir.forEach(({ nama, nominal }) => {
+      groupedData[jenisGaji].items[nama] = { qty: 0, nominal };
+      groupedData[jenisGaji].nominal += nominal;
+    });
+  } catch (err) {
+    console.error("❌ gabungkanGajiKeRincianPengeluaranDistribusi:", err);
+  }
+}
 async function renderRincianPemasukanPanel() {
   const pemasukanTbody = document.getElementById("rincianPemasukanTable")?.querySelector("tbody");
   if (!pemasukanTbody) return;
@@ -298,6 +341,7 @@ async function renderRincianPemasukanPanel() {
   pemasukanTbody.innerHTML = (rows || `<tr><td>-</td><td>-</td><td>Rp 0</td></tr>`) + totalRow;
 
   const pengeluaranAgg   = await loadRincianDistribusiPengeluaranAgg();
+  await gabungkanGajiKeRincianPengeluaranDistribusi(pengeluaranAgg);
   const totalPengeluaran = renderRincianDistribusiPengeluaranTable(pengeluaranAgg);
   const selisih          = totalPemasukan - totalPengeluaran;
 
@@ -320,6 +364,7 @@ window.openRincianPemasukanPanel = async function() {
   document.getElementById("rincianPemasukanDetailWrapper")?.classList.add("show");
 
   if (window.innerWidth <= 768) {
+    history.pushState({ panel: true }, "", "");
     const backBtn = document.getElementById("rincianPemasukanBackBtn");
     if (backBtn) backBtn.style.display = "flex";
   }
