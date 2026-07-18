@@ -137,7 +137,10 @@ async function verifyPagePassword() {
     showView(targetView);
     return;
   }
-  if (input.value === savedPass) {
+
+  const inputHashed = await hashPassword(input.value);
+
+  if (inputHashed === savedPass) {
     unlockedPages[targetView] = Date.now();
     closePagePasswordPopup();
     showView(targetView);
@@ -645,6 +648,13 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 
+async function hashPassword(text) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
 /* ── COMPRESS IMAGE ── */
 window.compressImage = function(blob, maxWidth = 1280, quality = 0.78) {
   return new Promise(resolve => {
