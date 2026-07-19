@@ -922,7 +922,6 @@ function drawSoTable() {
     const isWeekTotal = row._isWeekTotal;
     let cx = -soScrollX;
     SO_COLUMNS.forEach(col => {
-      if (col.group === "saldo") { cx += col.width; return; }
       if (cx + col.width > 0 && cx < W) {
         let bg;
         if (isWeekTotal) {
@@ -948,34 +947,6 @@ function drawSoTable() {
     });
   }
   
-
-  // ── BODY ROWS — kolom saldo sticky di kanan ──
-  if (saldoCols.length) {
-    for (let i = 0; i < visibleRows; i++) {
-      const rowIndex = startRow + i;
-      if (rowIndex >= filteredData.length) break;
-      const row = filteredData[rowIndex];
-      const y = SO_HEADER_HEIGHT + (rowIndex * SO_ROW_HEIGHT) - soScrollY;
-      if (y + SO_ROW_HEIGHT < SO_HEADER_HEIGHT || y > totalRowY) continue;
-
-      let sx = saldoStartX;
-      soCtx.font = row._isWeekTotal ? "800 11px Poppins, sans-serif" : "500 11px Poppins, sans-serif";
-      saldoCols.forEach(col => {
-        soCtx.fillStyle = row._isWeekTotal ? "#cc8800" : col.groupColor;
-        soCtx.fillRect(sx, y, col.width, SO_ROW_HEIGHT);
-        soCtx.strokeStyle = "rgba(0,0,0,0.12)";
-        soCtx.strokeRect(sx, y, col.width, SO_ROW_HEIGHT);
-        soCtx.fillStyle = "#ffffff";
-        const rawVal = row[col.key];
-        const val = (rawVal === 0 || rawVal === "" || rawVal == null) ? "" : rawVal;
-        soCtx.textAlign = "center";
-        soCtx.fillText(String(val), sx + col.width/2, y + SO_ROW_HEIGHT / 2);
-        soCtx.textAlign = "left";
-        sx += col.width;
-      });
-    }
-  }
-
   // ── TOTAL ROW (kolom normal, skip saldo) ──
   soCtx.fillStyle = "#222222";
   soCtx.fillRect(0, totalRowY, W, SO_ROW_HEIGHT);
@@ -994,7 +965,6 @@ function drawSoTable() {
   tx += mergeWidth;
   for (let ti = 3; ti < SO_COLUMNS.length; ti++) {
     const col = SO_COLUMNS[ti];
-    if (col.group === "saldo") { tx += col.width; continue; }
     if (tx + col.width > 0 && tx < W) {
       let total = 0;
       filteredData.filter(r => !r._isWeekTotal).forEach(r => { total += Number(r[col.key]) || 0; });
@@ -1011,29 +981,11 @@ function drawSoTable() {
     }
     tx += col.width;
   }
-  // ── TOTAL ROW — kolom saldo sticky di kanan ──
-  if (saldoCols.length) {
-    let stx = saldoStartX;
-    saldoCols.forEach(col => {
-      let total = 0;
-      filteredData.filter(r => !r._isWeekTotal).forEach(r => { total += Number(r[col.key]) || 0; });
-      soCtx.fillStyle = col.groupColor;
-      soCtx.fillRect(stx, totalRowY, col.width, SO_ROW_HEIGHT);
-      soCtx.strokeStyle = "rgba(255,255,255,0.2)";
-      soCtx.strokeRect(stx, totalRowY, col.width, SO_ROW_HEIGHT);
-      soCtx.fillStyle = "#ffffff";
-      soCtx.font = "700 11px Poppins, sans-serif";
-      soCtx.textAlign = "center";
-      soCtx.fillText(String(total || ""), stx + col.width/2, totalRowY + SO_ROW_HEIGHT / 2);
-      soCtx.textAlign = "left";
-      stx += col.width;
-    });
-  }
+
   // ── HEADER ROW (group + static, skip saldo) ──
   let x = -soScrollX;
   let gi = 0;
   while (gi < SO_COLUMNS.length) {
-    if (SO_COLUMNS[gi].group === "saldo") { x += SO_COLUMNS[gi].width; gi++; continue; }
     const col = SO_COLUMNS[gi];
     if (!col.group) {
       if (x + col.width > 0 && x < W) {
@@ -1082,29 +1034,6 @@ function drawSoTable() {
       x += groupWidth;
       gi = j;
     }
-  }
-  // ── HEADER — kolom saldo sticky di kanan ──
-  if (saldoCols.length) {
-    soCtx.fillStyle = saldoCols[0].groupColor;
-    soCtx.fillRect(saldoStartX, 0, saldoTotalWidth, SO_HEADER_HEIGHT_GROUP);
-    soCtx.strokeStyle = "rgba(255,255,255,0.2)";
-    soCtx.strokeRect(saldoStartX, 0, saldoTotalWidth, SO_HEADER_HEIGHT_GROUP);
-    soCtx.fillStyle = "#ffffff";
-    soCtx.font = "700 10px Poppins, sans-serif";
-    soCtx.textAlign = "center";
-    soCtx.fillText(saldoCols[0].groupLabel, saldoStartX + saldoTotalWidth/2, SO_HEADER_HEIGHT_GROUP/2);
-
-    let shx = saldoStartX;
-    saldoCols.forEach(col => {
-      soCtx.fillStyle = hexToRgba(col.groupColor, 0.85);
-      soCtx.fillRect(shx, SO_HEADER_HEIGHT_GROUP, col.width, SO_HEADER_HEIGHT_SUB);
-      soCtx.strokeStyle = "rgba(255,255,255,0.2)";
-      soCtx.strokeRect(shx, SO_HEADER_HEIGHT_GROUP, col.width, SO_HEADER_HEIGHT_SUB);
-      soCtx.fillStyle = "#ffffff";
-      soCtx.fillText(col.label, shx + col.width/2, SO_HEADER_HEIGHT_GROUP + SO_HEADER_HEIGHT_SUB/2);
-      shx += col.width;
-    });
-    soCtx.textAlign = "left";
   }
 }
 
