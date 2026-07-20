@@ -29,6 +29,30 @@ async function loadAuditBelanjaAggregates() {
   }
   return result;
 }
+async function loadAuditBelanjaLoyangAgg() {
+  const result = {}; // { [jenisPaket]: totalQty }
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return result;
+
+    const periode = `${auditTahun}-${String(auditBulan + 1).padStart(2, "0")}`;
+
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users", adminUid, "pembelianBahanBaku"),
+      window.where("periode", "==", periode)
+    ));
+
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const jenisPaket = data.jenisPaket || "Lainnya";
+      const qty = Number(data.qty) || 0;
+      result[jenisPaket] = (result[jenisPaket] || 0) + qty;
+    });
+  } catch (err) {
+    console.error("❌ loadAuditBelanjaLoyangAgg:", err);
+  }
+  return result;
+}
 async function loadAuditVarianProduksiAgg() {
   const result = {}; // { CB: 10, BB: 715, ... }
   try {
@@ -82,6 +106,67 @@ async function loadAuditPengeluaranAgg() {
   }
   return result;
 }
+async function loadAuditFixedTotal() {
+  let total = 0;
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return total;
+
+    const mm    = String(auditBulan + 1).padStart(2, "0");
+    const start = `${auditTahun}-${mm}-01`;
+    const end   = `${auditTahun}-${mm}-31`;
+
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users", adminUid, "pengeluaran"),
+      window.where("tanggal", ">=", start),
+      window.where("tanggal", "<=", end)
+    ));
+
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const produksi = data.produksi || [];
+
+      produksi.forEach(item => {
+        if (item.jenis !== "fixed") return;
+        total += Number(item.nominal) || 0;
+      });
+    });
+  } catch (err) {
+    console.error("❌ loadAuditFixedTotal:", err);
+  }
+  return total;
+}
+async function loadAuditSlipGajiTotal() {
+  let total = 0;
+  try {
+    const periode = `${auditTahun}-${String(auditBulan + 1).padStart(2, "0")}`;
+
+    const allUsers = await window.idb.getUsers();
+    const relevantUsers = (allUsers || []).filter(
+      u => u.role === "adminCabang" || u.role === "produksi"
+    );
+
+    if (!relevantUsers.length) return total;
+
+    const hasilPerUser = await Promise.all(
+      relevantUsers.map(async u => {
+        try {
+          const snap = await window.getDoc(window.doc(window.db, "users", u.uid, "slipGaji", periode));
+          if (!snap.exists()) return 0;
+          return Number(snap.data()?.totalPendapatan) || 0;
+        } catch (err) {
+          console.error(`❌ loadAuditSlipGajiTotal (${u.uid}):`, err);
+          return 0;
+        }
+      })
+    );
+
+    total = hasilPerUser.reduce((a, b) => a + b, 0);
+  } catch (err) {
+    console.error("❌ loadAuditSlipGajiTotal:", err);
+  }
+  return total;
+}
 async function loadAuditStockAkhirBulanLalu(periodeSekarang) {
   const result = {};
   const adminUid = window.auth?.currentUser?.uid;
@@ -114,6 +199,7 @@ async function loadAuditBahanList() {
   const variableList  = kantorCabang?.pengeluaran?.variable || [];
   const varianMap     = kantorCabang?.varian || {};
   const belanjaAgg        = await loadAuditBelanjaAggregates();
+  const belanjaLoyangAgg  = await loadAuditBelanjaLoyangAgg();
   const pengeluaranAgg    = await loadAuditPengeluaranAgg();
   const varianProduksiAgg = await loadAuditVarianProduksiAgg();
 
@@ -124,7 +210,7 @@ async function loadAuditBahanList() {
       nama: "Paket " + l.jenisLoyang,
       kategori: "loyang",
       stockAwal: 0,
-      belanja: 0,
+      belanja: belanjaLoyangAgg[l.jenisLoyang] || 0,
       hppReal: belanjaAgg[l.jenisLoyang] || 0,
       stockAkhir: 0,
       hargaPaket: Number(l.hargaPaket) || 0
@@ -357,7 +443,7 @@ function initAuditFilter() {
   });
 }
 
-function hitungHppRealDanHasilAudit(dataBahan) {
+function hitungHppRealDanHasilAudit(dataBahan, hasilFixed = 0, hasilGaji = 0) {
   let hasilLoyang = 0;
   let hasilVariable = 0;
   let totalSaldoVarian = 0;
@@ -376,7 +462,7 @@ function hitungHppRealDanHasilAudit(dataBahan) {
     }
   });
 
-  const hasilJumlah = hasilLoyang + hasilVariable;
+  const hasilJumlah = hasilLoyang + hasilVariable + Number(hasilFixed || 0) + Number(hasilGaji || 0);
   const hppReal     = totalSaldoVarian !== 0 ? hasilJumlah / totalSaldoVarian : 0;
   const hasilAudit  = hppReal * totalStockAkhirVarian;
 
@@ -407,7 +493,9 @@ async function simpanAuditData() {
     };
   });
 
-  const { hppReal, hasilAudit } = hitungHppRealDanHasilAudit(dataBahan);
+  const hasilFixed = await loadAuditFixedTotal();
+  const hasilGaji  = await loadAuditSlipGajiTotal();
+  const { hppReal, hasilAudit } = hitungHppRealDanHasilAudit(dataBahan, hasilFixed, hasilGaji);
 
   try {
     await window.setDoc(window.doc(window.db, "users", adminUid, "audit", periode), {
@@ -416,6 +504,8 @@ async function simpanAuditData() {
       data: dataBahan,
       hppReal,
       hasilAudit,
+      hasilFixed,
+      hasilGaji,
       updatedAt: new Date().toISOString()
     });
     window.showToast("Data audit berhasil disimpan", "success");
@@ -426,6 +516,12 @@ async function simpanAuditData() {
   }
 }
 
+function updateAuditFixedGajiCards(hasilFixed, hasilGaji) {
+  const fixedEl = document.getElementById("auditKpiFixed");
+  const gajiEl  = document.getElementById("auditKpiGaji");
+  if (fixedEl) fixedEl.textContent = `Rp ${Number(hasilFixed || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
+  if (gajiEl)  gajiEl.textContent  = `Rp ${Number(hasilGaji  || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
+}
 function updateAuditKpiCards(docData) {
   const hppRealEl    = document.getElementById("auditKpiHppReal");
   const hasilAuditEl = document.getElementById("auditKpiHasilAudit");
@@ -468,6 +564,13 @@ async function loadAuditPreview() {
   if (!adminUid) return;
 
   const periode = `${auditTahun}-${String(auditBulan + 1).padStart(2, "0")}`;
+
+  // hasilFixed & hasilGaji selalu live query, gak tergantung sudah disimpan atau belum
+  const [hasilFixedLive, hasilGajiLive] = await Promise.all([
+    loadAuditFixedTotal(),
+    loadAuditSlipGajiTotal()
+  ]);
+  updateAuditFixedGajiCards(hasilFixedLive, hasilGajiLive);
 
   try {
     const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "audit", periode));
