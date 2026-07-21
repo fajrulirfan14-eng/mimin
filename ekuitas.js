@@ -565,28 +565,8 @@ async function loadEkuitasNeracaPeriode() {
     return null;
   }
 }
-async function hitungEkuitasValuasi() {
-  const adminUid = window.auth?.currentUser?.uid;
-  if (!adminUid) return 0;
-
-  try {
-    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "assetProd", "data"));
-    if (!snap.exists()) return 0;
-
-    const data = snap.data();
-    const distribusiArr = data.distribusi || [];
-    const produksiArr   = data.produksi   || [];
-    const penyusutan    = data.penyusutanAset || {};
-
-    const sumHargaDistribusi = distribusiArr.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
-    const sumHargaProduksi   = produksiArr.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
-    const totalPenyusutan    = (Number(penyusutan.distribusi) || 0) + (Number(penyusutan.produksi) || 0);
-
-    return sumHargaDistribusi + sumHargaProduksi - totalPenyusutan;
-  } catch (err) {
-    console.error("❌ hitungEkuitasValuasi:", err);
-    return 0;
-  }
+function hitungAkumulasiEkuitas() {
+  return ekuitasInvestorList.reduce((sum, u) => sum + (Number(u.ekuitas) || 0), 0);
 }
 function renderEkuitasLabaTable(valuasi, dividen) {
   const wrap = document.getElementById("ekuitasLabaTableBody");
@@ -615,7 +595,7 @@ function renderEkuitasLabaTable(valuasi, dividen) {
 }
 async function refreshEkuitasLabaCard() {
   const neraca  = await loadEkuitasNeracaPeriode();
-  const valuasi = await hitungEkuitasValuasi();
+  const valuasi = hitungAkumulasiEkuitas();
 
   const labaBersih = Number(neraca?.labaBerjalan) || 0;
   const dividen    = Number(neraca?.pembagianLaba?.dividen) || 0;
