@@ -5,41 +5,52 @@ let akunSearchQuery  = "";
 let akunRoleFilter   = "semua";
 let akunTambahRole   = "";
 
+let akunUnsub = null;
+
 window.initAkunView = async function() {
-  await loadAkunList();
+  initAkunListListener();
   initAkunSearch();
   initAkunTabs();
   initAkunTambah();
   initAkunDetail();
 };
 
-/* ── LOAD LIST ── */
-async function loadAkunList() {
+/* ── LOAD LIST (live, onSnapshot) ── */
+function initAkunListListener() {
   const listEl = document.getElementById("akunList");
   if (!listEl) return;
   listEl.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
 
-  try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
-    const adminUid     = window.auth?.currentUser?.uid;
+  const idCabang = window.currentUser?.idCabang || "";
+  const adminUid = window.auth?.currentUser?.uid;
 
-    const snap = await window.getDocs(window.query(
+  if (akunUnsub) { akunUnsub(); akunUnsub = null; }
+
+  akunUnsub = window.onSnapshot(
+    window.query(
       window.collection(window.db, "users"),
       window.where("idCabang", "==", idCabang),
       window.where("createdBy", "==", adminUid)
-    ));
+    ),
+    snap => {
+      akunAllUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id })).filter(u => u.uid !== adminUid);
 
-    akunAllUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id })).filter(u => u.uid !== adminUid);
+      // update usersCache juga (in-memory, bukan IDB)
+      window.usersCache = [...(window.usersCache||[]).filter(u => u.idCabang !== idCabang), ...akunAllUsers];
 
-    // update usersCache juga
-    window.usersCache = [...(window.usersCache||[]).filter(u => u.idCabang !== idCabang), ...akunAllUsers];
+      renderAkunList();
 
-    renderAkunList();
-  } catch (err) {
-    console.error("❌ loadAkunList:", err);
-    document.getElementById("akunList").innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat</div>`;
-  }
+      // kalau detail lagi kebuka, refresh juga datanya biar sinkron sama snapshot terbaru
+      if (akunSelectedUid) {
+        const user = akunAllUsers.find(u => u.uid === akunSelectedUid);
+        if (user) openAkunDetail(user);
+      }
+    },
+    err => {
+      console.error("❌ initAkunListListener:", err);
+      document.getElementById("akunList").innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat</div>`;
+    }
+  );
 }
 
 /* ── RENDER LIST ── */
@@ -173,17 +184,7 @@ async function simpanAkunDetail() {
 
     await window.setDoc(window.doc(window.db, "users", akunSelectedUid), payload, { merge: true });
 
-    // update local cache
-    const idx = akunAllUsers.findIndex(u => u.uid === akunSelectedUid);
-    if (idx !== -1) { akunAllUsers[idx] = { ...akunAllUsers[idx], ...payload }; }
-    window.usersCache = window.usersCache?.map(u => u.uid === akunSelectedUid ? { ...u, ...payload } : u);
-
-    // sync IDB
-    const updatedUser = akunAllUsers[idx] || {};
-    await window.idb.saveUsers([updatedUser]);
-
     document.getElementById("akunDetailNama").textContent = payload.nama;
-    renderAkunList();
     window.showToast("Berhasil disimpan", "success");
   } catch (err) {
     console.error("❌ simpanAkunDetail:", err);
@@ -297,10 +298,10 @@ async function tambahAkun() {
   btn.disabled = true; btn.textContent = "Membuat akun...";
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
+    const idCabang     = window.currentUser?.idCabang || "";
+    const namaCabang   = window.currentUser?.kantorCabang || "";
     const adminUid     = window.auth?.currentUser?.uid;
 
-    // ambil varian dari dokumen admin sendiri (users/{adminUid}), bukan dari kantorCabang
     let adminVarian = [];
     try {
       const adminSnap = await window.getDoc(window.doc(window.db, "users", adminUid));
@@ -309,7 +310,6 @@ async function tambahAkun() {
       console.error("❌ ambil varian admin:", err);
     }
 
-    // buat akun via secondary app supaya admin tidak logout
     const secondaryApp  = window.initializeApp(window.firebaseConfig, "secondary-akun");
     const secondaryAuth = window.getAuth(secondaryApp);
     const cred          = await window.createUserWithEmailAndPassword(secondaryAuth, email, pass);
@@ -322,8 +322,8 @@ async function tambahAkun() {
       nama,
       email,
       role:         akunTambahRole,
-      idCabang:     kantorCabang?.id         || "",
-      kantorCabang: kantorCabang?.namaCabang || "",
+      idCabang,
+      kantorCabang: namaCabang,
       noTelpon:     document.getElementById("akunTambahTelpon").value.trim(),
       nik:          document.getElementById("akunTambahNik").value.trim(),
       alamat:       document.getElementById("akunTambahAlamat").value.trim(),
@@ -341,16 +341,9 @@ async function tambahAkun() {
       role:     akunTambahRole,
       password: pass,
       email,
-      idCabang: kantorCabang?.id || "",
+      idCabang,
     });
 
-    // untuk cache lokal (IDB/array), pakai payload terpisah tanpa sentinel serverTimestamp()
-    const localPayload = { ...payload, createdAt: new Date().toISOString() };
-
-    akunAllUsers.push(localPayload);
-    if (window.usersCache) window.usersCache.push(localPayload);
-    await window.idb.saveUsers([localPayload]);
-    renderAkunList();
     document.getElementById("akunTambahOverlay")?.classList.remove("show");
     window.showToast("Akun berhasil dibuat", "success");
   } catch (err) {

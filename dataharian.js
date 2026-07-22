@@ -198,10 +198,25 @@ async function loadDhKurirList() {
       </div>
     </div>`).join("");
 
-  let users = await window.idb.getUsers();
-  users = users.filter(u => ["kurir","sales","hunter"].includes(u.role));
-  window.usersCache = await window.idb.getUsers();
-  renderDhKurirList(users);
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    const adminUid = window.auth?.currentUser?.uid;
+
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users"),
+      window.where("idCabang", "==", idCabang),
+      window.where("createdBy", "==", adminUid)
+    ));
+
+    const allUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+    window.usersCache = allUsers;
+
+    const users = allUsers.filter(u => ["kurir","sales","hunter"].includes(u.role));
+    renderDhKurirList(users);
+  } catch (err) {
+    console.error("❌ loadDhKurirList:", err);
+    listEl.innerHTML = `<div class="dh-empty-msg">Gagal memuat data.</div>`;
+  }
 }
 
 /* ── RENDER KURIR LIST ── */
