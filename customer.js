@@ -1,9 +1,7 @@
+let custUsersUnsub = null;
+
 window.initCustomerView = async function() {
-  if (!window.idb) { console.error("idb belum siap"); return; }
-  if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
-  }
-  await loadCustGroups();
+  initCustUsersListener();
   loadRollingBadge();
   updateVerifikasiBadge();
   document.getElementById("topbarBackBtn")?.addEventListener("click", () => {
@@ -36,6 +34,28 @@ window.initCustomerView = async function() {
     }
   });
 };
+
+/* ── MARKETING LIST — live listener (bukan IDB) ── */
+function initCustUsersListener() {
+  const idCabang = window.currentUser?.idCabang || "";
+  const adminUid = window.auth?.currentUser?.uid;
+
+  if (custUsersUnsub) { custUsersUnsub(); custUsersUnsub = null; }
+
+  custUsersUnsub = window.onSnapshot(
+    window.query(
+      window.collection(window.db, "users"),
+      window.where("idCabang", "==", idCabang),
+      window.where("createdBy", "==", adminUid)
+    ),
+    snap => {
+      window.usersCache = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+      loadCustGroups();
+    },
+    err => {}
+  );
+}
+
 // ── ROLLING DRAG ──
 let _rollingDragCustomer = null;
 let _rollingDragEl       = null;
@@ -136,9 +156,10 @@ async function showRollingTargetPopup(x, y) {
   popup.style.left = left + "px";
   popup.style.top  = top  + "px";
 
-  // ambil jumlah customer per kurir/sales sesuai filter hari
-  const hariFilter = localStorage.getItem("rollingFilterHari") || "";
-  const targets    = (window.usersCache||[]).filter(u => ["kurir","sales"].includes(u.role));
+  // ambil jumlah customer per kurir/sales sesuai filter hari — langsung Firestore
+  const hariFilter    = localStorage.getItem("rollingFilterHari") || "";
+  const targets       = (window.usersCache||[]).filter(u => ["kurir","sales"].includes(u.role));
+  const idCabangPopup = window.currentUser?.idCabang || "";
 
   popup.innerHTML = `<div class="cust-rolling-popup-title">Pindah ke</div>`;
 
@@ -147,22 +168,17 @@ async function showRollingTargetPopup(x, y) {
     const inisial = nama.trim().charAt(0).toUpperCase();
     const avatar  = u.foto ? `<img src="${esc(u.foto)}" alt="">` : inisial;
 
-    // hitung jumlah customer
+    // hitung jumlah customer langsung dari Firestore
     let count = 0;
-    if (hariFilter) {
-      const data = u.role === "kurir"
-        ? await window.idb.getCustKurir(u.uid, hariFilter)
-        : await window.idb.getCustSales(u.uid, hariFilter);
-      count = data?.length || 0;
-    } else {
-      const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
-      for (const h of HARI_LIST) {
-        const data = u.role === "kurir"
-          ? await window.idb.getCustKurir(u.uid, h)
-          : await window.idb.getCustSales(u.uid, h);
-        count += data?.length || 0;
-      }
-    }
+    try {
+      const baseWhere = u.role === "kurir"
+        ? [window.where("pemilik", "==", u.uid), window.where("idCabang", "==", idCabangPopup), window.where("status", "==", true)]
+        : [window.where("pemilik", "==", u.uid), window.where("idCabang", "==", idCabangPopup), window.where("diserahkan", "==", false)];
+      if (hariFilter) baseWhere.push(window.where("hari", "==", hariFilter));
+      const collName = u.role === "kurir" ? "customer" : "customerSales";
+      const snapCount = await window.getDocs(window.query(window.collection(window.db, collName), ...baseWhere));
+      count = snapCount.size;
+    } catch (err) {}
 
     popup.innerHTML += `
       <div class="cust-rolling-target" data-uid="${esc(u.uid)}" data-role="${u.role}">
@@ -251,10 +267,7 @@ async function eksekusiDragRolling(customer, targetUser, hari) {
     const hunterUid = custActiveUser?.uid;
     const newHari   = hari || customer.hari;
     const adminUid  = window.auth?.currentUser?.uid;
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang  = kantorCabang?.id || "";
-
-    // ambil data lengkap dari Firestore dulu
+    const idCabang  = window.currentUser?.idCabang || "";
     const snapHunter = await window.getDoc(
       window.doc(window.db, "users", hunterUid, "customerBaruHunter", custId)
     );
@@ -297,22 +310,6 @@ async function eksekusiDragRolling(customer, targetUser, hari) {
         }
       );
 
-      // update IDB custKurir
-      const existing = await window.idb.getCustKurir(targetUser.uid, newHari) || [];
-      await window.idb.saveCustKurir(targetUser.uid, newHari, [...existing, {
-        id: custId,
-        namaCustomer: hunterData.namaCustomer || "",
-        alamatCustomer: hunterData.alamatCustomer || "",
-        foto: hunterData.foto || "",
-        hari: newHari,
-        idCabang,
-        lokasiCustomer: hunterData.lokasiCustomer || null,
-        pemilik: targetUser.uid,
-        status: true,
-        isNew: true,
-        dataKemarin,
-      }]);
-
       window.showToast(`${hunterData.namaCustomer||"Customer"} diserahkan ke kurir ${targetUser.nama}`, "success");
 
     } else if (targetUser.role === "sales") {
@@ -329,15 +326,6 @@ async function eksekusiDragRolling(customer, targetUser, hari) {
         }
       );
 
-      // update IDB custSales
-      const existing = await window.idb.getCustSales(targetUser.uid, newHari) || [];
-      await window.idb.saveCustSales(targetUser.uid, newHari, [...existing, {
-        ...hunterData,
-        id: custId,
-        pemilik: targetUser.uid,
-        hari: newHari,
-      }]);
-
       window.showToast(`${hunterData.namaCustomer||"Customer"} diserahkan ke sales ${targetUser.nama}`, "success");
     }
 
@@ -347,16 +335,6 @@ async function eksekusiDragRolling(customer, targetUser, hari) {
       { diserahkan: true, updatedAt: window.serverTimestamp() },
       { merge: true }
     );
-
-    // hapus dari IDB custHunter
-    const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
-    for (const h of HARI_LIST) {
-      const oldIdb = await window.idb.getCustHunter(hunterUid, h);
-      if (oldIdb?.find(c => c.id === custId)) {
-        await window.idb.saveCustHunter(hunterUid, h, oldIdb.filter(c => c.id !== custId));
-      }
-    }
-
     // hapus card dari list
     const card = document.querySelector(`#custDetailList .cust-card[data-id="${custId}"]`);
     if (card) card.remove();
@@ -368,15 +346,13 @@ async function eksekusiDragRolling(customer, targetUser, hari) {
     updateHariBadge(custActiveHari, remaining);
 
   } catch (err) {
-    console.error("❌ eksekusiDragRolling:", err);
     window.showToast("Gagal menyerahkan customer", "error");
   }
 }
 
 async function loadRollingBadge() {
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
+    const idCabang = window.currentUser?.idCabang || "";
     const snap = await window.getDocs(window.query(
       window.collection(window.db, "rolling"),
       window.where("idCabang", "==", idCabang),
@@ -393,9 +369,7 @@ async function loadRollingBadge() {
       menuItem.appendChild(badge);
     }
     badge.textContent = count;
-  } catch (err) {
-    console.error("❌ loadRollingBadge:", err);
-  }
+  } catch (err) {}
 }
 async function loadCustGroups() {
   const kurir   = window.usersCache.filter(u => u.role === "kurir");
@@ -407,29 +381,72 @@ async function loadCustGroups() {
   renderCustExpand("custExpandHunter", hunter, "hunter");
   renderCustExpand("custExpandSales",  sales,  "sales");
 
-  // load badge semua marketing dari IDB
-  const HARI_LIST    = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
-  const allMarketing = [...kurir, ...hunter, ...sales];
-  for (const u of allMarketing) {
-    let total = 0;
-    for (const h of HARI_LIST) {
-      let data = null;
-      if (u.role === "kurir")  data = await window.idb.getCustKurir(u.uid, h);
-      if (u.role === "hunter") data = await window.idb.getCustHunter(u.uid, h);
-      if (u.role === "sales")  data = await window.idb.getCustSales(u.uid, h);
-      total += data?.length || 0;
-    }
-    if (total === 0) continue;
+  await renderAllMarketingBadges([...kurir, ...hunter, ...sales]);
+
+  initCustGroupsStaticListeners();
+}
+
+// hitung badge semua marketing langsung dari Firestore — 3 query total, bukan per-uid-per-hari
+async function renderAllMarketingBadges(allMarketing) {
+  const idCabang = window.currentUser?.idCabang || "";
+  if (!idCabang) return;
+
+  const countByUid = {};
+
+  try {
+    const snapKurir = await window.getDocs(window.query(
+      window.collection(window.db, "customer"),
+      window.where("idCabang", "==", idCabang),
+      window.where("status",   "==", true)
+    ));
+    snapKurir.forEach(d => {
+      const uid = d.data().pemilik;
+      if (uid) countByUid[uid] = (countByUid[uid] || 0) + 1;
+    });
+  } catch (err) {}
+
+  try {
+    const snapSales = await window.getDocs(window.query(
+      window.collection(window.db, "customerSales"),
+      window.where("idCabang",   "==", idCabang),
+      window.where("diserahkan", "==", false)
+    ));
+    snapSales.forEach(d => {
+      const uid = d.data().pemilik;
+      if (uid) countByUid[uid] = (countByUid[uid] || 0) + 1;
+    });
+  } catch (err) {}
+
+  try {
+    const snapHunter = await window.getDocs(window.query(
+      window.collectionGroup(window.db, "customerBaruHunter"),
+      window.where("idCabang",   "==", idCabang),
+      window.where("diserahkan", "==", false)
+    ));
+    snapHunter.forEach(d => {
+      const uid = d.ref.parent.parent?.id;
+      if (uid) countByUid[uid] = (countByUid[uid] || 0) + 1;
+    });
+  } catch (err) {}
+
+  allMarketing.forEach(u => {
+    const total = countByUid[u.uid] || 0;
     const item = document.querySelector(`.cust-sub-item[data-uid="${u.uid}"]`);
-    if (!item) continue;
+    if (!item) return;
     let badge = item.querySelector(".cust-sub-badge");
+    if (total === 0) { badge?.remove(); return; }
     if (!badge) {
       badge = document.createElement("span");
       badge.className = "cust-sub-badge";
       item.appendChild(badge);
     }
     badge.textContent = total;
-  }
+  });
+}
+
+function initCustGroupsStaticListeners() {
+  if (window._custGroupsListenersInit) return;
+  window._custGroupsListenersInit = true;
 
   // group trigger — independen, tidak tutup yang lain
   document.querySelectorAll(".cust-group-trigger").forEach(trigger => {
@@ -473,11 +490,8 @@ async function loadCustGroups() {
 }
 async function updateVerifikasiBadge() {
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
+    const idCabang = window.currentUser?.idCabang || "";
     if (!idCabang) return;
-
-    // ⚠️ ASUMSI nama field: "idCabangTujuan" — koreksi kalau beda
     const snap = await window.getDocs(window.query(
       window.collection(window.db, "requestCabang"),
       window.where("idCabangTujuan", "==", idCabang),
@@ -499,9 +513,7 @@ async function updateVerifikasiBadge() {
       menuItem.appendChild(badge);
     }
     badge.textContent = count;
-  } catch (err) {
-    console.error("❌ updateVerifikasiBadge:", err);
-  }
+  } catch (err) {}
 }
 window.updateVerifikasiBadge = updateVerifikasiBadge;
 async function showVerifikasiView() {
@@ -521,7 +533,6 @@ async function showVerifikasiView() {
   if (titleEl) titleEl.textContent   = "Verifikasi";
 
   document.getElementById("custHariChips").style.display = "none";
-  document.getElementById("custReloadBtn").style.display = "none";
 
   const searchWrap = document.querySelector(".cust-search-wrap");
   if (searchWrap) searchWrap.style.display = "none";
@@ -531,10 +542,7 @@ async function showVerifikasiView() {
   list.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
-
-    // ⚠️ ASUMSI nama field: "idCabangTujuan" — koreksi kalau beda
+    const idCabang = window.currentUser?.idCabang || "";
     const snap = await window.getDocs(window.query(
       window.collection(window.db, "requestCabang"),
       window.where("idCabangTujuan", "==", idCabang),
@@ -557,9 +565,7 @@ async function showVerifikasiView() {
         try {
           const userSnap = await window.getDoc(window.doc(window.db, "users", staffUid));
           if (userSnap.exists()) userData = userSnap.data();
-        } catch (err) {
-          console.error("❌ fetch user verifikasi:", err);
-        }
+        } catch (err) {}
       }
 
       requests.push({
@@ -575,7 +581,6 @@ async function showVerifikasiView() {
     renderVerifikasiList(requests);
 
   } catch (err) {
-    console.error("❌ showVerifikasiView:", err);
     list.innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat data</div>`;
   }
 }
@@ -704,7 +709,6 @@ async function showHistoryView() {
   if (titleEl) titleEl.textContent   = "History Customer";
 
   document.getElementById("custHariChips").style.display = "none";
-  document.getElementById("custReloadBtn").style.display = "none";
 
   // ganti search jadi search history
   const searchWrap = document.querySelector(".cust-search-wrap");
@@ -737,8 +741,7 @@ async function showHistoryView() {
   list.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
+    const idCabang = window.currentUser?.idCabang || "";
 
     const snap = await window.getDocs(window.query(
       window.collection(window.db, "customerNonAktif"),
@@ -751,7 +754,6 @@ async function showHistoryView() {
     renderHistoryList(customers);
 
   } catch (err) {
-    console.error("❌ showHistoryView:", err);
     list.innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat data</div>`;
   }
 }
@@ -853,8 +855,7 @@ async function loadHistoryCustomer(user) {
     <div id="custHistoryList"><div class="dh-ringkasan-empty">Memuat...</div></div>`;
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
+    const idCabang = window.currentUser?.idCabang || "";
 
     const snap = await window.getDocs(window.query(
       window.collection(window.db, "customerNonAktif"),
@@ -938,13 +939,11 @@ async function loadHistoryCustomer(user) {
     });
 
   } catch (err) {
-    console.error("❌ loadHistoryCustomer:", err);
     const historyList = document.getElementById("custHistoryList");
     if (historyList) historyList.innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat data</div>`;
   }
 }
 function openHistoryDetail(c) {
-  // ganti panel kanan jadi detail history
   const body = document.getElementById("custRightBody");
   if (!body) return;
 
@@ -1000,7 +999,6 @@ async function showNonAktifView() {
 
   // sembunyikan chips hari, reload, dan search
   document.getElementById("custHariChips").style.display = "none";
-  document.getElementById("custReloadBtn").style.display = "none";
   document.querySelector(".cust-search-wrap").style.display = "none";
   const list = document.getElementById("custDetailList");
   if (!list) return;
@@ -1060,8 +1058,7 @@ async function loadNonAktifCustomer(user, role) {
     </div>
     <div id="custNonAktifList"><div class="dh-ringkasan-empty">Memuat...</div></div>`;
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
+    const idCabang = window.currentUser?.idCabang || "";
     let snap;
 
     if (role === "kurir") {
@@ -1175,7 +1172,6 @@ async function loadNonAktifCustomer(user, role) {
     });
 
   } catch (err) {
-    console.error("❌ loadNonAktifCustomer:", err);
     body.innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat data</div>`;
   }
 }
@@ -1210,45 +1206,23 @@ function konfirmasiRestore(custId, role, uid, cardEl) {
         custHari = custData?.hari;
         await window.setDoc(window.doc(window.db, "customer", custId),
           { status: true, updatedAt: window.serverTimestamp() }, { merge: true });
-        if (custData && custHari) {
-          const existing = await window.idb.getCustKurir(uid, custHari) || [];
-          const alreadyIn = existing.find(c => c.id === custId);
-          if (!alreadyIn) {
-            await window.idb.saveCustKurir(uid, custHari, [...existing, { id: custId, ...custData, status: true }]);
-          }
-        }
       } else if (role === "sales") {
         custSnap = await window.getDoc(window.doc(window.db, "customerSales", custId));
         custData = custSnap.exists() ? custSnap.data() : null;
         custHari = custData?.hari;
         await window.setDoc(window.doc(window.db, "customerSales", custId),
           { diserahkan: false, updatedAt: window.serverTimestamp() }, { merge: true });
-        if (custData && custHari) {
-          const existing = await window.idb.getCustSales(uid, custHari) || [];
-          const alreadyIn = existing.find(c => c.id === custId);
-          if (!alreadyIn) {
-            await window.idb.saveCustSales(uid, custHari, [...existing, { id: custId, ...custData, diserahkan: false }]);
-          }
-        }
       } else if (role === "hunter") {
         custSnap = await window.getDoc(window.doc(window.db, "users", uid, "customerBaruHunter", custId));
         custData = custSnap.exists() ? custSnap.data() : null;
         custHari = custData?.hari;
         await window.setDoc(window.doc(window.db, "users", uid, "customerBaruHunter", custId),
           { diserahkan: false, updatedAt: window.serverTimestamp() }, { merge: true });
-        if (custData && custHari) {
-          const existing = await window.idb.getCustHunter(uid, custHari) || [];
-          const alreadyIn = existing.find(c => c.id === custId);
-          if (!alreadyIn) {
-            await window.idb.saveCustHunter(uid, custHari, [...existing, { id: custId, ...custData, diserahkan: false }]);
-          }
-        }
       }
       cardEl?.remove();
       if (custHari) updateMarketingBadge(uid, role);
       window.showToast("Customer diaktifkan kembali", "success");
     } catch (err) {
-      console.error("❌ restoreCustomer:", err);
       window.showToast("Gagal mengaktifkan", "error");
     }
   };
@@ -1314,37 +1288,15 @@ function konfirmasiHapusPermanen(custId, role, uid, cardEl) {
       } catch {}
       if (role === "kurir") {
         await window.deleteDoc(window.doc(window.db, "customer", custId));
-        const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
-        for (const h of HARI_LIST) {
-          const existing = await window.idb.getCustKurir(uid, h);
-          if (existing?.find(c => c.id === custId)) {
-            await window.idb.saveCustKurir(uid, h, existing.filter(c => c.id !== custId));
-          }
-        }
       } else if (role === "sales") {
         await window.deleteDoc(window.doc(window.db, "customerSales", custId));
-        const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
-        for (const h of HARI_LIST) {
-          const existing = await window.idb.getCustSales(uid, h);
-          if (existing?.find(c => c.id === custId)) {
-            await window.idb.saveCustSales(uid, h, existing.filter(c => c.id !== custId));
-          }
-        }
       } else if (role === "hunter") {
         await window.deleteDoc(window.doc(window.db, "users", uid, "customerBaruHunter", custId));
-        const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
-        for (const h of HARI_LIST) {
-          const existing = await window.idb.getCustHunter(uid, h);
-          if (existing?.find(c => c.id === custId)) {
-            await window.idb.saveCustHunter(uid, h, existing.filter(c => c.id !== custId));
-          }
-        }
       }
       cardEl?.remove();
       updateMarketingBadge(uid, role);
       window.showToast("Customer dihapus permanen", "success");
     } catch (err) {
-      console.error("❌ hapusPermanen:", err);
       window.showToast("Gagal menghapus", "error");
     }
   };
@@ -1366,7 +1318,6 @@ async function showRollingView() {
   if (titleEl) titleEl.textContent   = "Rolling Customer";
 
   document.getElementById("custHariChips").style.display = "none";
-  document.getElementById("custReloadBtn").style.display = "none";
   document.querySelector(".cust-search-wrap").style.display = "none";
 
   const list = document.getElementById("custDetailList");
@@ -1374,9 +1325,7 @@ async function showRollingView() {
   list.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
-
+    const idCabang = window.currentUser?.idCabang || "";
     const snap = await window.getDocs(window.query(
       window.collection(window.db, "rolling"),
       window.where("idCabang", "==", idCabang),
@@ -1436,7 +1385,6 @@ async function showRollingView() {
     });
 
   } catch (err) {
-    console.error("❌ showRollingView:", err);
     list.innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat data</div>`;
   }
 }
@@ -1568,7 +1516,6 @@ async function tolakRolling(p) {
     window.showToast("Pengajuan ditolak", "error");
     hapusRollingCard(p.id);
   } catch (err) {
-    console.error("❌ tolakRolling:", err);
     window.showToast("Gagal menolak", "error");
     if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-xmark"></i> Tolak`; }
   }
@@ -1596,7 +1543,6 @@ async function accRolling(p) {
     window.showToast("Pengajuan disetujui", "success");
     hapusRollingCard(p.id);
   } catch (err) {
-    console.error("❌ accRolling:", err);
     window.showToast("Gagal menyetujui", "error");
     if (btn) { btn.disabled = false; btn.innerHTML = `<i class="fa-solid fa-check"></i> ACC`; }
   }
@@ -1612,9 +1558,7 @@ async function updateRollingPemilik(p) {
   const oldRole = oldUser?.role || "kurir";
   const newRole = newUser?.role || "kurir";
   const adminUid = window.auth?.currentUser?.uid;
-  const kantorCabang = await window.idb.getKantorCabang();
-  const idCabang = kantorCabang?.id || "";
-  const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
+  const idCabang = window.currentUser?.idCabang || "";
 
   if (oldRole === "kurir" && newRole === "kurir") {
     // kurir → kurir: update pemilik + isNew
@@ -1624,42 +1568,14 @@ async function updateRollingPemilik(p) {
       { merge: true }
     );
 
-    // update IDB — pindah dari kurir lama ke kurir baru
-    for (const h of HARI_LIST) {
-      const oldIdb = await window.idb.getCustKurir(oldPemilik, h);
-      if (oldIdb?.find(c => c.id === idCustomer)) {
-        const cust = oldIdb.find(c => c.id === idCustomer);
-        await window.idb.saveCustKurir(oldPemilik, h, oldIdb.filter(c => c.id !== idCustomer));
-        const newIdb = await window.idb.getCustKurir(newPemilik, h) || [];
-        if (!newIdb.find(c => c.id === idCustomer)) {
-          await window.idb.saveCustKurir(newPemilik, h, [...newIdb, { ...cust, pemilik: newPemilik, isNew: true }]);
-        }
-      }
-    }
-
   } else if (oldRole === "sales" && newRole === "sales") {
-    // sales → sales: update pemilik
     await window.setDoc(
       window.doc(window.db, "customerSales", idCustomer),
       { pemilik: newPemilik, updatedAt: window.serverTimestamp() },
       { merge: true }
     );
 
-    // update IDB
-    for (const h of HARI_LIST) {
-      const oldIdb = await window.idb.getCustSales(oldPemilik, h);
-      if (oldIdb?.find(c => c.id === idCustomer)) {
-        const cust = oldIdb.find(c => c.id === idCustomer);
-        await window.idb.saveCustSales(oldPemilik, h, oldIdb.filter(c => c.id !== idCustomer));
-        const newIdb = await window.idb.getCustSales(newPemilik, h) || [];
-        if (!newIdb.find(c => c.id === idCustomer)) {
-          await window.idb.saveCustSales(newPemilik, h, [...newIdb, { ...cust, pemilik: newPemilik }]);
-        }
-      }
-    }
-
   } else if (oldRole === "sales" && newRole === "kurir") {
-    // sales → kurir: diserahkan true + buat document baru di customer
     const snapSales = await window.getDoc(window.doc(window.db, "customerSales", idCustomer));
     if (!snapSales.exists()) return;
     const salesData = snapSales.data();
@@ -1704,33 +1620,6 @@ async function updateRollingPemilik(p) {
         updatedAt:      window.serverTimestamp(),
       }
     );
-
-    // update IDB custSales — set diserahkan true
-    for (const h of HARI_LIST) {
-      const salesIdb = await window.idb.getCustSales(oldPemilik, h);
-      if (salesIdb?.find(c => c.id === idCustomer)) {
-        const updated = salesIdb.map(c => c.id === idCustomer ? { ...c, diserahkan: true } : c);
-        await window.idb.saveCustSales(oldPemilik, h, updated);
-      }
-    }
-
-    // tambah ke IDB custKurir
-    const newIdb = await window.idb.getCustKurir(newPemilik, hari) || [];
-    if (!newIdb.find(c => c.id === idCustomer)) {
-      await window.idb.saveCustKurir(newPemilik, hari, [...newIdb, {
-        id: idCustomer,
-        namaCustomer:   salesData.namaCustomer   || "",
-        alamatCustomer: salesData.alamatCustomer || "",
-        foto:           salesData.foto           || "",
-        hari,
-        idCabang,
-        lokasiCustomer: salesData.lokasiCustomer || null,
-        pemilik:        newPemilik,
-        status:         true,
-        isNew:          true,
-        dataKemarin,
-      }]);
-    }
   }
 }
 async function updateRollingHari(p) {
@@ -1746,21 +1635,6 @@ async function updateRollingHari(p) {
     { hari: newHari, updatedAt: window.serverTimestamp() },
     { merge: true }
   );
-
-  // update IDB — hapus dari hari lama, tambah ke hari baru
-  if (oldHari && pemilik) {
-    const oldData = await window.idb.getCustKurir(pemilik, oldHari);
-    if (oldData) {
-      const cust = oldData.find(c => c.id === idCustomer);
-      await window.idb.saveCustKurir(pemilik, oldHari, oldData.filter(c => c.id !== idCustomer));
-      if (cust) {
-        const newData = await window.idb.getCustKurir(pemilik, newHari) || [];
-        if (!newData.find(c => c.id === idCustomer)) {
-          await window.idb.saveCustKurir(pemilik, newHari, [...newData, { ...cust, hari: newHari }]);
-        }
-      }
-    }
-  }
 }
 function hapusRollingCard(id) {
   const card = document.querySelector(`.cust-rolling-card[data-id="${id}"]`);
@@ -1814,19 +1688,41 @@ function renderCustExpand(containerId, users, role) {
   });
 }
 async function updateMarketingBadge(uid, role) {
-  const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
+  const idCabang = window.currentUser?.idCabang || "";
   let total = 0;
-  for (const h of HARI_LIST) {
-    let data = null;
-    if (role === "kurir")  data = await window.idb.getCustKurir(uid, h);
-    if (role === "hunter") data = await window.idb.getCustHunter(uid, h);
-    if (role === "sales")  data = await window.idb.getCustSales(uid, h);
-    total += data?.length || 0;
+  try {
+    if (role === "kurir") {
+      const snap = await window.getDocs(window.query(
+        window.collection(window.db, "customer"),
+        window.where("pemilik",  "==", uid),
+        window.where("idCabang", "==", idCabang),
+        window.where("status",   "==", true)
+      ));
+      total = snap.size;
+    } else if (role === "sales") {
+      const snap = await window.getDocs(window.query(
+        window.collection(window.db, "customerSales"),
+        window.where("pemilik",    "==", uid),
+        window.where("idCabang",   "==", idCabang),
+        window.where("diserahkan", "==", false)
+      ));
+      total = snap.size;
+    } else if (role === "hunter") {
+      const snap = await window.getDocs(window.query(
+        window.collection(window.db, "users", uid, "customerBaruHunter"),
+        window.where("idCabang",   "==", idCabang),
+        window.where("diserahkan", "==", false)
+      ));
+      total = snap.size;
+    }
+  } catch (err) {
+    console.error("❌ updateMarketingBadge:", err);
   }
-  if (total === 0) return;
+
   const item = document.querySelector(`.cust-sub-item[data-uid="${uid}"]`);
   if (!item) return;
   let badge = item.querySelector(".cust-sub-badge");
+  if (total === 0) { badge?.remove(); return; }
   if (!badge) {
     badge = document.createElement("span");
     badge.className = "cust-sub-badge";
@@ -1838,6 +1734,8 @@ async function updateMarketingBadge(uid, role) {
 let custActiveUser = null;
 let custActiveHari = "Senin";
 let custActiveMenu = null;
+let custActiveUnsub = null;
+let custActiveRawData = [];
 
 function showCustDetail(title, user = null, menu = null) {
   resetCustRightPanel();
@@ -1862,13 +1760,6 @@ function showCustDetail(title, user = null, menu = null) {
     rollingBtn.parentNode.replaceChild(newRollingBtn, rollingBtn);
     newRollingBtn.addEventListener("click", () => window.openMapRolling());
   }
-  // init reload
-  const reloadBtn = document.getElementById("custReloadBtn");
-  if (reloadBtn) {
-    const newBtn = reloadBtn.cloneNode(true);
-    reloadBtn.parentNode.replaceChild(newBtn, reloadBtn);
-    newBtn.addEventListener("click", () => reloadCustData(true));
-  }
 
   // init search
   const searchInput = document.getElementById("custSearchInput");
@@ -1891,10 +1782,8 @@ function showCustDetail(title, user = null, menu = null) {
       filterCustList("");
     });
   }
-  // hitung badge dari IDB sekarang
   if (user) updateMarketingBadge(user.uid, user.role);
-  // load dari IDB dulu
-  reloadCustData(false);
+  subscribeCustActiveMarketing();
 }
 function initCustHariChips() {
   const chips = document.getElementById("custHariChips");
@@ -1904,22 +1793,9 @@ function initCustHariChips() {
   const showChips = custActiveMenu === null;
   chips.style.display = showChips ? "flex" : "none";
 
-  // reset semua badge dulu
+  // reset semua badge dulu — nanti diisi ulang otomatis begitu data live datang
   chips.querySelectorAll(".cust-hari-badge").forEach(b => b.remove());
 
-  // load badge semua hari dari IDB
-  if (custActiveUser) {
-    const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
-    const role = custActiveUser.role;
-    const uid  = custActiveUser.uid;
-    HARI_LIST.forEach(async h => {
-      let data = null;
-      if (role === "kurir")  data = await window.idb.getCustKurir(uid, h);
-      if (role === "hunter") data = await window.idb.getCustHunter(uid, h);
-      if (role === "sales")  data = await window.idb.getCustSales(uid, h);
-      if (data?.length) updateHariBadge(h, data.length);
-    });
-  }
   chips.querySelectorAll(".cust-hari-chip").forEach(chip => {
     const newChip = chip.cloneNode(true);
     chip.parentNode.replaceChild(newChip, chip);
@@ -1927,15 +1803,15 @@ function initCustHariChips() {
       chips.querySelectorAll(".cust-hari-chip").forEach(c => c.classList.remove("active"));
       newChip.classList.add("active");
       custActiveHari = newChip.dataset.hari;
-      reloadCustData(false);
+      renderActiveCustDataForHari();
     });
   });
 }
 
-async function reloadCustData(forceFirestore = false) {
-  const list      = document.getElementById("custDetailList");
-  const reloadBtn = document.getElementById("custReloadBtn");
+function subscribeCustActiveMarketing() {
+  const list = document.getElementById("custDetailList");
   if (!list) return;
+  if (custActiveUnsub) { custActiveUnsub(); custActiveUnsub = null; }
 
   // skeleton
   list.innerHTML = [1,2,3].map(() => `
@@ -1947,52 +1823,60 @@ async function reloadCustData(forceFirestore = false) {
       </div>
     </div>`).join("");
 
-  if (forceFirestore) {
-    reloadBtn?.classList.add("spinning");
-    if (reloadBtn) reloadBtn.disabled = true;
+  const role     = custActiveUser?.role;
+  const uid      = custActiveUser?.uid;
+  const idCabang = window.currentUser?.idCabang || "";
+  if (!role || !uid || !idCabang) return;
+
+  let q = null;
+  if (role === "kurir") {
+    q = window.query(
+      window.collection(window.db, "customer"),
+      window.where("pemilik",  "==", uid),
+      window.where("idCabang", "==", idCabang),
+      window.where("status",   "==", true)
+    );
+  } else if (role === "hunter") {
+    q = window.query(
+      window.collection(window.db, "users", uid, "customerBaruHunter"),
+      window.where("idCabang",   "==", idCabang),
+      window.where("diserahkan", "==", false)
+    );
+  } else if (role === "sales") {
+    q = window.query(
+      window.collection(window.db, "customerSales"),
+      window.where("pemilik",    "==", uid),
+      window.where("idCabang",   "==", idCabang),
+      window.where("diserahkan", "==", false)
+    );
   }
+  if (!q) return;
 
-  try {
-    let customers = null;
-
-    const role = custActiveUser?.role;
-    const uid  = custActiveUser?.uid;
-
-    if (role === "kurir") {
-      if (!forceFirestore) customers = await window.idb.getCustKurir(uid, custActiveHari);
-      if (!customers) {
-        customers = await fetchCustKurir(uid, custActiveHari);
-        if (customers) await window.idb.saveCustKurir(uid, custActiveHari, customers);
-      }
-    } else if (role === "hunter") {
-      if (!forceFirestore) customers = await window.idb.getCustHunter(uid, custActiveHari);
-      if (!customers) {
-        customers = await fetchCustHunter(uid, custActiveHari);
-        if (customers) await window.idb.saveCustHunter(uid, custActiveHari, customers);
-      }
-    } else if (role === "sales") {
-      if (!forceFirestore) customers = await window.idb.getCustSales(uid, custActiveHari);
-      if (!customers) {
-        customers = await fetchCustSales(uid, custActiveHari);
-        if (customers) await window.idb.saveCustSales(uid, custActiveHari, customers);
-      }
-    }
-
-    if (!customers || !customers.length) {
-      list.innerHTML = `<div class="dh-ringkasan-empty">${forceFirestore ? "Belum ada data" : "Klik Reload untuk memuat data"}</div>`;
-      return;
-    }
-
-    renderCustCards(customers);
-    updateHariBadge(custActiveHari, customers.length);
-    if (custActiveUser) updateMarketingBadge(custActiveUser.uid, custActiveUser.role);
-  } catch (err) {
-    console.error("❌ reloadCustData:", err);
+  custActiveUnsub = window.onSnapshot(q, snap => {
+    custActiveRawData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderActiveCustDataForHari();
+    computeAndRenderHariBadges(custActiveRawData);
+  }, err => {
     list.innerHTML = `<div class="dh-ringkasan-empty">Gagal memuat data</div>`;
-  } finally {
-    reloadBtn?.classList.remove("spinning");
-    if (reloadBtn) reloadBtn.disabled = false;
+  });
+}
+function renderActiveCustDataForHari() {
+  const list = document.getElementById("custDetailList");
+  if (!list) return;
+  const filtered = custActiveRawData.filter(c => c.hari === custActiveHari);
+  if (!filtered.length) {
+    list.innerHTML = `<div class="dh-ringkasan-empty">Belum ada data</div>`;
+    return;
   }
+  renderCustCards(filtered);
+}
+
+function computeAndRenderHariBadges(data) {
+  const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
+  HARI_LIST.forEach(h => {
+    const count = data.filter(c => c.hari === h).length;
+    updateHariBadge(h, count);
+  });
 }
 function updateHariBadge(hari, count) {
   const chips = document.getElementById("custHariChips");
@@ -2006,66 +1890,6 @@ function updateHariBadge(hari, count) {
     badge.className = "cust-hari-badge";
     badge.textContent = count;
     chip.appendChild(badge);
-  }
-}
-
-async function fetchCustKurir(uid, hari) {
-  try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
-    if (!idCabang) return null;
-
-    const snap = await window.getDocs(window.query(
-      window.collection(window.db, "customer"),
-      window.where("pemilik",  "==", uid),
-      window.where("idCabang", "==", idCabang),
-      window.where("hari",     "==", hari),
-      window.where("status",   "==", true)
-    ));
-
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (err) {
-    console.error("❌ fetchCustKurir:", err.code, err.message);
-    return null;
-  }
-}
-async function fetchCustHunter(uid, hari) {
-  try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
-    if (!idCabang) return null;
-
-    const snap = await window.getDocs(window.query(
-      window.collection(window.db, "users", uid, "customerBaruHunter"),
-      window.where("idCabang",   "==", idCabang),
-      window.where("hari",       "==", hari),
-      window.where("diserahkan", "==", false)
-    ));
-
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (err) {
-    console.error("❌ fetchCustHunter:", err);
-    return null;
-  }
-}
-async function fetchCustSales(uid, hari) {
-  try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
-    if (!idCabang) return null;
-
-    const snap = await window.getDocs(window.query(
-      window.collection(window.db, "customerSales"),
-      window.where("pemilik",    "==", uid),
-      window.where("idCabang",   "==", idCabang),
-      window.where("hari",       "==", hari),
-      window.where("diserahkan", "==", false)
-    ));
-
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (err) {
-    console.error("❌ fetchCustSales:", err);
-    return null;
   }
 }
 
@@ -2188,16 +2012,6 @@ async function nonAktifkanCustomer(custId, customers) {
       { status: false, updatedAt: window.serverTimestamp() },
       { merge: true }
     );
-
-    // update IDB
-    if (custActiveUser?.role === "kurir") {
-      const existing = await window.idb.getCustKurir(custActiveUser.uid, custActiveHari);
-      if (existing) {
-        const updated = existing.filter(c => c.id !== custId);
-        await window.idb.saveCustKurir(custActiveUser.uid, custActiveHari, updated);
-      }
-    }
-
     // hapus card dari list
     const card = document.querySelector(`#custDetailList .cust-card[data-id="${custId}"]`);
     if (card) card.remove();
@@ -2210,7 +2024,6 @@ async function nonAktifkanCustomer(custId, customers) {
     if (custActiveUser) updateMarketingBadge(custActiveUser.uid, custActiveUser.role);
     window.showToast("Customer dinonaktifkan", "success");
   } catch (err) {
-    console.error("❌ nonAktifkanCustomer:", err);
     window.showToast("Gagal menonaktifkan", "error");
   }
 }
@@ -2380,7 +2193,6 @@ function openCustDetail(customer) {
           window._custEditData.foto = url;
           window.showToast("Foto diperbarui", "success");
         } catch (err) {
-          console.error("❌ upload foto:", err);
           window.showToast("Gagal upload foto", "error");
         }
       });
@@ -2486,34 +2298,7 @@ async function simpanCustEdit(custId) {
       updateData,
       { merge: true }
     );
-
-    // 2. update IDB
-    const role = custActiveUser?.role;
-    const uid  = custActiveUser?.uid;
-    if (role === "kurir") {
-      const existing = await window.idb.getCustKurir(uid, custActiveHari);
-      if (existing) {
-        const updated = existing.map(c => c.id === custId ? { ...c, ...updateData } : c);
-        await window.idb.saveCustKurir(uid, custActiveHari, updated);
-        window._custCurrentList = updated;
-      }
-    } else if (role === "hunter") {
-      const existing = await window.idb.getCustHunter(uid, custActiveHari);
-      if (existing) {
-        const updated = existing.map(c => c.id === custId ? { ...c, ...updateData } : c);
-        await window.idb.saveCustHunter(uid, custActiveHari, updated);
-        window._custCurrentList = updated;
-      }
-    } else if (role === "sales") {
-      const existing = await window.idb.getCustSales(uid, custActiveHari);
-      if (existing) {
-        const updated = existing.map(c => c.id === custId ? { ...c, ...updateData } : c);
-        await window.idb.saveCustSales(uid, custActiveHari, updated);
-        window._custCurrentList = updated;
-      }
-    }
-
-    // 3. update card di list
+    // 2. update card di list
     const card = document.querySelector(`#custDetailList .cust-card[data-id="${custId}"]`);
     if (card) {
       const nama    = updateData.namaCustomer || "Tanpa Nama";
@@ -2528,13 +2313,12 @@ async function simpanCustEdit(custId) {
       if (subEl)  subEl.textContent  = updateData.alamatCustomer || updateData.hari || "-";
     }
 
-    // 4. update title panel kanan
+    // 3. update title panel kanan
     const titleEl = document.getElementById("custRightTitle");
     if (titleEl) titleEl.textContent = updateData.namaCustomer || "Detail Customer";
 
     window.showToast("Berhasil disimpan", "success");
   } catch (err) {
-    console.error("❌ simpanCustEdit:", err);
     window.showToast("Gagal menyimpan", "error");
   } finally {
     btn.disabled = false;
@@ -2744,7 +2528,6 @@ async function openCustAddModal() {
             <div class="cust-edit-photo-overlay"><i class="fa-solid fa-camera"></i></div>`;
           window._custAddData.foto = url;
         } catch (err) {
-          console.error("❌ upload foto add:", err);
           window.showToast("Gagal upload foto", "error");
         }
       });
@@ -2811,8 +2594,7 @@ async function simpanCustBaru() {
     const nama       = document.getElementById("custAddNama")?.value?.trim();
     const alamat     = document.getElementById("custAddAlamat")?.value?.trim() || "";
     const adminUid   = window.auth?.currentUser?.uid;
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang   = kantorCabang?.id || "";
+    const idCabang   = window.currentUser?.idCabang || "";
 
     // dataKemarin
     const dataKemarin = {};
@@ -2841,36 +2623,29 @@ async function simpanCustBaru() {
       createdAt:      new Date().toISOString(),
       updatedAt:      window.serverTimestamp(),
     };
-    // cek duplikat nama dari semua IDB
-    const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
-    const allUsers  = (window.usersCache||[]).filter(u => ["kurir","hunter","sales"].includes(u.role));
-    for (const u of allUsers) {
-      for (const h of HARI_LIST) {
-        let cached = null;
-        if (u.role === "kurir")  cached = await window.idb.getCustKurir(u.uid, h);
-        if (u.role === "hunter") cached = await window.idb.getCustHunter(u.uid, h);
-        if (u.role === "sales")  cached = await window.idb.getCustSales(u.uid, h);
-        if (!cached) continue;
-        const duplikat = cached.find(c =>
-          (c.namaCustomer||"").toLowerCase().trim() === nama.toLowerCase().trim()
-        );
-        if (duplikat) {
-          window.showToast("Nama customer sudah ada, ganti dengan yang lain", "error", 3000);
-          btn.disabled = false;
-          btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Simpan`;
-          return;
-        }
+    // cek duplikat nama langsung dari Firestore (se-cabang)
+    try {
+      const namaLower = nama.toLowerCase().trim();
+      const [snapCust, snapSales, snapHunter] = await Promise.all([
+        window.getDocs(window.query(window.collection(window.db, "customer"), window.where("idCabang", "==", idCabang))),
+        window.getDocs(window.query(window.collection(window.db, "customerSales"), window.where("idCabang", "==", idCabang))),
+        window.getDocs(window.query(window.collectionGroup(window.db, "customerBaruHunter"), window.where("idCabang", "==", idCabang))),
+      ]);
+      const semuaDoc = [...snapCust.docs, ...snapSales.docs, ...snapHunter.docs];
+      const duplikat = semuaDoc.some(d => (d.data().namaCustomer || "").toLowerCase().trim() === namaLower);
+      if (duplikat) {
+        window.showToast("Nama customer sudah ada, ganti dengan yang lain", "error", 3000);
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Simpan`;
+        return;
       }
-    }
+    } catch (err) {}
+
     // simpan ke Firestore
     await window.setDoc(
       window.doc(window.db, "customer", newId),
       data
     );
-
-    // update IDB custKurir
-    const existing = await window.idb.getCustKurir(d.pemilik, d.hari) || [];
-    await window.idb.saveCustKurir(d.pemilik, d.hari, [...existing, { id: newId, ...data }]);
 
     // update badge hari
     if (custActiveUser?.uid === d.pemilik && custActiveHari === d.hari) {
@@ -2888,13 +2663,7 @@ async function simpanCustBaru() {
       dataKemarin: {}
     };
     closeCustAddModal();
-    // refresh list jika sedang lihat kurir yang sama
-    if (custActiveUser?.uid === d.pemilik && custActiveHari === d.hari) {
-      reloadCustData(false);
-    }
-
   } catch (err) {
-    console.error("❌ simpanCustBaru:", err);
     window.showToast("Gagal menyimpan", "error");
   } finally {
     btn.disabled = false;
