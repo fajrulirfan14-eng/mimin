@@ -186,6 +186,7 @@ function initApp() {
   initTopbar();
   initBottomNav();
   initPagePasswordPopup();
+  initPullToRefresh();
   const last = localStorage.getItem("lastView") || "home";
   showView(last);
   requestAnimationFrame(() => {
@@ -211,6 +212,8 @@ window.showView = function(viewName) {
 
   const titleEl = document.getElementById("topbarTitle");
   if (titleEl) titleEl.textContent = VIEW_TITLES[viewName] || viewName;
+  const topbarAvatar = document.getElementById("topbarAvatar");
+  if (topbarAvatar) topbarAvatar.style.display = viewName === "home" ? "flex" : "none";
   const tabelBtn = document.getElementById("topbarTabel");
   if (tabelBtn) tabelBtn.style.display = viewName === "dataharian" ? "flex" : "none";
   const lapTabelBtn = document.getElementById("lapTopbarTabel");
@@ -419,6 +422,103 @@ function initBottomNavMore() {
   sheet.addEventListener("touchstart", onTouchStart, { passive: true });
   sheet.addEventListener("touchmove", onTouchMove, { passive: false });
   sheet.addEventListener("touchend", onTouchEnd);
+}
+
+/* ── PULL TO REFRESH ── */
+function initPullToRefresh() {
+  let startY = 0;
+  let pulling = false;
+  let refreshing = false;
+  let indicator = null;
+  const threshold = 200;
+
+  function createIndicator() {
+    const existing = document.getElementById("ptrIndicator");
+    if (existing) return existing;
+    const el = document.createElement("div");
+    el.id = "ptrIndicator";
+    el.style.cssText = `
+      position: fixed;
+      top: 0; left: 50%;
+      transform: translateX(-50%) translateY(-60px);
+      width: 40px; height: 40px;
+      background: var(--brand-mid);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 16px;
+      opacity: 0;
+      z-index: 9999;
+      will-change: transform, opacity;
+    `;
+    el.innerHTML = `<i class="fa-solid fa-rotate-right"></i>`;
+    document.body.appendChild(el);
+    return el;
+  }
+
+  document.addEventListener("touchstart", e => {
+    if (refreshing) return;
+    if (
+      document.getElementById("soPopupMainOverlay")?.classList.contains("show") ||
+      document.getElementById("soPopupPlusOverlay")?.classList.contains("show") ||
+      document.getElementById("soPopupSaldoKemarinOverlay")?.classList.contains("show") ||
+      document.getElementById("akunTambahOverlay")?.classList.contains("show") ||
+      document.getElementById("akunKonfirmasiOverlay")?.classList.contains("show") ||
+      document.getElementById("dsmFeeOverlay")?.classList.contains("show") ||
+      document.getElementById("amplopRangeOverlay")?.classList.contains("show") ||
+      document.getElementById("amplopKonfirmasiOverlay")?.classList.contains("show") ||
+      document.getElementById("amplopDetailOverlay")?.classList.contains("show") ||
+      document.getElementById("hariLiburOverlay")?.classList.contains("show") ||
+      document.getElementById("purchaseOverlay")?.classList.contains("show") ||
+      document.getElementById("pagePasswordOverlay")?.classList.contains("show") ||
+      document.querySelector(".rumus-overlay")?.classList.contains("show") ||
+      document.getElementById("bottomNavMoreSheet")?.classList.contains("show")
+    ) return;
+    startY = e.touches[0].clientY;
+    pulling = true;
+    indicator = createIndicator();
+    indicator.style.transition = "none";
+  }, { passive: true });
+
+  document.addEventListener("touchmove", e => {
+    if (!pulling || refreshing) return;
+
+    // cek hanya elemen yang benar-benar bisa scroll
+    let el = e.target;
+    while (el && el !== document.body) {
+      const style = window.getComputedStyle(el);
+      const overflow = style.overflowY;
+      const canScroll = (overflow === "auto" || overflow === "scroll") && el.scrollHeight > el.clientHeight;
+      if (canScroll && el.scrollTop > 0) { pulling = false; return; }
+      el = el.parentElement;
+    }
+
+    const dy = e.touches[0].clientY - startY;
+    if (dy < 0) { pulling = false; return; }
+    const pull = Math.min(dy * 0.4, 200);
+    const opacity = Math.min(dy / threshold, 1);
+    const rotate = dy * 1.5;
+    indicator.style.opacity = opacity;
+    indicator.style.transform = `translateX(-50%) translateY(${-60 + pull}px) rotate(${rotate}deg)`;
+  }, { passive: true });
+
+  document.addEventListener("touchend", e => {
+    if (!pulling) return;
+    pulling = false;
+    const dy = e.changedTouches[0].clientY - startY;
+    indicator.style.transition = "transform 0.35s ease, opacity 0.35s ease";
+    if (dy >= threshold) {
+      indicator.style.transform = `translateX(-50%) translateY(20px) rotate(720deg)`;
+      indicator.style.opacity = "1";
+      refreshing = true;
+      setTimeout(() => {
+        indicator.style.opacity = "0";
+        setTimeout(() => window.location.reload(), 200);
+      }, 500);
+    } else {
+      indicator.style.opacity = "0";
+      indicator.style.transform = `translateX(-50%) translateY(-60px)`;
+    }
+  }, { passive: true });
 }
 
 /* ── TOPBAR ── */

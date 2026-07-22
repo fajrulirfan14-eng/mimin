@@ -66,9 +66,9 @@
   --brand-pale:     rgba(176,138,92,0.15);
 
   /* Background */
-  --bg-page:        #1a1a1e;
-  --bg-card:        #242428;
-  --bg-sidebar:     #1e1e22;
+  --bg-page:        #1e1f22;
+  --bg-card:        #2b2d31;
+  --bg-sidebar:     #8A6234;
   --bg-sidebar-hover: rgba(255,255,255,0.08);
   --bg-sidebar-active: rgba(255,255,255,0.15);
   --bg-topbar:      #1e1e22;
