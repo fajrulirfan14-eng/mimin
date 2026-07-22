@@ -224,17 +224,6 @@
 .cust-detail-header-top {
   display: flex; align-items: center; justify-content: space-between;
 }
-.cust-reload-btn {
-  width: 32px; height: 32px; border: none;
-  background: var(--bg-hover); border-radius: 8px;
-  color: var(--text-muted); font-size: 13px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: background .15s, transform .3s;
-}
-.cust-reload-btn:hover { background: var(--brand-pale); color: var(--brand-primary); }
-.cust-reload-btn.spinning i { animation: spinIcon .7s linear infinite; }
-@keyframes spinIcon { to { transform: rotate(360deg); } }
-
 /* ── HARI CHIPS ── */
 .cust-hari-chips {
   display: flex; gap: 6px; flex-wrap: nowrap;
@@ -715,9 +704,6 @@
   border-radius: 9px; padding: 0 5px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
-}
-.cust-reload-btn.active {
-  background: var(--brand-pale); color: var(--brand-primary);
 }
 .cust-rolling-hari-chips {
   display: none; gap: 4px; flex-wrap: nowrap;
