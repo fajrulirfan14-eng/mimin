@@ -152,9 +152,6 @@ function initAkunDetail() {
 
   // toggle status
   document.getElementById("akunToggleStatusBtn")?.addEventListener("click", toggleAkunStatus);
-
-  // reset password
-  document.getElementById("akunResetPasswordBtn")?.addEventListener("click", resetAkunPassword);
 }
 
 /* ── SIMPAN DETAIL ── */
@@ -183,7 +180,7 @@ async function simpanAkunDetail() {
 
     // sync IDB
     const updatedUser = akunAllUsers[idx] || {};
-    await window.idb.saveUser(updatedUser);
+    await window.idb.saveUsers([updatedUser]);
 
     document.getElementById("akunDetailNama").textContent = payload.nama;
     renderAkunList();
@@ -221,24 +218,6 @@ async function toggleAkunStatus() {
   } catch (err) {
     console.error("❌ toggleAkunStatus:", err);
     window.showToast("Gagal mengubah status", "error");
-  }
-}
-
-/* ── RESET PASSWORD ── */
-async function resetAkunPassword() {
-  if (!akunSelectedUid) return;
-  const user = akunAllUsers.find(u => u.uid === akunSelectedUid);
-  if (!user?.email) { window.showToast("Email tidak ditemukan", "error"); return; }
-
-  const confirm = await showAkunKonfirmasi(`Kirim reset password ke ${user.email}?`);
-  if (!confirm) return;
-
-  try {
-    await window.sendPasswordResetEmail(window.auth, user.email);
-    window.showToast("Email reset password terkirim", "success");
-  } catch (err) {
-    console.error("❌ resetPassword:", err);
-    window.showToast("Gagal kirim email reset", "error");
   }
 }
 
@@ -321,6 +300,15 @@ async function tambahAkun() {
     const kantorCabang = await window.idb.getKantorCabang();
     const adminUid     = window.auth?.currentUser?.uid;
 
+    // ambil varian dari dokumen admin sendiri (users/{adminUid}), bukan dari kantorCabang
+    let adminVarian = [];
+    try {
+      const adminSnap = await window.getDoc(window.doc(window.db, "users", adminUid));
+      adminVarian = adminSnap.exists() ? (adminSnap.data()?.varian || []) : [];
+    } catch (err) {
+      console.error("❌ ambil varian admin:", err);
+    }
+
     // buat akun via secondary app supaya admin tidak logout
     const secondaryApp  = window.initializeApp(window.firebaseConfig, "secondary-akun");
     const secondaryAuth = window.getAuth(secondaryApp);
@@ -342,6 +330,7 @@ async function tambahAkun() {
       foto:         "",
       motivasi:     "",
       status:       true,
+      varian:       adminVarian,
       createdBy:    adminUid,
       createdAt:    window.serverTimestamp(),
     };
@@ -355,14 +344,17 @@ async function tambahAkun() {
       idCabang: kantorCabang?.id || "",
     });
 
-    akunAllUsers.push(payload);
-    if (window.usersCache) window.usersCache.push(payload);
-    await window.idb.saveUser(payload);
+    // untuk cache lokal (IDB/array), pakai payload terpisah tanpa sentinel serverTimestamp()
+    const localPayload = { ...payload, createdAt: new Date().toISOString() };
+
+    akunAllUsers.push(localPayload);
+    if (window.usersCache) window.usersCache.push(localPayload);
+    await window.idb.saveUsers([localPayload]);
     renderAkunList();
     document.getElementById("akunTambahOverlay")?.classList.remove("show");
     window.showToast("Akun berhasil dibuat", "success");
   } catch (err) {
-    console.error("❌ tambahAkun:", err);
+    console.error("❌ tambahAkun:", err?.message || err, err?.stack);
     const msg = err.code === "auth/email-already-in-use" ? "Email sudah dipakai" : "Gagal membuat akun";
     window.showToast(msg, "error");
   } finally {

@@ -152,12 +152,6 @@
   font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700;
   color: #b02020; cursor: pointer;
 }
-.akun-btn-reset {
-  height: 38px; padding: 0 14px; border: 1px solid var(--border-card);
-  background: var(--bg-hover); border-radius: 10px;
-  font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 700;
-  color: var(--text-muted); cursor: pointer;
-}
 .akun-btn-save {
   flex: 1; height: 38px; border: none; border-radius: 10px;
   background: var(--brand-primary); color: #fff;
