@@ -266,6 +266,21 @@
   flex-shrink: 0;
 }
 
+/* ── RELOAD / ICON BUTTON (dipakai juga di DSM: Analisa Trikotomi) ── */
+.cust-reload-btn {
+  width: 32px; height: 32px; border: none;
+  background: var(--bg-hover); border-radius: 8px;
+  color: var(--text-muted); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.cust-reload-btn:hover { background: var(--brand-pale); color: var(--brand-primary); }
+.cust-reload-btn.spinning i { animation: custReloadSpin .6s linear infinite; }
+@keyframes custReloadSpin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── CUSTOMER CARD ── */
 .cust-card {
   background: var(--bg-card); border-radius: 12px;

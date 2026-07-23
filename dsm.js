@@ -7,17 +7,16 @@ let dsmMingguKe      = 1;
 let dsmTotalMinggu   = 1;
 let dsmCustomers     = [];
 let dsmSearchQuery   = "";
-const dsmDataCache   = {}; // cache memory: key = uid_tanggal
+let dsmDataHarianUnsub = null;
+let dsmPenjualanUnsub  = null;
+let dsmLastSubKey      = null;
+let dsmLiveData        = { customers: {}, penjualanLangsung: null };
 
 window.initDsmView = async function() {
-  if (!window.idb) return;
-  if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
-  }
+  await loadDsmUsersCache();
 
   initDsmFilters();
   initDsmSearch();
-  initDsmReload();
   initDsmAnalisaPopup();
   renderDsmKurirDropdown();
 
@@ -69,6 +68,19 @@ window.initDsmView = async function() {
   }
 };
 
+async function loadDsmUsersCache() {
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    const adminUid = window.auth?.currentUser?.uid;
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users"),
+      window.where("idCabang", "==", idCabang),
+      window.where("createdBy", "==", adminUid)
+    ));
+    window.usersCache = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+  } catch (err) {}
+}
+
 function saveDsmState() {
   localStorage.setItem("dsmState", JSON.stringify({
     kurirUid: dsmSelectedKurir,
@@ -79,19 +91,48 @@ function saveDsmState() {
   }));
 }
 
-/* ── CACHE-AWARE GET DATA ── */
-async function getDsmDataCached(uid, tanggal) {
-  const key = `${uid}_${tanggal}`;
-  if (dsmDataCache[key]) return dsmDataCache[key];
-  const data = await window.idb.getDsmData(uid, tanggal);
-  dsmDataCache[key] = data;
-  return data;
+/* ── LIVE SUBSCRIBE: DATA HARIAN + PENJUALAN LANGSUNG (per kurir+tanggal aktif) ── */
+function subscribeDsmDataHarian(uidKurir, tanggal) {
+  if (dsmDataHarianUnsub) { dsmDataHarianUnsub(); dsmDataHarianUnsub = null; }
+  if (dsmPenjualanUnsub)  { dsmPenjualanUnsub();  dsmPenjualanUnsub  = null; }
+
+  const idCabang = window.currentUser?.idCabang || "";
+  if (!uidKurir || !tanggal || !idCabang) return;
+
+  dsmDataHarianUnsub = window.onSnapshot(window.query(
+    window.collectionGroup(window.db, "dataHarian"),
+    window.where("pemilik",  "==", uidKurir),
+    window.where("tanggal",  "==", tanggal),
+    window.where("idCabang", "==", idCabang)
+  ), snap => {
+    const customers = {};
+    snap.forEach(d => {
+      const data = d.data();
+      const idCustomer = data.idCustomer || "";
+      if (idCustomer) customers[idCustomer] = { ...data, _docId: d.id };
+    });
+    dsmLiveData.customers = customers;
+    renderDsmTable();
+  }, err => {});
+
+  dsmPenjualanUnsub = window.onSnapshot(window.query(
+    window.collectionGroup(window.db, "penjualanLangsung"),
+    window.where("pemilik",  "==", uidKurir),
+    window.where("tanggal",  "==", tanggal),
+    window.where("idCabang", "==", idCabang)
+  ), snap => {
+    let penjualanLangsung = null;
+    snap.forEach(d => { penjualanLangsung = { ...d.data(), _docId: d.id }; });
+    dsmLiveData.penjualanLangsung = penjualanLangsung;
+    renderDsmTable();
+  }, err => {});
 }
 
-async function fetchDsmDataHarian(uidKurir, tanggal) {
+/* ── FETCH SEKALI (non-live) — dipakai trikotomi.js buat lihat tanggal lain di luar yang lagi aktif ── */
+async function fetchDsmDataHarianOnce(uidKurir, tanggal) {
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
+    const idCabang = window.currentUser?.idCabang || "";
+    if (!idCabang) return null;
 
     const snapDH = await window.getDocs(window.query(
       window.collectionGroup(window.db, "dataHarian"),
@@ -115,12 +156,8 @@ async function fetchDsmDataHarian(uidKurir, tanggal) {
     let penjualanLangsung = null;
     snapPL.forEach(d => { penjualanLangsung = { ...d.data(), _docId: d.id }; });
 
-    const result = { customers, penjualanLangsung };
-    await window.idb.saveDsmData(uidKurir, tanggal, result);
-    dsmDataCache[`${uidKurir}_${tanggal}`] = result; // update cache
-    return result;
+    return { customers, penjualanLangsung };
   } catch (err) {
-    console.error("❌ fetchDsmDataHarian:", err);
     return null;
   }
 }
@@ -251,27 +288,6 @@ function initDsmSearch() {
   });
 }
 
-/* ── RELOAD ── */
-function initDsmReload() {
-  document.getElementById("dsmReloadBtn")?.addEventListener("click", async () => {
-    if (!dsmSelectedKurir) { window.showToast("Pilih kurir dulu", "error"); return; }
-    const btn = document.getElementById("dsmReloadBtn");
-    btn?.classList.add("spinning");
-
-    const tanggalList = hitungMingguDalamBulan(dsmSelectedHari, dsmSelectedBulan, dsmSelectedTahun);
-    const tanggal     = tanggalList[dsmMingguKe - 1];
-    if (tanggal) {
-      const tanggalStr = `${tanggal.getFullYear()}-${String(tanggal.getMonth()+1).padStart(2,"0")}-${String(tanggal.getDate()).padStart(2,"0")}`;
-      window.showToast("Memuat data...", "");
-      await fetchDsmDataHarian(dsmSelectedKurir, tanggalStr);
-    }
-
-    await loadDsmTable();
-    btn?.classList.remove("spinning");
-    window.showToast("Data diperbarui", "success");
-  });
-}
-
 /* ── HITUNG MINGGU ── */
 function hitungMingguDalamBulan(hari, bulan, tahun) {
   const namaHari  = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
@@ -297,8 +313,7 @@ async function loadDsmTable() {
 
   wrap.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
 
-  const custHari = await window.idb.getCustKurir(dsmSelectedKurir, dsmSelectedHari);
-  dsmCustomers = custHari || [];
+  dsmCustomers = await fetchDsmCustomerList(dsmSelectedKurir, dsmSelectedHari);
 
   const tanggalList  = hitungMingguDalamBulan(dsmSelectedHari, dsmSelectedBulan, dsmSelectedTahun);
   dsmTotalMinggu     = tanggalList.length;
@@ -312,6 +327,23 @@ async function loadDsmTable() {
   document.getElementById("dsmPrevBtn").disabled = dsmMingguKe <= 1;
   document.getElementById("dsmNextBtn").disabled = dsmMingguKe >= dsmTotalMinggu;
   renderDsmTable();
+}
+
+async function fetchDsmCustomerList(uidKurir, hari) {
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    if (!idCabang) return [];
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "customer"),
+      window.where("pemilik",  "==", uidKurir),
+      window.where("idCabang", "==", idCabang),
+      window.where("hari",     "==", hari),
+      window.where("status",   "==", true)
+    ));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (err) {
+    return [];
+  }
 }
 
 /* ── COLOR CLASS MAP ── */
@@ -351,7 +383,7 @@ async function renderDsmTable() {
     : dsmCustomers;
 
   if (!customers.length) {
-    wrap.innerHTML = `<div class="dh-ringkasan-empty">Belum ada customer — Klik Reload untuk memuat</div>`;
+    wrap.innerHTML = `<div class="dh-ringkasan-empty">Belum ada customer untuk hari ini</div>`;
     return;
   }
 
@@ -397,11 +429,16 @@ async function renderDsmTable() {
   });
   thead += `</tr>`;
 
-  // ── DATA HARIAN (pakai cache) ──
+  // ── DATA HARIAN (live via onSnapshot) ──
   const tanggalStr = `${tanggal.getFullYear()}-${String(tanggal.getMonth()+1).padStart(2,"0")}-${String(tanggal.getDate()).padStart(2,"0")}`;
-  const dhRaw  = await getDsmDataCached(dsmSelectedKurir, tanggalStr);
-  const dhMap  = dhRaw?.customers || {};
-  const plData = dhRaw?.penjualanLangsung || null;
+  const subKey = `${dsmSelectedKurir}_${tanggalStr}`;
+  if (subKey !== dsmLastSubKey) {
+    dsmLastSubKey = subKey;
+    dsmLiveData = { customers: {}, penjualanLangsung: null };
+    subscribeDsmDataHarian(dsmSelectedKurir, tanggalStr);
+  }
+  const dhMap  = dsmLiveData.customers || {};
+  const plData = dsmLiveData.penjualanLangsung || null;
 
   const allRows = [...customers, { id: "__penjualan__", namaCustomer: "Penjualan Langsung", _isPenjualan: true, _plData: plData }];
 
@@ -751,6 +788,7 @@ function initDsmAnalisaPopup() {
   document.getElementById("dsmAnalisaBtn")?.addEventListener("click", () => {
     if (!dsmSelectedKurir) { window.showToast("Pilih kurir dulu", "error"); return; }
     document.getElementById("dsmAnalisaOverlay")?.classList.add("show");
+    buildDsmAnalisaPeriodeDropdown();
     window.renderDsmAnalisa?.();
   });
 
@@ -763,9 +801,14 @@ function initDsmAnalisaPopup() {
 
   document.querySelectorAll(".dsm-analisa-chip").forEach(chip => {
     chip.addEventListener("click", () => {
+      const isActive = chip.classList.contains("active");
       document.querySelectorAll(".dsm-analisa-chip").forEach(c => c.classList.remove("active"));
-      chip.classList.add("active");
-      window.dsmAnalisaFilter = chip.dataset.filter;
+      if (isActive) {
+        window.dsmAnalisaFilter = "default";
+      } else {
+        chip.classList.add("active");
+        window.dsmAnalisaFilter = chip.dataset.filter;
+      }
       window.renderDsmAnalisa?.();
     });
   });
@@ -775,14 +818,52 @@ function initDsmAnalisaPopup() {
     document.getElementById("dsmAnalisaPeriodeDropdown").style.display =
       document.getElementById("dsmAnalisaPeriodeDropdown").style.display === "none" ? "block" : "none";
   });
-  document.querySelectorAll("#dsmAnalisaPeriodeDropdown .peta-filter-option").forEach(opt => {
+
+  document.getElementById("dsmAnalisaHapusCatatanBtn")?.addEventListener("click", () => {
+    window.showDsmHapusCatatanPopup?.();
+  });
+
+  document.getElementById("dsmAnalisaSearchInput")?.addEventListener("input", e => {
+    const q = e.target.value.toLowerCase().trim();
+    window.dsmAnalisaSearchQuery = q;
+    const clearBtn = document.getElementById("dsmAnalisaSearchClear");
+    if (clearBtn) clearBtn.style.display = q ? "flex" : "none";
+    window.renderDsmAnalisa?.();
+  });
+  document.getElementById("dsmAnalisaSearchClear")?.addEventListener("click", () => {
+    const input = document.getElementById("dsmAnalisaSearchInput");
+    if (input) input.value = "";
+    window.dsmAnalisaSearchQuery = "";
+    document.getElementById("dsmAnalisaSearchClear").style.display = "none";
+    window.renderDsmAnalisa?.();
+  });
+}
+
+/* ── DROPDOWN PERIODE — dibangun ulang tiap buka popup, sesuai jumlah minggu di bulan/hari aktif ── */
+function buildDsmAnalisaPeriodeDropdown() {
+  const dd = document.getElementById("dsmAnalisaPeriodeDropdown");
+  if (!dd) return;
+
+  const maxPeriode = Math.max(dsmTotalMinggu, 1);
+  if (!window.dsmAnalisaPeriode || window.dsmAnalisaPeriode > maxPeriode) {
+    window.dsmAnalisaPeriode = 1;
+  }
+
+  dd.innerHTML = Array.from({ length: maxPeriode }, (_, i) => i + 1).map(p => `
+    <div class="peta-filter-option ${p === window.dsmAnalisaPeriode ? "selected" : ""}" data-periode="${p}">
+      T-${p} · ${p} Minggu Terakhir
+    </div>`).join("");
+
+  document.getElementById("dsmAnalisaPeriodeLabel").textContent = `T-${window.dsmAnalisaPeriode}`;
+
+  dd.querySelectorAll(".peta-filter-option").forEach(opt => {
     opt.addEventListener("click", e => {
       e.stopPropagation();
       window.dsmAnalisaPeriode = Number(opt.dataset.periode);
       document.getElementById("dsmAnalisaPeriodeLabel").textContent = `T-${window.dsmAnalisaPeriode}`;
-      document.querySelectorAll("#dsmAnalisaPeriodeDropdown .peta-filter-option").forEach(o => o.classList.remove("selected"));
+      dd.querySelectorAll(".peta-filter-option").forEach(o => o.classList.remove("selected"));
       opt.classList.add("selected");
-      document.getElementById("dsmAnalisaPeriodeDropdown").style.display = "none";
+      dd.style.display = "none";
       window.renderDsmAnalisa?.();
     });
   });
@@ -791,7 +872,7 @@ function initDsmAnalisaPopup() {
 // expose untuk trikotomi.js
 window._dsmGetState = () => ({
   dsmSelectedKurir, dsmSelectedHari, dsmSelectedBulan, dsmSelectedTahun,
-  dsmMingguKe, dsmCustomers
+  dsmMingguKe, dsmTotalMinggu, dsmCustomers
 });
-window._dsmGetDataCached = getDsmDataCached;
+window._dsmGetDataCached = fetchDsmDataHarianOnce;
 window._dsmHitungMinggu  = hitungMingguDalamBulan;

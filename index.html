@@ -1104,9 +1104,6 @@
               <button class="cust-reload-btn" id="dsmAnalisaBtn">
                 <i class="fa-solid fa-chart-pie"></i>
               </button>
-              <button class="cust-reload-btn" id="dsmReloadBtn">
-                <i class="fa-solid fa-rotate-right"></i>
-              </button>
             </div>
 
             <!-- PAGINATION MINGGU -->
@@ -1134,33 +1131,48 @@
                   <div class="dsm-analisa-title">Analisa Trikotomi</div>
                   <div class="dsm-analisa-subtitle" id="dsmAnalisaSubtitle">-</div>
                 </div>
-                <button class="dsm-analisa-close" id="dsmAnalisaCloseBtn">
-                  <i class="fa-solid fa-xmark"></i>
-                </button>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <button class="dsm-analisa-close" id="dsmAnalisaInfoBtn">
+                    <i class="fa-solid fa-circle-info"></i>
+                  </button>
+                  <button class="dsm-analisa-close" id="dsmAnalisaCloseBtn">
+                    <i class="fa-solid fa-xmark"></i>
+                  </button>
+                </div>
               </div>
   
               <div class="dsm-analisa-toolbar">
                 <div class="dsm-analisa-filter-chips" id="dsmAnalisaFilterChips">
-                  <button class="dsm-analisa-chip active" data-filter="default">Default</button>
                   <button class="dsm-analisa-chip" data-filter="return">Return</button>
                   <button class="dsm-analisa-chip" data-filter="expired">Expired</button>
                   <button class="dsm-analisa-chip" data-filter="tutup">Tutup</button>
                   <button class="dsm-analisa-chip" data-filter="pending">Pending</button>
+                  <button class="dsm-analisa-chip" data-filter="putus">Putus</button>
+                  <button class="dsm-analisa-chip" data-filter="catatan">Catatan</button>
                 </div>
-                <div class="peta-filter-wrap" id="dsmAnalisaPeriodeWrap">
-                  <button class="peta-filter-btn" id="dsmAnalisaPeriodeBtn">
-                    <i class="fa-solid fa-calendar-week"></i>
-                    <span id="dsmAnalisaPeriodeLabel">T-1</span>
-                    <i class="fa-solid fa-chevron-down"></i>
-                  </button>
-                  <div class="peta-filter-dropdown" id="dsmAnalisaPeriodeDropdown" style="display:none">
-                    <div class="peta-filter-option selected" data-periode="1">T-1 · Periode Sebelumnya</div>
-                    <div class="peta-filter-option" data-periode="2">T-2 · Dua Periode Sebelumnya</div>
+                <div class="dsm-analisa-toolbar-row2" id="dsmAnalisaToolbarRow2">
+                  <div class="dsm-analisa-search-wrap" id="dsmAnalisaSearchWrap">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="dsmAnalisaSearchInput" placeholder="Cari customer...">
+                    <button class="cust-search-clear" id="dsmAnalisaSearchClear" style="display:none">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
                   </div>
+                  <div class="peta-filter-wrap" id="dsmAnalisaPeriodeWrap">
+                    <button class="peta-filter-btn" id="dsmAnalisaPeriodeBtn">
+                      <i class="fa-solid fa-calendar-week"></i>
+                      <span id="dsmAnalisaPeriodeLabel">T-1</span>
+                      <i class="fa-solid fa-chevron-down"></i>
+                    </button>
+                    <div class="peta-filter-dropdown" id="dsmAnalisaPeriodeDropdown" style="display:none"></div>
+                  </div>
+                  <button class="dsm-analisa-close" id="dsmAnalisaHapusCatatanBtn" title="Hapus semua catatan">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                  <button class="cust-reload-btn" id="dsmAnalisaNotifBtn">
+                    <i class="fa-solid fa-bell"></i>
+                  </button>
                 </div>
-                <button class="cust-reload-btn" id="dsmAnalisaNotifBtn">
-                  <i class="fa-solid fa-bell"></i>
-                </button>
               </div>
   
               <div class="dsm-analisa-summary">
