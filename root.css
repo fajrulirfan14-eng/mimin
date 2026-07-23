@@ -76,9 +76,9 @@
   --bg-hover:       rgba(212,177,133,0.08);
 
   /* Text */
-  --text-primary:   #e8e0d8;
-  --text-secondary: #a09585;
-  --text-muted:     #6d5f52;
+  --text-primary:   #ffffff;
+  --text-secondary: #ffffff;
+  --text-muted:     #ffffff;
   --text-white:     #ffffff;
   --text-sidebar:   rgba(255,255,255,0.75);
   --text-sidebar-active: #ffffff;

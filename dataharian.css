@@ -505,6 +505,7 @@
 
 @media (max-width: 768px) {
   .dh-list-panel { width: 100%; border-right: none; }
+  .dh-list-scroll { padding-bottom: calc(16px + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom)); }
 
   .dh-detail-wrapper {
     padding: 0; position: absolute; inset: 0; z-index: 10;

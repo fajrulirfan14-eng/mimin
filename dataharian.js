@@ -715,6 +715,11 @@ async function renderDhRingkasan(forceReload = false) {
   let data = await window.idb.getDataHarian(uidKurir, tanggal);
 
   if (forceReload) {
+    // tombol Reload manual — selalu fetch ulang paksa, sama seperti sebelumnya
+    data = await fetchDataHarian(uidKurir, tanggal);
+    if (data) await window.idb.saveDataHarian(uidKurir, tanggal, data);
+  } else if (!data) {
+    // IDB kosong dan bukan klik Reload — otomatis fetch & simpan, sama persis logicnya
     data = await fetchDataHarian(uidKurir, tanggal);
     if (data) await window.idb.saveDataHarian(uidKurir, tanggal, data);
   }

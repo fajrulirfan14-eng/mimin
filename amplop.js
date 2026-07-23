@@ -286,11 +286,12 @@ function showAmplopKonfirmasi(tanggal, diterimaSekarang) {
 
     if (!passInput) { errEl.textContent = "Password wajib diisi"; return; }
 
-    // validasi password dari IDB kantorCabang
-    const kantorCabang   = await window.idb.getKantorCabang();
+    // validasi password dari IDB kantorCabang (dibandingkan dalam bentuk hash)
+    const kantorCabang    = await window.idb.getKantorCabang();
     const correctPassword = kantorCabang?.pagePassword || "";
+    const hashedInput     = await window.hashPassword(passInput);
 
-    if (passInput !== correctPassword) {
+    if (hashedInput !== correctPassword) {
       errEl.textContent = "Password salah";
       passEl.value = "";
       passEl.focus();

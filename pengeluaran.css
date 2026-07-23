@@ -976,6 +976,19 @@
   white-space: nowrap;
 }
 
+@media (max-width: 767px) {
+  .peng-layout {
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .peng-list {
+    flex: none;
+    overflow-y: visible;
+    padding-bottom: calc(24px + var(--bottom-nav-height, 64px) + env(safe-area-inset-bottom));
+  }
+}
+
 /* ── DESKTOP: POPUP AS RIGHT DRAWER ── */
 @media (min-width: 768px) {
   .peng-popup-overlay {

@@ -28,13 +28,23 @@ async function loadLapKurirList() {
         <div class="sk" style="height:11px;width:60px;border-radius:6px"></div>
       </div>
     </div>`).join("");
-  if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
-  }
-  const users = (await window.idb.getUsers())
-    .filter(u => u.role === "kurir");
 
-  renderLapKurirList(users);
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    const adminUid = window.auth?.currentUser?.uid;
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users"),
+      window.where("idCabang", "==", idCabang),
+      window.where("createdBy", "==", adminUid)
+    ));
+    const allUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+    window.usersCache = allUsers;
+    const users = allUsers.filter(u => u.role === "kurir");
+    renderLapKurirList(users);
+  } catch (err) {
+    console.error("❌ loadLapKurirList:", err);
+    listEl.innerHTML = `<div class="lap-empty-msg">Gagal memuat data.</div>`;
+  }
 }
 function renderLapKurirList(users = []) {
   const listEl = document.getElementById("lapKurirList");
@@ -120,6 +130,160 @@ function esc(str) {
     .replace(/&/g,"&amp;").replace(/</g,"&lt;")
     .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
+/* ── FETCH DATA HARIAN (duplikat mandiri, sama persis logic dataharian.js) ── */
+async function fetchDataHarianLap(uidKurir, tanggal) {
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    if (!idCabang) return null;
+    const hasil = {
+      fee: {}, disable: {}, closing: {}, expired: {}, pay: {}, saldoBarang: {},
+      penjualanLangsung: {},
+      kunjungan: 0,
+      pembayaran: { bayarKonsumen: 0, bayarProduksi: 0 },
+      keterangan: { pending: 0, tutup: 0, putus: 0 },
+      customerNew: 0, customerLama: 0, customerTambahan: 0
+    };
+
+    const snap = await window.getDocs(window.query(
+      window.collectionGroup(window.db, "dataHarian"),
+      window.where("idCabang", "==", idCabang),
+      window.where("pemilik",  "==", uidKurir),
+      window.where("tanggal",  "==", tanggal)
+    ));
+
+    hasil.kunjungan = snap.size;
+
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      ["fee","disable","closing","expired","pay"].forEach(f => {
+        if (!d[f] || typeof d[f] !== "object") return;
+        Object.entries(d[f]).forEach(([k, v]) => {
+          hasil[f][k] = (hasil[f][k] || 0) + (Number(v) || 0);
+        });
+      });
+      if (d.pembayaran) {
+        hasil.pembayaran.bayarKonsumen += Number(d.pembayaran?.bayarKonsumen) || 0;
+        hasil.pembayaran.bayarProduksi += Number(d.pembayaran?.bayarProduksi) || 0;
+      }
+      const status = d?.keterangan?.status?.trim()?.toLowerCase();
+      if (status === "pending") hasil.keterangan.pending++;
+      else if (status === "tutup") hasil.keterangan.tutup++;
+      else if (status === "putus") hasil.keterangan.putus++;
+    });
+
+    try {
+      const snapPL = await window.getDocs(window.query(
+        window.collectionGroup(window.db, "penjualanLangsung"),
+        window.where("idCabang", "==", idCabang),
+        window.where("pemilik",  "==", uidKurir),
+        window.where("tanggal",  "==", tanggal)
+      ));
+      snapPL.forEach(docSnap => {
+        const d = docSnap.data();
+        if (d.pay && typeof d.pay === "object") {
+          Object.entries(d.pay).forEach(([k, v]) => {
+            hasil.pay[k] = (hasil.pay[k] || 0) + (Number(v) || 0);
+          });
+        }
+        if (d.closing && typeof d.closing === "object") {
+          Object.entries(d.closing).forEach(([k, v]) => {
+            hasil.closing[k] = (hasil.closing[k] || 0) + (Number(v) || 0);
+          });
+        }
+        if (d.pay && typeof d.pay === "object") {
+          Object.entries(d.pay).forEach(([k, v]) => {
+            hasil.penjualanLangsung[k] = (hasil.penjualanLangsung[k] || 0) + (Number(v) || 0);
+          });
+        }
+        if (d.pembayaran) {
+          hasil.pembayaran.bayarKonsumen += Number(d.pembayaran?.bayarKonsumen) || 0;
+        }
+      });
+    } catch (err) { console.warn("❌ query penjualanLangsung (lap):", err.message); }
+
+    try {
+      const lmSnap = await window.getDoc(
+        window.doc(window.db, "users", uidKurir, "laporanMarketing", tanggal)
+      );
+      const order = lmSnap.exists() ? (lmSnap.data().order || {}) : {};
+      const allKeys = new Set([
+        ...Object.keys(order),
+        ...Object.keys(hasil.closing),
+        ...Object.keys(hasil.fee),
+        ...Object.keys(hasil.disable),
+        ...Object.keys(hasil.penjualanLangsung)
+      ]);
+      allKeys.forEach(k => {
+        hasil.saldoBarang[k] =
+          (Number(order[k]) || 0) -
+          (Number(hasil.closing[k]) || 0) -
+          (Number(hasil.fee[k]) || 0) -
+          (Number(hasil.disable[k]) || 0);
+      });
+    } catch {}
+
+    try {
+      const hariNama  = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+      const hariFilter = hariNama[new Date(tanggal + "T00:00:00").getDay()];
+      const startDate  = new Date(tanggal + "T00:00:00");
+      const endDate    = new Date(startDate); endDate.setDate(endDate.getDate() + 1);
+      const startTs    = window.Timestamp?.fromDate?.(startDate);
+      const endTs      = window.Timestamp?.fromDate?.(endDate);
+
+      if (startTs && endTs) {
+        const cnSnap = await window.getDocs(window.query(
+          window.collection(window.db, "customer"),
+          window.where("idCabang", "==", idCabang),
+          window.where("pemilik",  "==", uidKurir),
+          window.where("createdBy","==", uidKurir),
+          window.where("acc",      "==", true),
+          window.where("status",   "==", true),
+          window.where("createdAt",">=", startTs),
+          window.where("createdAt","<",  endTs)
+        ));
+        hasil.customerNew = cnSnap.size;
+
+        const clSnap = await window.getDocs(window.query(
+          window.collection(window.db, "customer"),
+          window.where("idCabang", "==", idCabang),
+          window.where("pemilik",  "==", uidKurir),
+          window.where("hari",     "==", hariFilter),
+          window.where("isNew",    "==", false),
+          window.where("status",   "==", true)
+        ));
+        hasil.customerLama = clSnap.docs.filter(d => {
+          const cData = d.data();
+          if (cData.acc !== true) return true;
+          const createdAt = cData.createdAt?.toDate ? cData.createdAt.toDate() : null;
+          if (!createdAt) return true;
+          return !(createdAt >= startDate && createdAt < endDate);
+        }).length;
+
+        const ctSnap = await window.getDocs(window.query(
+          window.collection(window.db, "customer"),
+          window.where("idCabang", "==", idCabang),
+          window.where("pemilik",  "==", uidKurir),
+          window.where("hari",     "==", hariFilter),
+          window.where("isNew",    "==", true),
+          window.where("status",   "==", true)
+        ));
+        hasil.customerTambahan = ctSnap.docs.filter(d => {
+          const cData = d.data();
+          if (cData.acc !== true) return true;
+          const createdAt = cData.createdAt?.toDate ? cData.createdAt.toDate() : null;
+          if (!createdAt) return true;
+          return !(createdAt >= startDate && createdAt < endDate);
+        }).length;
+      }
+    } catch (err) { console.warn("❌ query customer (lap):", err.message); }
+
+    return hasil;
+  } catch (err) {
+    console.error("❌ fetchDataHarianLap:", err);
+    return null;
+  }
+}
+
 /* ── RENDER LAP DETAIL ── */
 async function renderLapDetail(user, tanggal) {
   // reset frozen badge dulu apapun kondisinya
@@ -127,7 +291,14 @@ async function renderLapDetail(user, tanggal) {
   document.getElementById("lapKeuFrozen")?.classList.remove("show");
   window._lapIsFrozen = false;
 
-  const data = await window.idb.getDataHarian(user.uid, tanggal);
+  let data = await window.idb.getDataHarian(user.uid, tanggal);
+
+  // kalau IDB kosong, jalankan query yang sama seperti Reload di Data Harian, lalu simpan ke IDB
+  if (!data) {
+    data = await fetchDataHarianLap(user.uid, tanggal);
+    if (data) await window.idb.saveDataHarian(user.uid, tanggal, data);
+  }
+
   if (!data) {
     renderLapCards(null, user);
     return;
@@ -241,7 +412,14 @@ function renderLapCards(data, user, frozenInfoTarget = null) {
 
   // kalkulasi bonus untuk card
   (async () => {
-    const kantorCabang = await window.idb.getKantorCabang();
+    let kantorCabang = null;
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const snapKc = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
+      if (snapKc.exists()) kantorCabang = { id: snapKc.id, ...snapKc.data() };
+    } catch (err) {
+      console.error("❌ fetch kantorCabang (renderLapCards):", err);
+    }
     const bonus        = kantorCabang?.bonus || {};
     const tgCust       = Number(bonus?.data?.targetCustomer) || 0;
     const keteranganTarget = kun - tgCust;
@@ -385,7 +563,14 @@ async function openKeuModal(tanggal) {
 
   const data         = window._lapCurrentData;
   const user         = window._lapCurrentUser;
-  const kantorCabang = await window.idb.getKantorCabang();
+  let kantorCabang    = null;
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    const snapKc = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
+    if (snapKc.exists()) kantorCabang = { id: snapKc.id, ...snapKc.data() };
+  } catch (err) {
+    console.error("❌ fetch kantorCabang (openKeuModal):", err);
+  }
   const bonus        = kantorCabang?.bonus || {};
 
   // ambil infoTarget frozen dari Firestore jika ada
@@ -558,7 +743,14 @@ async function simpanKeuangan() {
   try {
     const data         = window._lapCurrentData;
     const user         = window._lapCurrentUser;
-    const kantorCabang = await window.idb.getKantorCabang();
+    let kantorCabang    = null;
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const snapKc = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
+      if (snapKc.exists()) kantorCabang = { id: snapKc.id, ...snapKc.data() };
+    } catch (err) {
+      console.error("❌ fetch kantorCabang (simpanKeuangan):", err);
+    }
     const adminUid     = window.auth?.currentUser?.uid;
     const tanggal      = document.getElementById("lapDetailDate")?.value || getLapTanggalLocal();
 
@@ -795,7 +987,14 @@ async function openTargetModal(tanggal) {
   }
 
   const data         = window._lapCurrentData;
-  const kantorCabang = await window.idb.getKantorCabang();
+  let kantorCabang    = null;
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    const snapKc = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
+    if (snapKc.exists()) kantorCabang = { id: snapKc.id, ...snapKc.data() };
+  } catch (err) {
+    console.error("❌ fetch kantorCabang (openTargetModal):", err);
+  }
 
   // ambil infoTarget dari Firestore jika ada, fallback ke IDB
   let it = null;

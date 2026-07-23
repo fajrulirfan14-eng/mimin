@@ -471,7 +471,11 @@ function initPullToRefresh() {
       document.getElementById("purchaseOverlay")?.classList.contains("show") ||
       document.getElementById("pagePasswordOverlay")?.classList.contains("show") ||
       document.querySelector(".rumus-overlay")?.classList.contains("show") ||
-      document.getElementById("bottomNavMoreSheet")?.classList.contains("show")
+      document.getElementById("bottomNavMoreSheet")?.classList.contains("show") ||
+      document.getElementById("lapKeuOverlay")?.classList.contains("show") ||
+      document.getElementById("lapTargetOverlay")?.classList.contains("show") ||
+      document.getElementById("lapFrozenConfirmOverlay") ||
+      document.getElementById("lapPeringatanOverlay")
     ) return;
     startY = e.touches[0].clientY;
     pulling = true;
@@ -755,6 +759,7 @@ async function hashPassword(text) {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
+window.hashPassword = hashPassword;
 /* ── COMPRESS IMAGE ── */
 window.compressImage = function(blob, maxWidth = 1280, quality = 0.78) {
   return new Promise(resolve => {
