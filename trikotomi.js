@@ -131,7 +131,7 @@ window.renderDsmAnalisa = async function renderDsmAnalisa() {
       status = "red";
     }
 
-    return { nama: c.namaCustomer || "-", status, retTotal, expTotal, tutupCount, pendingCount, putusCount, statusKet, catatan: c.catatanAnalisa || "", hasData: docs.length > 0 };
+    return { custId: c.id, nama: c.namaCustomer || "-", status, retTotal, expTotal, tutupCount, pendingCount, putusCount, statusKet, catatan: c.catatanAnalisa || "", hasData: docs.length > 0 };
   });
 
   let filteredResult = result;
