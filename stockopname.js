@@ -1141,6 +1141,52 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+/* ── THROTTLE REDRAW PAKAI requestAnimationFrame ── */
+let soRafPending = false;
+function scheduleSoDraw() {
+  if (soRafPending) return;
+  soRafPending = true;
+  requestAnimationFrame(() => {
+    soRafPending = false;
+    drawSoTable();
+  });
+}
+
+/* ── MOMENTUM SCROLL (inertia, kayak scroll native) ── */
+let soVelX = 0, soVelY = 0;
+let soLastMoveTime = 0, soLastScrollX = 0, soLastScrollY = 0;
+let soMomentumFrame = null;
+
+function stopSoMomentum() {
+  if (soMomentumFrame) { cancelAnimationFrame(soMomentumFrame); soMomentumFrame = null; }
+}
+
+function startSoMomentum() {
+  stopSoMomentum();
+  const FRICTION = 0.95;
+  const MIN_VEL  = 0.02;
+  function step() {
+    soVelX *= FRICTION;
+    soVelY *= FRICTION;
+    if (Math.abs(soVelX) < MIN_VEL && Math.abs(soVelY) < MIN_VEL) {
+      soMomentumFrame = null;
+      return;
+    }
+    const beforeX = soScrollX, beforeY = soScrollY;
+    soScrollX = clampSoScrollX(soScrollX + soVelX * 16);
+    soScrollY = clampSoScrollY(soScrollY + soVelY * 16);
+    if (soScrollX === beforeX) soVelX = 0;
+    if (soScrollY === beforeY) soVelY = 0;
+    scheduleSoDraw();
+    if (Math.abs(soVelX) < MIN_VEL && Math.abs(soVelY) < MIN_VEL) {
+      soMomentumFrame = null;
+      return;
+    }
+    soMomentumFrame = requestAnimationFrame(step);
+  }
+  soMomentumFrame = requestAnimationFrame(step);
+}
+
 /* ── CANVAS INTERACTION (drag scroll) ── */
 function initSoCanvasInteraction() {
   let isDown = false, startX = 0, startY = 0, startScrollX = 0, startScrollY = 0;
@@ -1155,7 +1201,7 @@ function initSoCanvasInteraction() {
     if (isDown) {
       soScrollX = clampSoScrollX(startScrollX - (e.clientX - startX));
       soScrollY = clampSoScrollY(startScrollY - (e.clientY - startY));
-      drawSoTable();
+      scheduleSoDraw();
       return;
     }
     // hover detect
@@ -1165,39 +1211,57 @@ function initSoCanvasInteraction() {
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
     if (mx < 0 || my < SO_HEADER_HEIGHT || my > rect.height - SO_ROW_HEIGHT || mx > rect.width) {
-      if (soHoverRow !== -1) { soHoverRow = -1; drawSoTable(); }
+      if (soHoverRow !== -1) { soHoverRow = -1; scheduleSoDraw(); }
       return;
     }
     const rowIndex = Math.floor((my - SO_HEADER_HEIGHT + soScrollY) / SO_ROW_HEIGHT);
     if (rowIndex !== soHoverRow) {
       soHoverRow = rowIndex;
-      drawSoTable();
+      scheduleSoDraw();
     }
   });
   soCanvas.addEventListener("mouseleave", () => {
-    if (soHoverRow !== -1) { soHoverRow = -1; drawSoTable(); }
+    if (soHoverRow !== -1) { soHoverRow = -1; scheduleSoDraw(); }
   });
   soCanvas.addEventListener("wheel", e => {
     e.preventDefault();
     soScrollY = clampSoScrollY(soScrollY + e.deltaY);
     soScrollX = clampSoScrollX(soScrollX + e.deltaX);
-    drawSoTable();
+    scheduleSoDraw();
   }, { passive: false });
   // touch support
   soCanvas.addEventListener("touchstart", e => {
     if (e.touches.length !== 1) return;
     isDown = true;
+    stopSoMomentum();
     startX = e.touches[0].clientX; startY = e.touches[0].clientY;
     startScrollX = soScrollX; startScrollY = soScrollY;
+    soLastMoveTime = performance.now();
+    soLastScrollX  = soScrollX; soLastScrollY = soScrollY;
+    soVelX = 0; soVelY = 0;
   }, { passive: true });
   soCanvas.addEventListener("touchmove", e => {
     if (!isDown || e.touches.length !== 1) return;
     e.preventDefault();
     soScrollX = clampSoScrollX(startScrollX - (e.touches[0].clientX - startX));
     soScrollY = clampSoScrollY(startScrollY - (e.touches[0].clientY - startY));
-    drawSoTable();
+
+    const now = performance.now();
+    const dt  = now - soLastMoveTime;
+    if (dt > 0) {
+      soVelX = (soScrollX - soLastScrollX) / dt;
+      soVelY = (soScrollY - soLastScrollY) / dt;
+    }
+    soLastMoveTime = now;
+    soLastScrollX  = soScrollX;
+    soLastScrollY  = soScrollY;
+
+    scheduleSoDraw();
   }, { passive: false });
-  soCanvas.addEventListener("touchend", () => { isDown = false; });
+  soCanvas.addEventListener("touchend", () => {
+    isDown = false;
+    startSoMomentum();
+  });
   soCanvas.addEventListener("touchcancel", () => { isDown = false; });
 }
 function clampSoScrollX(val) {
