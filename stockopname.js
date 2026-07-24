@@ -565,6 +565,103 @@ function initSoReload() {
   });
 }
 
+/* ── HITUNG SALDO UNTUK 1 TANGGAL TARGET (dipakai Purchase Order) ──
+   Duplikat logic running balance dari loadSoData, tidak mengubah logic asli sama sekali. */
+async function hitungSaldoUntukTanggal(tanggalTarget) {
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid || !tanggalTarget) return {};
+
+    const [tahunT, bulanT, hariT] = tanggalTarget.split("-").map(Number);
+
+    // ambil saldo bulan kemarin sebagai titik awal rantai (sama seperti loadSoData)
+    let saldoAwalMap = {};
+    try {
+      const prevBulanDate = new Date(tahunT, bulanT - 2, 1);
+      const prevBulanKey  = `${prevBulanDate.getFullYear()}-${String(prevBulanDate.getMonth()+1).padStart(2,"0")}`;
+      const saldoSnap = await window.getDoc(
+        window.doc(window.db, "users", adminUid, "saldoBulanKemarin", prevBulanKey)
+      );
+      saldoAwalMap = saldoSnap.exists() ? (saldoSnap.data()?.saldo || {}) : {};
+    } catch (err) {
+      console.error("❌ hitungSaldoUntukTanggal (saldoBulanKemarin):", err);
+    }
+
+    // fetch dokumen stockOpname + laporanAdmin, cuma tanggal 1 s/d tanggalTarget (bukan 1 bulan penuh)
+    const promises = [];
+    const laporanPromises = [];
+    for (let d = 1; d <= hariT; d++) {
+      const tglStr = `${tahunT}-${String(bulanT).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      promises.push(
+        window.getDoc(window.doc(window.db, "users", adminUid, "stockOpname", tglStr))
+          .then(snap => snap.exists() ? { id: tglStr, ...snap.data() } : null)
+      );
+      laporanPromises.push(
+        window.getDoc(window.doc(window.db, "users", adminUid, "laporanAdmin", tglStr))
+          .then(snap => snap.exists() ? { id: tglStr, ...snap.data() } : null)
+      );
+    }
+    const [results, laporanResults] = await Promise.all([Promise.all(promises), Promise.all(laporanPromises)]);
+    const dataByDate = {};
+    results.forEach(r => { if (r) dataByDate[r.id] = r; });
+    const laporanByDate = {};
+    laporanResults.forEach(r => { if (r) laporanByDate[r.id] = r; });
+
+    const LAPORAN_SKIP_KEYS = new Set(["tanggal", "createdBy"]);
+    function aggregateLaporanLokal(laporanDoc) {
+      const agg = { output: {}, fee: {}, offFlavor: {} };
+      if (!laporanDoc) return agg;
+      Object.keys(laporanDoc).forEach(key => {
+        if (LAPORAN_SKIP_KEYS.has(key)) return;
+        const entry = laporanDoc[key];
+        if (!entry || typeof entry !== "object") return;
+        const closing = entry.pembayaran?.closing || {};
+        Object.entries(closing).forEach(([varian, qty]) => {
+          agg.output[varian] = (agg.output[varian] || 0) + (Number(qty) || 0);
+        });
+        Object.entries(entry.fee || {}).forEach(([varian, qty]) => {
+          agg.fee[varian] = (agg.fee[varian] || 0) + (Number(qty) || 0);
+        });
+        Object.entries(entry.offFlavor || {}).forEach(([varian, qty]) => {
+          agg.offFlavor[varian] = (agg.offFlavor[varian] || 0) + (Number(qty) || 0);
+        });
+      });
+      return agg;
+    }
+
+    // jalankan running balance sama persis seperti loadSoData, cuma sampai tanggalTarget
+    let prevSaldo = { ...saldoAwalMap };
+    for (let d = 1; d <= hariT; d++) {
+      const tglStr = `${tahunT}-${String(bulanT).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+      const existing    = dataByDate[tglStr] || {};
+      const laporanAgg  = aggregateLaporanLokal(laporanByDate[tglStr]);
+
+      const rowSaldo = {};
+      SO_VARIAN.forEach(v => {
+        const prev = Number(prevSaldo[v] || 0);
+        const masuk = Number(existing.produksi?.[v] || 0);
+        const keluar =
+          Number(laporanAgg.output[v]        || 0) +
+          Number(laporanAgg.fee[v]           || 0) +
+          Number(existing.reject?.[v]        || 0) +
+          Number(existing.rusakFreezer?.[v]  || 0) +
+          Number(existing.basiFreezer?.[v]   || 0) +
+          Number(existing.promosi?.[v]       || 0) +
+          Number(laporanAgg.offFlavor[v]     || 0) +
+          Number(existing.barangHilang?.[v]  || 0);
+        rowSaldo[v] = prev + masuk - keluar;
+      });
+      prevSaldo = rowSaldo;
+    }
+
+    return prevSaldo; // saldo per varian, tepat di tanggalTarget
+  } catch (err) {
+    console.error("❌ hitungSaldoUntukTanggal:", err);
+    return {};
+  }
+}
+window.hitungSaldoUntukTanggal = hitungSaldoUntukTanggal;
+
 /* ── LOAD DATA ── */
 async function loadSoData(forceReload = false) {
   renderSoEmpty("Memuat...");

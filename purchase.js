@@ -109,12 +109,37 @@ async function loadPurchasePreview(tanggalInputOverride) {
   if (inputTextEl) inputTextEl.textContent = formatTanggalPurchase(tanggalInput);
   if (targetDisplayEl) targetDisplayEl.textContent = formatTanggalPurchase(tanggalTarget);
 
-  const kantorCabang = await window.idb?.getKantorCabang?.();
-  const varian = kantorCabang?.varian || {};
+  let varian = {};
+  let estimasiConfig = {};
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    const snapKc = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
+    if (snapKc.exists()) {
+      const kcData = snapKc.data();
+      varian = kcData?.varian || {};
+      estimasiConfig = kcData?.estimasi || {};
+    }
+  } catch (err) {
+    console.error("❌ fetch kantorCabang (loadPurchasePreview):", err);
+  }
+  window._purchaseEstimasiConfig = estimasiConfig;
 
-  const allUsers = window.usersCache?.length
-    ? window.usersCache
-    : await window.idb?.getUsers?.() || [];
+  let allUsers = window.usersCache;
+  if (!allUsers?.length) {
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const snap = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      allUsers = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+      window.usersCache = allUsers;
+    } catch (err) {
+      console.error("❌ fetch users (loadPurchasePreview):", err);
+      allUsers = [];
+    }
+  }
   const staffUsers = allUsers.filter((u) => ["kurir", "hunter", "sales"].includes(u.role));
 
   let existingStaffMap = {};
@@ -140,6 +165,69 @@ async function loadPurchasePreview(tanggalInputOverride) {
 
   window._purchaseStaffUsers = staffUsers;
   window._purchaseTanggalInput = tanggalInput;
+  window._purchaseTanggalTarget = tanggalTarget;
+
+  await recalcPurchaseEstimasi(tanggalTarget, true);
+}
+
+/* ── ESTIMASI LOYANG (read only, dihitung live dari input + saldo) ── */
+window._purchaseSaldoCache = window._purchaseSaldoCache || {};
+
+function hitungTotalVarianDariInput() {
+  const total = {};
+  document.querySelectorAll(".purchase-varian-input").forEach(inp => {
+    const kode = inp.dataset.kode;
+    const val  = Number(inp.value) || 0;
+    total[kode] = (total[kode] || 0) + val;
+  });
+  return total;
+}
+
+async function recalcPurchaseEstimasi(tanggalTarget, forceRefetchSaldo) {
+  const cardEl = document.getElementById("purchaseEstimasiCard");
+  if (!cardEl || !tanggalTarget) return;
+
+  const estimasiConfig = window._purchaseEstimasiConfig || {};
+  const groupKeys = Object.keys(estimasiConfig);
+  if (!groupKeys.length) {
+    cardEl.innerHTML = '<div class="purchase-varian-empty">Estimasi loyang belum diset di Kantor Cabang.</div>';
+    return;
+  }
+
+  if (forceRefetchSaldo || !window._purchaseSaldoCache[tanggalTarget]) {
+    cardEl.innerHTML = '<div class="purchase-estimasi-loading">Menghitung saldo...</div>';
+    try {
+      window._purchaseSaldoCache[tanggalTarget] = (await window.hitungSaldoUntukTanggal?.(tanggalTarget)) || {};
+    } catch (err) {
+      console.error("❌ recalcPurchaseEstimasi (saldo):", err);
+      window._purchaseSaldoCache[tanggalTarget] = {};
+    }
+  }
+  const saldoMap = window._purchaseSaldoCache[tanggalTarget] || {};
+  const totalInput = hitungTotalVarianDariInput();
+
+  const rows = groupKeys.map(groupKey => {
+    const capacityMap = estimasiConfig[groupKey] || {};
+    let fraksiTotal = 0;
+    Object.entries(capacityMap).forEach(([kode, kapasitas]) => {
+      const kap = Number(kapasitas) || 0;
+      if (kap <= 0) return;
+      const input     = Number(totalInput[kode] || 0);
+      const saldo     = Number(saldoMap[kode]   || 0);
+      const kebutuhan = Math.max(0, input - saldo);
+      fraksiTotal += kebutuhan / kap;
+    });
+    const jumlahLoyang = fraksiTotal > 0 ? Math.ceil(fraksiTotal) : 0;
+    const label = groupKey.replace(/^loyang/i, "") || groupKey;
+    return { label, jumlahLoyang };
+  });
+
+  cardEl.innerHTML = rows.map(r => `
+    <div class="purchase-estimasi-row">
+      <span class="purchase-estimasi-label">${escPurchase(r.label)}</span>
+      <span class="purchase-estimasi-value">${r.jumlahLoyang} loyang</span>
+    </div>
+  `).join("");
 }
 async function simpanPurchaseOrder() {
   const btn = document.getElementById("purchaseSaveBtn");
@@ -186,6 +274,11 @@ window.initPurchaseForm = function () {
   document.getElementById("purchaseSaveBtn")?.addEventListener("click", simpanPurchaseOrder);
   document.getElementById("purchaseTanggalInputNative")?.addEventListener("change", (e) => {
     if (e.target.value) loadPurchasePreview(e.target.value);
+  });
+  document.getElementById("purchaseStaffList")?.addEventListener("input", (e) => {
+    if (e.target.classList.contains("purchase-varian-input")) {
+      recalcPurchaseEstimasi(window._purchaseTanggalTarget, false);
+    }
   });
   loadPurchasePreview();
 };
