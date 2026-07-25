@@ -266,6 +266,11 @@ async function pilihKurirSlipGaji(uid, nama) {
     slipGajiData.bonus[idxBonusKehadiran].hari = bonusKehadiran > 0 ? hariMasukKerja : 0;
     slipGajiData.bonus[idxBonusKehadiran].pembayaran = bonusKehadiran;
   }
+  const idxBonusKunjungan = slipGajiData.bonus.findIndex(i => i.key === "bonusKunjungan");
+  if (idxBonusKunjungan !== -1) {
+    slipGajiData.bonus[idxBonusKunjungan].hari = "-";
+    slipGajiData.bonus[idxBonusKunjungan].pembayaran = bonusKunjungan;
+  }
   const idxBonusPay = slipGajiData.bonus.findIndex(i => i.key === "bonusPay");
   if (idxBonusPay !== -1) {
     slipGajiData.bonus[idxBonusPay].hari = "-";

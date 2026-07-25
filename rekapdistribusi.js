@@ -304,7 +304,25 @@ window.hitungBonusKehadiran   = hitungBonusKehadiran;
 async function renderRekapDistribusiGrid() {
   const gridEl = document.getElementById("rekapDistGrid");
   if (!gridEl) return;
-  gridEl.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
+  gridEl.innerHTML = Array.from({ length: 4 }).map(() => `
+    <div class="rekap-dist-card rekap-dist-skeleton">
+      <div class="rekap-dist-card-header">
+        <div class="skeleton-block skeleton-avatar"></div>
+        <div>
+          <div class="skeleton-block skeleton-line" style="width:110px;height:14px;"></div>
+          <div class="skeleton-block skeleton-line" style="width:70px;height:10px;margin-top:6px;"></div>
+        </div>
+      </div>
+      <div class="rekap-dist-card-body">
+        ${Array.from({ length: 6 }).map(() => `
+          <div>
+            <div class="skeleton-block skeleton-line" style="width:80px;height:11px;margin-bottom:8px;"></div>
+            <div class="skeleton-block skeleton-line" style="height:60px;"></div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
 
   if (!window.usersCache?.length) {
     window.usersCache = await window.idb.getUsers();
@@ -335,6 +353,7 @@ async function renderRekapDistribusiGrid() {
     console.error("❌ fetch hariLibur (shared):", err);
   }
   const upahHarianShared = Number(kantorCabangShared?.upahHarian) || 0;
+  const insentifHarianShared = Number(kantorCabangShared?.bonus?.data?.insentif) || 0;
   const bonusHariLiburPerusahaanShared = jumlahHariLiburPerusahaanShared * upahHarianShared;
 
   const cardsHtml = [];
@@ -425,6 +444,8 @@ async function renderRekapDistribusiGrid() {
     const jumlahPay     = varianList.reduce((a, v) => a + (pay[v]     || 0), 0);
     const jumlahExpired = varianList.reduce((a, v) => a + (expired[v] || 0), 0);
     const persenExpired = jumlahPay > 0 ? Math.round((jumlahExpired / jumlahPay) * 100) : 0;
+    const totalClosing  = jumlahPay + jumlahExpired;
+    const persentasePay = totalClosing > 0 ? Math.round((jumlahPay / totalClosing) * 100) : 0;
     const jumlahNominalPay = varianList.reduce((a, v) => {
       const harga  = hargaMap[v] || { konsumen: 0, produksi: 0 };
       const margin = harga.konsumen - harga.produksi;
@@ -436,6 +457,18 @@ async function renderRekapDistribusiGrid() {
     }, 0);
 
     chartData.push({ nama, jumlahPay, jumlahExpired });
+
+    // ── TOTAL PENDAPATAN (rumus sama kayak Slip Gaji: pendapatan + bonus - potongan, TANPA klaim insentif & kasbon) ──
+    const upahPokok          = hariMasukKerja * upahHarianShared;
+    const tunjanganTransport = hariMasukKerja * insentifHarianShared;
+    const bonusCustomerBaru  = customerNew * upahHunter;
+    const totalPendapatan = upahPokok + tunjanganTransport
+      + bonusKehadiran + bonusTargetHarian + bonusHariLiburPerusahaan + bonusCustomerBaru
+      - potonganTargetData - potonganTargetCustomer;
+
+    // ── SALDO KAS (read-only, UI saja): Pay - Expired - Customer New - Customer Putus - Total Pendapatan ──
+    const nominalCustomerPutus = customerPutusIdb * upahHunter;
+    const saldoKas = jumlahNominalPay - jumlahNominalExpired - bonusCustomerBaru - nominalCustomerPutus - totalPendapatan;
 
     const cardHtml = `
       <div class="rekap-dist-card" data-uid="${esc(u.uid)}">
@@ -455,6 +488,7 @@ async function renderRekapDistribusiGrid() {
               <tbody>
                 ${buildPayRows()}
                 <tr><td>Jumlah Pay</td><td>${jumlahPay || "-"}</td><td>${jumlahNominalPay ? jumlahNominalPay.toLocaleString("id-ID") : "-"}</td></tr>
+                <tr><td>Persentase Pay</td><td>${persentasePay ? persentasePay + "%" : "-"}</td><td>-</td></tr>
               </tbody>
             </table>
           </div>
@@ -520,6 +554,17 @@ async function renderRekapDistribusiGrid() {
                 <tr><td>Hari Masuk Kerja</td><td>${hariMasukKerja || "-"}</td><td>-</td></tr>
               </tbody>
             </table>
+          </div>
+
+          <div class="rekap-dist-saldo-kas-group">
+            <div class="rekap-dist-saldo-kas-row">
+              <span>Total Pendapatan</span>
+              <span>${totalPendapatan.toLocaleString("id-ID")}</span>
+            </div>
+            <div class="rekap-dist-saldo-kas-row rekap-dist-saldo-kas-final">
+              <span>Saldo Kas</span>
+              <span>${saldoKas.toLocaleString("id-ID")}</span>
+            </div>
           </div>
 
         </div>

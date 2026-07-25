@@ -71,6 +71,27 @@
   color: var(--brand-primary);
 }
 
+.rekap-dist-skeleton { pointer-events: none; }
+.skeleton-block {
+  background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-page) 50%, var(--bg-hover) 75%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.skeleton-line {
+  width: 100%;
+}
+@keyframes skeleton-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 /* ── CARD HEADER + RELOAD BTN ── */
 .rekap-dist-card-header {
   position: relative;
@@ -234,6 +255,28 @@
 
 .rekap-dist-table tr:last-child td {
   border-bottom: none;
+}
+.rekap-dist-saldo-kas-group {
+  grid-column: 1 / -1;
+  padding-top: 12px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-card);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rekap-dist-saldo-kas-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.rekap-dist-saldo-kas-final {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--brand-primary);
 }
 
 /*chart*/
