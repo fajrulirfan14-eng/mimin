@@ -234,24 +234,46 @@ async function pilihKurirSlipGajiProd(uid, nama, role) {
     slipGajiProdData.potongan[idxKasbon].pembayaran = kasbonPerUser[uid] || 0;
   }
 
+  const pendapatanTable = document.getElementById("slipGajiProdPendapatanTable");
+  const pendapatanThead = document.getElementById("slipGajiProdPendapatanThead");
+
   if (role === "produksi") {
+    pendapatanTable?.classList.remove("slipgajiprod-pendapatan-2col");
+    if (pendapatanThead) {
+      pendapatanThead.innerHTML = `
+        <tr>
+          <th>Keterangan</th>
+          <th>Qty</th>
+          <th>Harga</th>
+          <th>Upah</th>
+        </tr>`;
+    }
     await renderSlipGajiProdPendapatanTable(uid);
   } else {
-    // adminCabang: Pendapatan cuma "Gaji Pokok" input manual,
-    // coba load nilai yang pernah disimpan sebelumnya untuk periode ini
+    // adminCabang: Pendapatan cuma "Gaji Pokok" input manual, tabel cuma 2 kolom (Keterangan, Upah)
+    pendapatanTable?.classList.add("slipgajiprod-pendapatan-2col");
+    if (pendapatanThead) {
+      pendapatanThead.innerHTML = `
+        <tr>
+          <th>Keterangan</th>
+          <th>Upah</th>
+        </tr>`;
+    }
+
     slipGajiProdPendapatanDetail = {};
     let gajiPokokValue = 0;
 
     try {
-      const periode = `${rekapProdTahun}-${String(rekapProdBulan + 1).padStart(2, "0")}`;
-      const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGaji", periode));
-      if (snap.exists()) {
-        const slipArr = snap.data()?.slipGaji || [];
-        const pendapatanObj = slipArr.find(s => s && s.pendapatan)?.pendapatan || {};
-        gajiPokokValue = Number(pendapatanObj?.gajiPokok?.pembayaran) || 0;
+      const kantorCabangCache = await window.idb.getKantorCabang();
+      const idCabang = kantorCabangCache?.id;
+      if (idCabang) {
+        const kcSnap = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
+        if (kcSnap.exists()) {
+          gajiPokokValue = Number(kcSnap.data()?.upahAdmin) || 0;
+        }
       }
     } catch (err) {
-      console.error("❌ load gajiPokok existing (skip, pakai default 0):", err);
+      console.error("❌ load gajiPokok dari Firestore kantorCabang (skip, pakai default 0):", err);
     }
 
     slipGajiProdData.pendapatan = [
@@ -334,8 +356,6 @@ function renderSlipGajiProdPendapatanManual() {
   bodyEl.innerHTML = slipGajiProdData.pendapatan.map((item, idx) => `
     <tr data-idx="${idx}">
       <td>${escSlip(item.label)}</td>
-      <td>-</td>
-      <td>-</td>
       <td>
         <input type="text" class="slipgajiprod-input-nominal" data-idx="${idx}" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0">
       </td>
@@ -360,7 +380,7 @@ async function cekSlipGajiProdFormBadge(uid) {
 
   const periode = `${rekapProdTahun}-${String(rekapProdBulan + 1).padStart(2, "0")}`;
   try {
-    const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGajiProduksi", periode));
+    const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGaji", periode));
     badge.style.display = snap.exists() ? "flex" : "none";
   } catch (err) {
     console.error("❌ cekSlipGajiProdFormBadge:", err);

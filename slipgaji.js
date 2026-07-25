@@ -31,12 +31,8 @@ window.initSlipGajiPanel = function() {
   document.getElementById("slipGajiReloadBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("slipGajiReloadBtn");
     btn.classList.add("spinning");
-    const savedBulan = rekapDistBulan, savedTahun = rekapDistTahun;
-    rekapDistBulan = slipGajiBulan;
-    rekapDistTahun = slipGajiTahun;
-    await reloadLaporanAdminData();
-    rekapDistBulan = savedBulan;
-    rekapDistTahun = savedTahun;
+    await getKantorCabangCached(true);
+    await getLaporanAdminBulanCached(slipGajiBulan, slipGajiTahun, true);
     await renderSlipGajiKurirGrid();
     btn.classList.remove("spinning");
   });
@@ -76,7 +72,19 @@ async function renderSlipGajiKurirGrid() {
   gridEl.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
 
   if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUid = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    } catch (err) {
+      console.error("❌ renderSlipGajiKurirGrid (users):", err);
+      window.usersCache = [];
+    }
   }
   const users = (window.usersCache || []).filter(u => u.role === "kurir");
 
@@ -225,12 +233,10 @@ async function pilihKurirSlipGaji(uid, nama) {
   document.getElementById("slipGajiCatatan").value = "";
 
   // hitung hariMasukKerja untuk kurir ini di bulan/tahun filter aktif
-  const allLaporan = await window.idb.getAllLaporanAdmin();
-  const mm = String(slipGajiBulan + 1).padStart(2, "0");
-  const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${slipGajiTahun}-${mm}`));
+  const filteredLaporan = await getLaporanAdminBulanCached(slipGajiBulan, slipGajiTahun);
   const hariMasukKerja = filteredLaporan.filter(l => l.data?.[uid]).length;
 
-  const kantorCabang = await window.idb.getKantorCabang();
+  const kantorCabang = await getKantorCabangCached();
   const upahHarian   = Number(kantorCabang?.upahHarian) || 0;
   const insentifHarian = Number(kantorCabang?.bonus?.data?.insentif) || 0;
 
@@ -448,7 +454,7 @@ async function simpanSlipGaji() {
 
   try {
     const adminUid     = window.auth?.currentUser?.uid;
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     const periode      = `${slipGajiTahun}-${String(slipGajiBulan + 1).padStart(2, "0")}`;
     const catatan      = document.getElementById("slipGajiCatatan").value.trim();
 

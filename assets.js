@@ -5,6 +5,8 @@ window.initAssetsView = function() {
   document.getElementById("assetsReloadBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("assetsReloadBtn");
     btn.classList.add("spinning");
+    await getKantorCabangCached(true);
+    await getCustKurirGroupedCached(true);
     await renderAssetsGrid();
     btn.classList.remove("spinning");
   });
@@ -13,13 +15,6 @@ window.initAssetsView = function() {
     document.getElementById("assetsDetailWrapper")?.classList.remove("show");
     document.getElementById("assetsBackBtn").style.display = "none";
     document.querySelectorAll("#rekapDistribusiList .lap-kurir-item").forEach(x => x.classList.remove("active"));
-  });
-
-  document.getElementById("assetsReloadBtn")?.addEventListener("click", async () => {
-    const btn = document.getElementById("assetsReloadBtn");
-    btn.classList.add("spinning");
-    await renderAssetsGrid();
-    btn.classList.remove("spinning");
   });
 };
 
@@ -141,7 +136,19 @@ async function renderAssetsGrid() {
   if (!gridEl) return;
   gridEl.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
   if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUid = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    } catch (err) {
+      console.error("❌ renderAssetsGrid (users):", err);
+      window.usersCache = [];
+    }
   }
   const users = (window.usersCache || []).filter(u => u.role === "kurir");
   if (!users.length) {
@@ -149,12 +156,13 @@ async function renderAssetsGrid() {
     return;
   }
 
-  const kantorCabang = await window.idb.getKantorCabang();
+  const kantorCabang = await getKantorCabangCached();
   const upahHunter   = Number(kantorCabang?.upahHunter) || 0;
   const assetsAwalValue = Number(kantorCabang?.asetPendam) || 0;
   window._assetsKantorCabangCache = kantorCabang;
   const varianList   = ["CB", "BB", "BK", "MC"];
   const HARI_LIST    = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
+  const custKurirGroupedAssets = await getCustKurirGroupedCached();
 
   // ── ASET BULAN SEBELUMNYA (buat hitung penyusutan per kurir) ──
   const ASSETS_BULAN_NAMA_PREV = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
@@ -203,7 +211,7 @@ async function renderAssetsGrid() {
     varianList.forEach(v => { modalQty[v] = 0; });
 
     for (const h of HARI_LIST) {
-      const custHari = await window.idb.getCustKurir(u.uid, h);
+      const custHari = custKurirGroupedAssets[`${u.uid}_${h}`];
       if (!custHari?.length) continue;
       custHari.forEach(c => {
         if (c.status !== true) return;
@@ -457,7 +465,19 @@ async function findLastSavedAssetsForUid(uid) {
 }
 async function autoLoadHunterSalesCards(varianList) {
   if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUid = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    } catch (err) {
+      console.error("❌ autoLoadHunterSalesCards (users):", err);
+      window.usersCache = [];
+    }
   }
   const hunterSalesUsers = (window.usersCache || []).filter(u => ["hunter", "sales"].includes(u.role));
   if (!hunterSalesUsers.length) return;
@@ -498,7 +518,19 @@ function initAssetsTambahCard(varianList) {
 }
 async function tambahAssetsExtraCard(varianList, prefillUser = null) {
   if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUid = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    } catch (err) {
+      console.error("❌ tambahAssetsExtraCard (users):", err);
+      window.usersCache = [];
+    }
   }
   const eligibleUsers = (window.usersCache || []).filter(u =>
     ["kurir", "hunter", "sales"].includes(u.role)
@@ -636,7 +668,7 @@ async function tambahAssetsExtraCard(varianList, prefillUser = null) {
       const cardData = assetsExtraCards.find(c => c.id === cardId);
       const val = Number(input.value) || 0;
 
-      const kantorCabang = await window.idb.getKantorCabang();
+      const kantorCabang = await getKantorCabangCached();
       const upahHunter = Number(kantorCabang?.upahHunter) || 0;
 
       if (field === "jumlahCustomer") {

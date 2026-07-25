@@ -6,11 +6,9 @@
   overflow: hidden;
   display: none;
 }
-
 .slipgajiprod-detail-wrapper.show {
   display: flex;
 }
-
 .slipgajiprod-detail-panel {
   display: flex;
   flex-direction: column;
@@ -19,7 +17,6 @@
   overflow: hidden;
   background: var(--bg-page);
 }
-
 .slipgajiprod-detail-empty {
   flex: 1;
   display: flex;
@@ -30,20 +27,17 @@
   color: var(--text-muted);
   padding: 40px 20px;
 }
-
 .slipgajiprod-empty-icon {
   font-size: 40px;
   color: var(--border-card);
   margin-bottom: 12px;
 }
-
 .slipgajiprod-empty-title {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 4px;
 }
-
 .slipgajiprod-empty-sub {
   font-size: 13px;
   color: var(--text-muted);
@@ -55,7 +49,19 @@
   display: flex;
   flex-direction: column;
 }
+/* Pendapatan khusus adminCabang: 2 kolom, kiri-kanan */
+#slipGajiProdPendapatanTable.slipgajiprod-pendapatan-2col thead th:last-child,
+#slipGajiProdPendapatanTable.slipgajiprod-pendapatan-2col tbody td:last-child {
+  text-align: right;
+}
 
+/* Bonus & Potongan: Keterangan kiri, Nominal kanan */
+#slipGajiProdBonusTable thead th:nth-child(2),
+#slipGajiProdBonusTable tbody td:nth-child(2),
+#slipGajiProdPotonganTable thead th:nth-child(2),
+#slipGajiProdPotonganTable tbody td:nth-child(2) {
+  text-align: right;
+}
 .slipgajiprod-detail-header {
   background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand-primary) 70%, var(--brand-mid) 100%);
   color: var(--text-white);
@@ -145,9 +151,10 @@
 .slipgajiprod-card {
   background: var(--bg-card);
   border: 1px solid var(--border-card);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 14px;
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 .slipgajiprod-card-title {
   display: flex;
@@ -156,7 +163,9 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-card);
 }
 .slipgajiprod-card-title i {
   color: var(--brand-primary);
@@ -172,28 +181,35 @@
 }
 .slipgajiprod-table thead th {
   text-align: left;
-  padding: 8px 10px;
-  background: var(--brand-pale);
-  color: var(--text-primary);
+  padding: 10px 12px;
+  background: transparent;
+  color: var(--text-muted);
   font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   border-bottom: 1px solid var(--border-card);
 }
-.slipgajiprod-table thead th:first-child { border-radius: 8px 0 0 0; }
-.slipgajiprod-table thead th:last-child  { border-radius: 0 8px 0 0; }
 .slipgajiprod-table tbody td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border-card);
+  padding: 11px 12px;
   color: var(--text-primary);
 }
-.slipgajiprod-table tbody tr:last-child td { border-bottom: none; }
-.slipgajiprod-table tbody tr:nth-child(even) td { background: var(--bg-page); }
-
+.slipgajiprod-table tbody tr {
+  transition: background .1s;
+}
+.slipgajiprod-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid rgba(0,0,0,0.045);
+}
+.slipgajiprod-table tbody tr:hover td {
+  background: var(--bg-page);
+}
 .slipgajiprod-empty-cell {
   text-align: center;
   color: var(--text-muted);
-  padding: 16px 0 !important;
+  font-size: 12px;
+  font-style: italic;
+  padding: 20px 0 !important;
 }
-
 .slipgajiprod-total-row td {
   font-weight: 700;
   background: var(--brand-pale) !important;
@@ -277,13 +293,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px;
-  border-radius: 12px;
+  padding: 16px 18px;
+  border-radius: 14px;
   background: linear-gradient(135deg, var(--brand-primary), var(--brand-mid));
   color: #fff;
   font-weight: 700;
-  font-size: 13px;
-  margin-bottom: 14px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 
 /* ── SAVE BUTTON ── */

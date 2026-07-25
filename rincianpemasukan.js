@@ -83,12 +83,9 @@ function initRincianPemasukanFilter() {
   document.getElementById("rincianPemasukanReloadBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("rincianPemasukanReloadBtn");
     btn.classList.add("spinning");
-    const savedBulan = rekapDistBulan, savedTahun = rekapDistTahun;
-    rekapDistBulan = rincianPemasukanBulan;
-    rekapDistTahun = rincianPemasukanTahun;
-    await reloadLaporanAdminData();
-    rekapDistBulan = savedBulan;
-    rekapDistTahun = savedTahun;
+    await getKantorCabangCached(true);
+    await getLaporanAdminBulanCached(rincianPemasukanBulan, rincianPemasukanTahun, true);
+    await getCustKurirGroupedCached(true);
     await renderRincianPemasukanPanel();
     btn.classList.remove("spinning");
   });
@@ -224,14 +221,24 @@ async function hitungPemasukanPay() {
 
   try {
     if (!window.usersCache?.length) {
-      window.usersCache = await window.idb.getUsers();
+      try {
+        const idCabang = window.currentUser?.idCabang || "";
+        const adminUid = window.auth?.currentUser?.uid;
+        const snapUsers = await window.getDocs(window.query(
+          window.collection(window.db, "users"),
+          window.where("idCabang", "==", idCabang),
+          window.where("createdBy", "==", adminUid)
+        ));
+        window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+      } catch (err) {
+        console.error("❌ hitungPemasukanPay (users):", err);
+        window.usersCache = [];
+      }
     }
     const users = (window.usersCache || []).filter(u => u.role === "kurir");
     if (!users.length) return result;
 
-    const allLaporan = await window.idb.getAllLaporanAdmin();
-    const mm = String(rincianPemasukanBulan + 1).padStart(2, "0");
-    const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${rincianPemasukanTahun}-${mm}`));
+    const filteredLaporan = await getLaporanAdminBulanCached(rincianPemasukanBulan, rincianPemasukanTahun);
 
     users.forEach(u => {
       const hargaMap = {};
@@ -274,14 +281,24 @@ async function hitungKerugianExpired() {
 
   try {
     if (!window.usersCache?.length) {
-      window.usersCache = await window.idb.getUsers();
+      try {
+        const idCabang = window.currentUser?.idCabang || "";
+        const adminUid = window.auth?.currentUser?.uid;
+        const snapUsers = await window.getDocs(window.query(
+          window.collection(window.db, "users"),
+          window.where("idCabang", "==", idCabang),
+          window.where("createdBy", "==", adminUid)
+        ));
+        window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+      } catch (err) {
+        console.error("❌ hitungKerugianExpired (users):", err);
+        window.usersCache = [];
+      }
     }
     const users = (window.usersCache || []).filter(u => u.role === "kurir");
     if (!users.length) return result;
 
-    const allLaporan = await window.idb.getAllLaporanAdmin();
-    const mm = String(rincianPemasukanBulan + 1).padStart(2, "0");
-    const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${rincianPemasukanTahun}-${mm}`));
+    const filteredLaporan = await getLaporanAdminBulanCached(rincianPemasukanBulan, rincianPemasukanTahun);
 
     users.forEach(u => {
       const hargaMap = {};
@@ -322,18 +339,29 @@ async function hitungKerugianCustomer() {
   let upahHunter = 0;
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     upahHunter = Number(kantorCabang?.upahHunter) || 0;
 
     if (!window.usersCache?.length) {
-      window.usersCache = await window.idb.getUsers();
+      try {
+        const idCabang = window.currentUser?.idCabang || "";
+        const adminUid = window.auth?.currentUser?.uid;
+        const snapUsers = await window.getDocs(window.query(
+          window.collection(window.db, "users"),
+          window.where("idCabang", "==", idCabang),
+          window.where("createdBy", "==", adminUid)
+        ));
+        window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+      } catch (err) {
+        console.error("❌ hitungKerugianCustomer (users):", err);
+        window.usersCache = [];
+      }
     }
     const users = (window.usersCache || []).filter(u => u.role === "kurir");
     if (!users.length) return { totalCustomerNew, totalCustomerPutus, upahHunter };
 
-    const allLaporan = await window.idb.getAllLaporanAdmin();
-    const mm = String(rincianPemasukanBulan + 1).padStart(2, "0");
-    const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${rincianPemasukanTahun}-${mm}`));
+    const filteredLaporan = await getLaporanAdminBulanCached(rincianPemasukanBulan, rincianPemasukanTahun);
+    const custKurirGroupedRincian = await getCustKurirGroupedCached();
 
     const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
 
@@ -345,7 +373,7 @@ async function hitungKerugianCustomer() {
       });
 
       for (const h of HARI_LIST) {
-        const custHari = await window.idb.getCustKurir(u.uid, h);
+        const custHari = custKurirGroupedRincian[`${u.uid}_${h}`];
         if (custHari?.length) {
           totalCustomerPutus += custHari.filter(c => c.status === false).length;
         }
@@ -393,7 +421,19 @@ async function gabungkanGajiKeRincianPengeluaranDistribusi(groupedData) {
 
   try {
     if (!window.usersCache?.length) {
-      window.usersCache = await window.idb.getUsers();
+      try {
+        const idCabang = window.currentUser?.idCabang || "";
+        const adminUid = window.auth?.currentUser?.uid;
+        const snapUsers = await window.getDocs(window.query(
+          window.collection(window.db, "users"),
+          window.where("idCabang", "==", idCabang),
+          window.where("createdBy", "==", adminUid)
+        ));
+        window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+      } catch (err) {
+        console.error("❌ gabungkanGajiKeRincianPengeluaranDistribusi (users):", err);
+        window.usersCache = [];
+      }
     }
     const kurirList = (window.usersCache || []).filter(u => u.role === "kurir");
 

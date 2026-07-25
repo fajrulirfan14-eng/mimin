@@ -1,7 +1,78 @@
+
 /* ── REKAP DISTRIBUSI VIEW ── */
 let rekapDistBulan = new Date().getMonth();
 let rekapDistTahun = new Date().getFullYear();
 const REKAP_DIST_BULAN_NAMA = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+
+/* ── CACHE RAM (menggantikan IDB sepenuhnya) ── */
+window._rekapDistCache = window._rekapDistCache || {
+  kantorCabang: null,
+  laporanByBulan: {},
+  custKurirGrouped: null,
+};
+
+async function getKantorCabangCached(forceRefresh = false) {
+  if (!forceRefresh && window._rekapDistCache.kantorCabang) return window._rekapDistCache.kantorCabang;
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    const snap = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
+    window._rekapDistCache.kantorCabang = snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  } catch (err) {
+    console.error("❌ getKantorCabangCached:", err);
+  }
+  return window._rekapDistCache.kantorCabang;
+}
+
+async function getLaporanAdminBulanCached(bulan, tahun, forceRefresh = false) {
+  const key = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
+  if (!forceRefresh && window._rekapDistCache.laporanByBulan[key]) {
+    return window._rekapDistCache.laporanByBulan[key];
+  }
+  const adminUid = window.auth?.currentUser?.uid;
+  const mm    = String(bulan + 1).padStart(2, "0");
+  const start = `${tahun}-${mm}-01`;
+  const end   = `${tahun}-${mm}-31`;
+  let list = [];
+  try {
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users", adminUid, "laporanAdmin"),
+      window.where("tanggal", ">=", start),
+      window.where("tanggal", "<=", end)
+    ));
+    list = snap.docs.map(d => ({ tanggal: d.data().tanggal || d.id, data: d.data() }));
+  } catch (err) {
+    console.error("❌ getLaporanAdminBulanCached:", err);
+  }
+  window._rekapDistCache.laporanByBulan[key] = list;
+  return list;
+}
+
+async function getCustKurirGroupedCached(forceRefresh = false) {
+  if (!forceRefresh && window._rekapDistCache.custKurirGrouped) {
+    return window._rekapDistCache.custKurirGrouped;
+  }
+  const idCabang = window.currentUser?.idCabang || "";
+  const grouped = {};
+  try {
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "customer"),
+      window.where("idCabang", "==", idCabang)
+    ));
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const uid  = data.pemilik;
+      const hari = data.hari;
+      if (!uid || !hari) return;
+      const key = `${uid}_${hari}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push({ id: docSnap.id, ...data });
+    });
+  } catch (err) {
+    console.error("❌ getCustKurirGroupedCached:", err);
+  }
+  window._rekapDistCache.custKurirGrouped = grouped;
+  return grouped;
+}
 
 function initRekapDistFilter() {
   const bulanBtn = document.getElementById("rekapDistBulanBtn");
@@ -85,7 +156,7 @@ function initHariLiburPopup() {
     btn.disabled = true; btn.textContent = "Menyimpan...";
     try {
       const adminUid     = window.auth?.currentUser?.uid;
-      const kantorCabang = await window.idb.getKantorCabang();
+      const kantorCabang = await getKantorCabangCached();
       const bulanStr     = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
 
       await window.setDoc(
@@ -184,80 +255,18 @@ window.initRekapDistribusiView = function() {
   document.getElementById("rekapDistReloadBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("rekapDistReloadBtn");
     btn.classList.add("spinning");
-    await reloadLaporanAdminData();
-    await reloadCustKurirData();
+    await getKantorCabangCached(true);
+    await getLaporanAdminBulanCached(rekapDistBulan, rekapDistTahun, true);
+    await getCustKurirGroupedCached(true);
+    window.showToast("Data berhasil dimuat ulang", "success");
     await renderRekapDistribusiGrid();
     btn.classList.remove("spinning");
   });
 };
 
-/* ── RELOAD DATA LAPORAN ADMIN ── */
-async function reloadLaporanAdminData() {
-  try {
-    const adminUid = window.auth?.currentUser?.uid;
-    if (!adminUid) return;
-
-    const mm    = String(rekapDistBulan + 1).padStart(2, "0");
-    const start = `${rekapDistTahun}-${mm}-01`;
-    const end   = `${rekapDistTahun}-${mm}-31`;
-
-    const snap = await window.getDocs(window.query(
-      window.collection(window.db, "users", adminUid, "laporanAdmin"),
-      window.where("tanggal", ">=", start),
-      window.where("tanggal", "<=", end)
-    ));
-
-    let count = 0;
-    for (const docSnap of snap.docs) {
-      const data = docSnap.data();
-      await window.idb.saveLaporanAdmin(data.tanggal || docSnap.id, data);
-      count++;
-    }
-
-    window.showToast(`${count} data berhasil dimuat`, "success");
-  } catch (err) {
-    console.error("❌ reloadLaporanAdminData:", err);
-    window.showToast("Gagal memuat data", "error");
-  }
-}
-
-/* ── RELOAD DATA CUSTOMER (custKurir) ── */
-async function reloadCustKurirData() {
-  try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang = kantorCabang?.id || "";
-    if (!idCabang) return;
-
-    const snap = await window.getDocs(window.query(
-      window.collection(window.db, "customer"),
-      window.where("idCabang", "==", idCabang)
-    ));
-
-    const grouped = {};
-    snap.forEach(docSnap => {
-      const data = docSnap.data();
-      const uid  = data.pemilik;
-      const hari = data.hari;
-      if (!uid || !hari) return;
-      const key = `${uid}_${hari}`;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push({ id: docSnap.id, ...data });
-    });
-
-    for (const key in grouped) {
-      const [uid, hari] = key.split("_");
-      await window.idb.saveCustKurir(uid, hari, grouped[key]);
-    }
-
-    return grouped;
-  } catch (err) {
-    console.error("❌ reloadCustKurirData:", err);
-    return null;
-  }
-}
 /* ── SHARED: HITUNG HARI KERJA & BONUS KEHADIRAN ── */
 async function hitungJumlahHariKerja(bulan, tahun) {
-  const kantorCabang = await window.idb.getKantorCabang();
+  const kantorCabang = await getKantorCabangCached();
   const hariLiburNama = kantorCabang?.hariLibur?.distribusi || "";
   const totalTanggalBulan = new Date(tahun, bulan + 1, 0).getDate();
 
@@ -285,13 +294,11 @@ async function hitungJumlahHariKerja(bulan, tahun) {
 }
 
 async function hitungBonusKehadiran(uid, bulan, tahun, jumlahHariKerjaCache = null, kantorCabangCache = null) {
-  const allLaporan = await window.idb.getAllLaporanAdmin();
-  const mm = String(bulan + 1).padStart(2, "0");
-  const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${tahun}-${mm}`));
+  const filteredLaporan = await getLaporanAdminBulanCached(bulan, tahun);
 
   const hariMasukKerja   = filteredLaporan.filter(l => l.data?.[uid]).length;
   const jumlahHariKerja  = jumlahHariKerjaCache  ?? await hitungJumlahHariKerja(bulan, tahun);
-  const kantorCabang     = kantorCabangCache     ?? await window.idb.getKantorCabang();
+  const kantorCabang     = kantorCabangCache     ?? await getKantorCabangCached();
   const bonusKehadiranNilai = Number(kantorCabang?.bonus?.kehadiran) || 0;
   const bonusKehadiran = hariMasukKerja >= jumlahHariKerja ? bonusKehadiranNilai : 0;
 
@@ -325,7 +332,19 @@ async function renderRekapDistribusiGrid() {
   `).join("");
 
   if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUid = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    } catch (err) {
+      console.error("❌ renderRekapDistribusiGrid (users):", err);
+      window.usersCache = [];
+    }
   }
   const users = (window.usersCache || []).filter(u => u.role === "kurir");
   if (!users.length) {
@@ -333,16 +352,15 @@ async function renderRekapDistribusiGrid() {
     return;
   }
 
-  const allLaporan = await window.idb.getAllLaporanAdmin();
-  const mm = String(rekapDistBulan + 1).padStart(2, "0");
-  const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${rekapDistTahun}-${mm}`));
+  const filteredLaporan = await getLaporanAdminBulanCached(rekapDistBulan, rekapDistTahun);
 
   const varianList = ["CB", "BB", "BK", "MC"];
 
   const jumlahHariKerjaGlobal = await hitungJumlahHariKerja(rekapDistBulan, rekapDistTahun);
 
   // fetch sekali di luar loop — dipakai untuk semua kurir
-  const kantorCabangShared = await window.idb.getKantorCabang();
+  const kantorCabangShared  = await getKantorCabangCached();
+  const custKurirGrouped    = await getCustKurirGroupedCached();
   const adminUidShared = window.auth?.currentUser?.uid;
   const bulanStrShared  = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
   let jumlahHariLiburPerusahaanShared = 0;
@@ -384,7 +402,7 @@ async function renderRekapDistribusiGrid() {
     let customerPutusIdb = 0;
     const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
     for (const h of HARI_LIST) {
-      const custHari = await window.idb.getCustKurir(u.uid, h);
+      const custHari = custKurirGrouped[`${u.uid}_${h}`];
       if (custHari?.length) {
         jumlahCustomer  += custHari.filter(c => c.status === true).length;
         customerPutusIdb += custHari.filter(c => c.status === false).length;
