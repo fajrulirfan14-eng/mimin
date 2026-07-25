@@ -8,9 +8,13 @@ async function loadRincianVarianList() {
     const adminUid = window.auth?.currentUser?.uid;
     if (!adminUid) return [];
 
-    const allUsers = await window.idb.getUsers();
-    const userData = allUsers.find(u => u.uid === adminUid);
-    const varianArr = userData?.varian || [];
+    let varianArr = [];
+    try {
+      const snapSelf = await window.getDoc(window.doc(window.db, "users", adminUid));
+      varianArr = snapSelf.exists() ? (snapSelf.data()?.varian || []) : [];
+    } catch (err) {
+      console.error("❌ loadRincianVarianList (users):", err);
+    }
 
     const aktifList = [];
     varianArr.forEach(item => {
@@ -99,11 +103,7 @@ async function loadRincianPembelianBahanBakuAgg() {
 async function loadRincianLaporanAgg() {
   const result = {};
   try {
-    const bulanStr = String(rekapProdBulan + 1).padStart(2, "0");
-    const prefix   = `${rekapProdTahun}-${bulanStr}`;
-
-    const allRecords = await window.idb.getAllLaporanAdmin();
-    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(prefix));
+    const filtered = await getLaporanAdminBulanCached(rekapProdBulan, rekapProdTahun);
 
     filtered.forEach(record => {
       const dataPerUid = record.data || {};
@@ -129,8 +129,17 @@ async function loadRincianLaporanAgg() {
 }
 async function loadRincianMarketingList() {
   try {
-    const allUsers = await window.idb.getUsers();
-    return allUsers.filter(u => u.role === "kurir" || u.role === "sales");
+    if (!window.usersCache?.length) {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUid = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    }
+    return (window.usersCache || []).filter(u => u.role === "kurir" || u.role === "sales");
   } catch (err) {
     console.error("❌ loadRincianMarketingList:", err);
     return [];
@@ -305,7 +314,7 @@ function initRincianProdFilter() {
   document.getElementById("rincianProdReloadBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("rincianProdReloadBtn");
     btn.classList.add("spinning");
-    await reloadLaporanAdminDataProd();
+    await getLaporanAdminBulanCached(rekapProdBulan, rekapProdTahun, true);
     await refreshRincianProduksiData();
     btn.classList.remove("spinning");
   });
@@ -373,8 +382,17 @@ async function gabungkanGajiKeRincianPengeluaran(groupedData) {
   const periode = `${rekapProdTahun}-${String(rekapProdBulan + 1).padStart(2, "0")}`;
 
   try {
-    const allUsers = await window.idb.getUsers();
-    const relevantUsers = (allUsers || []).filter(
+    if (!window.usersCache?.length) {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUidUsers = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUidUsers)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    }
+    const relevantUsers = (window.usersCache || []).filter(
       u => u.role === "adminCabang" || u.role === "produksi"
     );
 

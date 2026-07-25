@@ -6,11 +6,7 @@ let auditTahun = new Date().getFullYear();
 async function loadAuditBelanjaAggregates() {
   const result = {};
   try {
-    const bulanStr = String(auditBulan + 1).padStart(2, "0");
-    const prefix   = `${auditTahun}-${bulanStr}`;
-
-    const allRecords = await window.idb.getAllStockOpname();
-    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(prefix));
+    const filtered = await getStockOpnameBulanCached(auditBulan, auditTahun);
 
     filtered.forEach(record => {
       const data = record.data || {};
@@ -56,11 +52,7 @@ async function loadAuditBelanjaLoyangAgg() {
 async function loadAuditVarianProduksiAgg() {
   const result = {}; // { CB: 10, BB: 715, ... }
   try {
-    const bulanStr = String(auditBulan + 1).padStart(2, "0");
-    const prefix   = `${auditTahun}-${bulanStr}`;
-
-    const allRecords = await window.idb.getAllStockOpname();
-    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(prefix));
+    const filtered = await getStockOpnameBulanCached(auditBulan, auditTahun);
 
     filtered.forEach(record => {
       const data = record.data || {};
@@ -141,8 +133,17 @@ async function loadAuditSlipGajiTotal() {
   try {
     const periode = `${auditTahun}-${String(auditBulan + 1).padStart(2, "0")}`;
 
-    const allUsers = await window.idb.getUsers();
-    const relevantUsers = (allUsers || []).filter(
+    if (!window.usersCache?.length) {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUidUsers = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUidUsers)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    }
+    const relevantUsers = (window.usersCache || []).filter(
       u => u.role === "adminCabang" || u.role === "produksi"
     );
 
@@ -194,7 +195,7 @@ async function loadAuditStockAkhirBulanLalu(periodeSekarang) {
   return result;
 }
 async function loadAuditBahanList() {
-  const kantorCabang = await idb.getKantorCabang();
+  const kantorCabang = await getKantorCabangCached();
   const loyangList    = kantorCabang?.loyang || [];
   const variableList  = kantorCabang?.pengeluaran?.variable || [];
   const varianMap     = kantorCabang?.varian || {};

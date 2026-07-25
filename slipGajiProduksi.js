@@ -150,7 +150,19 @@ async function renderSlipGajiProdKurirGrid() {
   gridEl.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
 
   if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUid = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    } catch (err) {
+      console.error("❌ renderSlipGajiProdKurirGrid (users):", err);
+      window.usersCache = [];
+    }
   }
   const users = (window.usersCache || []).filter(u => u.role === "produksi" || u.role === "adminCabang");
 
@@ -264,16 +276,10 @@ async function pilihKurirSlipGajiProd(uid, nama, role) {
     let gajiPokokValue = 0;
 
     try {
-      const kantorCabangCache = await window.idb.getKantorCabang();
-      const idCabang = kantorCabangCache?.id;
-      if (idCabang) {
-        const kcSnap = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
-        if (kcSnap.exists()) {
-          gajiPokokValue = Number(kcSnap.data()?.upahAdmin) || 0;
-        }
-      }
+      const kantorCabangForGaji = await getKantorCabangCached();
+      gajiPokokValue = Number(kantorCabangForGaji?.upahAdmin) || 0;
     } catch (err) {
-      console.error("❌ load gajiPokok dari Firestore kantorCabang (skip, pakai default 0):", err);
+      console.error("❌ load gajiPokok dari kantorCabang (skip, pakai default 0):", err);
     }
 
     slipGajiProdData.pendapatan = [
@@ -293,10 +299,9 @@ async function renderSlipGajiProdPendapatanTable(uid) {
   slipGajiProdPendapatanDetail = {};
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     const loyangArr = kantorCabang?.loyang || [];
     const aktifList = loyangArr.filter(item => item?.status === true);
-
     const hargaMap = {};
     aktifList.forEach(item => {
       if (item.jenisLoyang) hargaMap[item.jenisLoyang] = Number(item.upah) || 0;
@@ -467,7 +472,7 @@ async function simpanSlipGajiProd() {
 
   try {
     const adminUid     = window.auth?.currentUser?.uid;
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     const periode      = `${rekapProdTahun}-${String(rekapProdBulan + 1).padStart(2, "0")}`;
     const catatan      = document.getElementById("slipGajiProdCatatan").value.trim();
 

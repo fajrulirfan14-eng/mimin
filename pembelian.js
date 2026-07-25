@@ -19,7 +19,7 @@ let pembelianLoyangOptions = [];
 let pembelianFilterJenis = "";
 async function loadPembelianLoyangOptions() {
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     const loyangArr = kantorCabang?.loyang || [];
     return loyangArr
       .filter(l => l.status === true)

@@ -122,9 +122,8 @@ async function getStockBarangJadi() {
     const auditSnap = await window.getDoc(window.doc(window.db, "users", adminUid, "audit", periode));
     const hppReal = auditSnap.exists() ? (Number(auditSnap.data()?.hppReal) || 0) : 0;
 
-    // jumlahkan Input semua varian jadi satu angka (dari IDB stock opname, field "produksi")
-    const allRecords = await window.idb.getAllStockOpname();
-    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(periode));
+    // jumlahkan Input semua varian jadi satu angka (dari stock opname, field "produksi")
+    const filtered = await getStockOpnameBulanCached(neracaBulan, neracaTahun);
 
     let totalInput = 0;
     filtered.forEach(record => {
@@ -192,13 +191,16 @@ function getDefaultNeracaLiabilitas() {
 }
 async function getDefaultNeracaEkuitas() {
   try {
-    const adminUid = window.auth?.currentUser?.uid;
-    const allUsers = await window.idb.getUsers();
-    const adminData = allUsers.find(u => u.uid === adminUid);
-    const idCabangAdmin = adminData?.idCabang;
+    const idCabangAdmin = window.currentUser?.idCabang || "";
     if (!idCabangAdmin) return [];
 
-    const investorList = allUsers.filter(u => u.role === "investor" && u.idCabang === idCabangAdmin);
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users"),
+      window.where("idCabang", "==", idCabangAdmin),
+      window.where("role", "==", "investor"),
+      window.where("status", "==", true)
+    ));
+    const investorList = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
 
     return investorList.map(u => ({
       id: "default-investor-" + u.uid,
@@ -353,8 +355,13 @@ async function simpanNeracaSemua() {
   if (!adminUid) { window.showToast("User tidak terdeteksi", "error"); return; }
 
   const periode = `${neracaTahun}-${String(neracaBulan + 1).padStart(2, "0")}`;
-  const allUsers = await window.idb.getUsers();
-  const userData = allUsers.find(u => u.uid === adminUid);
+  let userData = {};
+  try {
+    const snapSelf = await window.getDoc(window.doc(window.db, "users", adminUid));
+    userData = snapSelf.exists() ? snapSelf.data() : {};
+  } catch (err) {
+    console.error("❌ simpanNeracaSemua (users):", err);
+  }
   const idCabang = userData?.idCabang || "";
 
   const labaBerjalan = hitungLabaBerjalan();

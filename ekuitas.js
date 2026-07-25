@@ -68,15 +68,16 @@ function initEkuitasProdFilter() {
 
 async function loadEkuitasInvestorList() {
   try {
-    const adminUid = window.auth?.currentUser?.uid;
-    if (!adminUid) return [];
-
-    const allUsers = await window.idb.getUsers();
-    const adminData = allUsers.find(u => u.uid === adminUid);
-    const idCabangAdmin = adminData?.idCabang;
+    const idCabangAdmin = window.currentUser?.idCabang || "";
     if (!idCabangAdmin) return [];
 
-    return allUsers.filter(u => u.role === "investor" && u.idCabang === idCabangAdmin && u.status === true);
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users"),
+      window.where("idCabang", "==", idCabangAdmin),
+      window.where("role", "==", "investor"),
+      window.where("status", "==", true)
+    ));
+    return snap.docs.map(d => ({ ...d.data(), id: d.id }));
   } catch (err) {
     console.error("❌ loadEkuitasInvestorList:", err);
     return [];
@@ -449,7 +450,7 @@ async function simpanEkuitasRoi() {
   const periode = `${ekuitasProdTahun}-${String(ekuitasProdBulan + 1).padStart(2, "0")}`;
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
 
     await window.setDoc(window.doc(window.db, "users", adminUid, "roi", periode), {
       createdAt: window.serverTimestamp(),
@@ -464,15 +465,10 @@ async function simpanEkuitasRoi() {
     const totalReturn = await hitungTotalReturnInvestor(adminUid, investorUid);
     await window.updateDoc(window.doc(window.db, "users", investorUid), { return: totalReturn });
 
-    // update state di memori + IDB biar KPI langsung ke-refresh tanpa perlu reload
+    // update state di memori biar KPI langsung ke-refresh tanpa perlu reload
     ekuitasSelectedInvestor.return = totalReturn;
     const idx = ekuitasInvestorList.findIndex(u => u.id === investorUid);
     if (idx > -1) ekuitasInvestorList[idx].return = totalReturn;
-    try {
-      await window.idb.saveUsers([ekuitasSelectedInvestor]);
-    } catch (idbErr) {
-      console.error("❌ Gagal update IDB return (non-fatal):", idbErr);
-    }
 
     renderEkuitasRoiKpi(ekuitasSelectedInvestor);
     renderEkuitasRoiRiwayat(ekuitasSelectedInvestor);
@@ -633,10 +629,8 @@ async function submitTambahEkuitasInvestor() {
   label.textContent = "Membuat akun...";
 
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     const adminUid     = window.auth?.currentUser?.uid;
-
-    // buat akun via secondary app supaya adminCabang tidak logout (pola sama kayak akun.js)
     const secondaryApp  = window.initializeApp(window.firebaseConfig, "secondary-ekuitas");
     const secondaryAuth = window.getAuth(secondaryApp);
     const cred          = await window.createUserWithEmailAndPassword(secondaryAuth, email, pass);
@@ -678,11 +672,6 @@ async function submitTambahEkuitasInvestor() {
 
     ekuitasInvestorList.push(payload);
     if (window.usersCache) window.usersCache.push(payload);
-    try {
-      await window.idb.saveUsers([payload]);
-    } catch (idbErr) {
-      console.error("❌ Gagal simpan ke IDB cache (non-fatal):", idbErr);
-    }
     renderEkuitasInvestorList();
     document.getElementById("ekuitasSheetOverlay")?.classList.remove("show");
     document.getElementById("ekuitasSheet")?.classList.remove("open");

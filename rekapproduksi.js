@@ -3,6 +3,34 @@ let rekapProdBulan = new Date().getMonth();
 let rekapProdTahun = new Date().getFullYear();
 const REKAP_PROD_BULAN_NAMA = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
 
+/* ── CACHE RAM stockOpname per bulan (reuse namespace window._rekapDistCache) ── */
+window._rekapDistCache = window._rekapDistCache || { kantorCabang: null, laporanByBulan: {}, custKurirGrouped: null };
+window._rekapDistCache.stockOpnameByBulan = window._rekapDistCache.stockOpnameByBulan || {};
+
+async function getStockOpnameBulanCached(bulan, tahun, forceRefresh = false) {
+  const key = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
+  if (!forceRefresh && window._rekapDistCache.stockOpnameByBulan[key]) {
+    return window._rekapDistCache.stockOpnameByBulan[key];
+  }
+  const adminUid = window.auth?.currentUser?.uid;
+  const mm    = String(bulan + 1).padStart(2, "0");
+  const start = `${tahun}-${mm}-01`;
+  const end   = `${tahun}-${mm}-31`;
+  let list = [];
+  try {
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users", adminUid, "stockOpname"),
+      window.where("tanggal", ">=", start),
+      window.where("tanggal", "<=", end)
+    ));
+    list = snap.docs.map(d => ({ tanggal: d.data().tanggal || d.id, data: d.data() }));
+  } catch (err) {
+    console.error("❌ getStockOpnameBulanCached:", err);
+  }
+  window._rekapDistCache.stockOpnameByBulan[key] = list;
+  return list;
+}
+
 const REKAP_PROD_JENIS = [
   "Saldo Kemarin",
   "Input",
@@ -84,8 +112,7 @@ async function loadLaporanAdminAggregates() {
     const bulanStr = String(rekapProdBulan + 1).padStart(2, "0");
     const prefix   = `${rekapProdTahun}-${bulanStr}`;
 
-    const allRecords = await window.idb.getAllLaporanAdmin();
-    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(prefix));
+    const filtered = await getLaporanAdminBulanCached(rekapProdBulan, rekapProdTahun);
 
     filtered.forEach(record => {
       const dataPerUid = record.data || {};
@@ -107,9 +134,8 @@ async function loadLaporanAdminAggregates() {
 
 async function loadRekapProdLoyangList() {
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     const loyangArr = kantorCabang?.loyang || [];
-
     const aktifList = loyangArr
       .filter(item => item?.status === true)
       .map(item => item.jenisLoyang)
@@ -132,8 +158,7 @@ async function loadStockOpnameKpi() {
     const bulanStr = String(rekapProdBulan + 1).padStart(2, "0");
     const prefix   = `${rekapProdTahun}-${bulanStr}`;
 
-    const allRecords = await window.idb.getAllStockOpname();
-    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(prefix));
+    const filtered = await getStockOpnameBulanCached(rekapProdBulan, rekapProdTahun);
 
     filtered.forEach(record => {
       const data = record.data || {};
@@ -180,8 +205,7 @@ async function loadStockOpnameAggregates() {
     const bulanStr = String(rekapProdBulan + 1).padStart(2, "0");
     const prefix   = `${rekapProdTahun}-${bulanStr}`;
 
-    const allRecords = await window.idb.getAllStockOpname();
-    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(prefix));
+    const filtered = await getStockOpnameBulanCached(rekapProdBulan, rekapProdTahun);
 
     filtered.forEach(record => {
       const data = record.data || {};
@@ -220,10 +244,13 @@ async function loadRekapProdVarianList() {
     const adminUid = window.auth?.currentUser?.uid;
     if (!adminUid) return [];
 
-    const allUsers = await window.idb.getUsers();
-    const userData = allUsers.find(u => u.uid === adminUid);
-    const varianArr = userData?.varian || [];
-
+    let varianArr = [];
+    try {
+      const snapSelf = await window.getDoc(window.doc(window.db, "users", adminUid));
+      varianArr = snapSelf.exists() ? (snapSelf.data()?.varian || []) : [];
+    } catch (err) {
+      console.error("❌ loadRekapProdVarianList (users):", err);
+    }
     const aktifList = [];
     varianArr.forEach(item => {
       const namaVarian = Object.keys(item)[0];
@@ -319,8 +346,7 @@ async function loadStockOpnameLoyangPerUser() {
     const bulanStr = String(rekapProdBulan + 1).padStart(2, "0");
     const prefix   = `${rekapProdTahun}-${bulanStr}`;
 
-    const allRecords = await window.idb.getAllStockOpname();
-    const filtered = allRecords.filter(r => (r.tanggal || "").startsWith(prefix));
+    const filtered = await getStockOpnameBulanCached(rekapProdBulan, rekapProdTahun);
 
     filtered.forEach(record => {
       const data = record.data || {};
@@ -475,7 +501,19 @@ async function refreshRekapProduksiData() {
   renderRekapProduksiTable();
 
   if (!window.usersCache?.length) {
-    window.usersCache = await window.idb.getUsers();
+    try {
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUidUsers = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUidUsers)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
+    } catch (err) {
+      console.error("❌ refreshRekapProduksiData (users):", err);
+      window.usersCache = [];
+    }
   }
   const loyangPerUser = await loadStockOpnameLoyangPerUser();
   const kasbonPerUser = await loadKasbonProduksiPerUser();
@@ -522,8 +560,9 @@ window.initRekapProduksiView = function() {
   document.getElementById("rekapProdReloadBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("rekapProdReloadBtn");
     btn.classList.add("spinning");
-    await reloadStockOpnameData();
-    await reloadLaporanAdminDataProd();
+    await getKantorCabangCached(true);
+    await getLaporanAdminBulanCached(rekapProdBulan, rekapProdTahun, true);
+    await getStockOpnameBulanCached(rekapProdBulan, rekapProdTahun, true);
     await refreshRekapProduksiData();
     btn.classList.remove("spinning");
   });
@@ -584,62 +623,4 @@ function initRekapProdFilter() {
     closeAll();
     await refreshRekapProduksiData();
   });
-}
-
-async function reloadLaporanAdminDataProd() {
-  try {
-    const adminUid = window.auth?.currentUser?.uid;
-    if (!adminUid) return;
-
-    const mm    = String(rekapProdBulan + 1).padStart(2, "0");
-    const start = `${rekapProdTahun}-${mm}-01`;
-    const end   = `${rekapProdTahun}-${mm}-31`;
-
-    const snap = await window.getDocs(window.query(
-      window.collection(window.db, "users", adminUid, "laporanAdmin"),
-      window.where("tanggal", ">=", start),
-      window.where("tanggal", "<=", end)
-    ));
-
-    let count = 0;
-    for (const docSnap of snap.docs) {
-      const data = docSnap.data();
-      await window.idb.saveLaporanAdmin(data.tanggal || docSnap.id, data);
-      count++;
-    }
-
-    window.showToast(`${count} data laporan admin berhasil dimuat`, "success");
-  } catch (err) {
-    console.error("❌ reloadLaporanAdminDataProd:", err);
-    window.showToast("Gagal memuat data laporan admin", "error");
-  }
-}
-
-async function reloadStockOpnameData() {
-  try {
-    const adminUid = window.auth?.currentUser?.uid;
-    if (!adminUid) return;
-
-    const mm    = String(rekapProdBulan + 1).padStart(2, "0");
-    const start = `${rekapProdTahun}-${mm}-01`;
-    const end   = `${rekapProdTahun}-${mm}-31`;
-
-    const snap = await window.getDocs(window.query(
-      window.collection(window.db, "users", adminUid, "stockOpname"),
-      window.where("tanggal", ">=", start),
-      window.where("tanggal", "<=", end)
-    ));
-
-    let count = 0;
-    for (const docSnap of snap.docs) {
-      const data = docSnap.data();
-      await window.idb.saveStockOpname(data.tanggal || docSnap.id, data);
-      count++;
-    }
-
-    window.showToast(`${count} data stock opname berhasil dimuat`, "success");
-  } catch (err) {
-    console.error("❌ reloadStockOpnameData:", err);
-    window.showToast("Gagal memuat data stock opname", "error");
-  }
 }

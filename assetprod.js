@@ -161,9 +161,7 @@ async function confirmAssetForm() {
   const adminUid = window.auth?.currentUser?.uid;
   if (!adminUid || !assetFormKategori) return;
 
-  const allUsers = await window.idb.getUsers();
-  const userData = allUsers.find(u => u.uid === adminUid);
-  const idCabang = userData?.idCabang || "";
+  const idCabang = window.currentUser?.idCabang || "";
   const nama  = document.getElementById("assetFormNama").value.trim();
   const qty   = Number(document.getElementById("assetFormQty").value) || 0;
   const harga = parseAngkaRibuanAsset(document.getElementById("assetFormHarga").value);
