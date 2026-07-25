@@ -418,6 +418,17 @@ function hitungTotalPenerimaan() {
 
   const el = document.getElementById("slipGajiTotalPenerimaan");
   if (el) el.textContent = `Rp ${total.toLocaleString("id-ID")}`;
+
+  // Total Pendapatan (UI only, tidak disimpan): sama kayak Total Penerimaan,
+  // tapi Klaim Insentif & Kasbon tidak ikut mengurangi
+  const potonganTanpaKlaimKasbon = slipGajiData.potongan.reduce((a, v) => {
+    if (v.readonly || v.key === "klaimInsentif" || v.key === "kasbon") return a;
+    return a + (Number(v.pembayaran) || 0);
+  }, 0);
+  const totalPendapatanKotor = totalPendapatan + totalBonus - potonganTanpaKlaimKasbon;
+
+  const elPendapatan = document.getElementById("slipGajiTotalPendapatan");
+  if (elPendapatan) elPendapatan.textContent = `Rp ${totalPendapatanKotor.toLocaleString("id-ID")}`;
 }
 
 async function simpanSlipGaji() {
