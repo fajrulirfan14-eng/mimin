@@ -967,7 +967,7 @@ function renderAssetsHistoryView() {
       bodyEl.innerHTML = `<div class="dh-ringkasan-empty">Simpan minimal 2 periode untuk melihat trend grafik</div>`;
       return;
     }
-    bodyEl.innerHTML = `<canvas id="assetsHistoryChart"></canvas>`;
+    bodyEl.innerHTML = `<div class="assets-history-chart-wrap"><canvas id="assetsHistoryChart"></canvas></div>`;
     const canvas = document.getElementById("assetsHistoryChart");
     if (!canvas || !window.Chart) return;
 
@@ -986,8 +986,25 @@ function renderAssetsHistoryView() {
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true } }
+        maintainAspectRatio: false,
+        interaction: {
+          mode: "index",
+          intersect: false,
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+          }
+        },
+        scales: { y: { beginAtZero: true } },
+        elements: {
+          point: {
+            radius: 5,
+            hoverRadius: 7,
+            hitRadius: 20,
+          }
+        }
       }
     });
   }
