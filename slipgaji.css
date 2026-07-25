@@ -5,6 +5,9 @@
 .slip-gaji-kurir-card {
   cursor: pointer;
   transition: border-color .15s;
+  background: var(--bg-card) important;
+  border: 1px solid var(--border-card);
+  border-radius: 20px;
 }
 .slip-gaji-kurir-card:hover { border-color: var(--brand-primary); }
 .slip-gaji-kurir-card.active { border-color: var(--brand-primary); background: var(--brand-pale); }
@@ -75,7 +78,7 @@
 }
 .slip-gaji-item-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.2fr 32px;
+  grid-template-columns: 3fr 0.8fr 1.1fr 32px;
   gap: 8px;
   font-size: 10px;
   font-weight: 700;
@@ -85,7 +88,7 @@
 }
 .slip-gaji-item-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.2fr 32px;
+  grid-template-columns: 3fr 0.8fr 1.1fr 32px;
   gap: 8px;
   align-items: center;
 }
@@ -363,7 +366,17 @@
 @media (max-width: 768px) {
   .slip-gaji-item-header,
   .slip-gaji-item-row {
-    grid-template-columns: 1.5fr 0.8fr 1fr 28px;
+    grid-template-columns: 2.4fr 0.7fr 1fr 26px;
+    gap: 6px;
+    font-size: 10.5px;
+  }
+  .slip-gaji-item-row input {
+    padding: 0 6px;
     font-size: 11px;
+  }
+  .slip-gaji-remove-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
   }
 }

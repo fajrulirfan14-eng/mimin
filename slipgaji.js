@@ -213,6 +213,8 @@ async function pilihKurirSlipGaji(uid, nama) {
   document.getElementById("slipGajiFormWrap").style.display = "block";
   document.getElementById("slipGajiFormNama").textContent   = nama;
 
+  document.getElementById("slipGajiFormWrap").scrollIntoView({ behavior: "smooth", block: "start" });
+
   const periodeLabelForm = `Periode: ${SLIP_GAJI_BULAN_NAMA[slipGajiBulan]} ${slipGajiTahun}`;
   const periodeEl = document.getElementById("slipGajiFormPeriode");
   if (periodeEl) periodeEl.textContent = periodeLabelForm;
