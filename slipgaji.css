@@ -41,7 +41,21 @@
   font-weight: 800;
   color: var(--text-primary);
 }
-
+.slip-gaji-form-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.slip-gaji-form-periode {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-hover);
+  padding: 6px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
 .slip-gaji-section {
   margin-bottom: 20px;
 }
@@ -93,6 +107,12 @@
   color: var(--text-muted);
   font-weight: 600;
 }
+.slip-gaji-input-hari[readonly],
+.slip-gaji-input-nominal[readonly] {
+  background: var(--bg-page);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
 .slip-gaji-input-hari,
 .slip-gaji-input-nominal {
   text-align: right;
@@ -127,7 +147,21 @@
 .slip-gaji-add-btn:hover {
   background: var(--brand-pale);
 }
-
+.slip-gaji-item-note {
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--text-muted);
+  padding: 2px 4px 4px;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  line-height: 1.4;
+}
+.slip-gaji-item-note i {
+  margin-top: 1px;
+  color: var(--brand-primary);
+  flex-shrink: 0;
+}
 .slip-gaji-catatan {
   width: 100%;
   border: 1px solid var(--border-card);
@@ -166,6 +200,164 @@
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+}/* ── PREVIEW SLIP GAJI TERSIMPAN ── */
+.slip-gaji-preview-wrap {
+  margin-top: 20px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-card);
+  border-radius: 14px;
+  padding: 16px;
+}
+.slip-gaji-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.slip-gaji-preview-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.slip-gaji-preview-periode {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.slip-gaji-preview-section {
+  margin-bottom: 14px;
+}
+.slip-gaji-preview-section:last-of-type {
+  margin-bottom: 0;
+}
+.slip-gaji-preview-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.slip-gaji-preview-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  padding: 5px 4px;
+}
+.slip-gaji-preview-row:nth-child(odd) {
+  background: var(--bg-page);
+  border-radius: 6px;
+}
+.slip-gaji-preview-row span:nth-child(2),
+.slip-gaji-preview-row span:nth-child(3) {
+  text-align: right;
+}
+.slip-gaji-preview-catatan {
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.slip-gaji-preview-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-card);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--brand-primary);
+}
+
+/* ── PREVIEW SLIP GAJI TERSIMPAN ── */
+.slip-gaji-preview-wrap {
+  margin-top: 20px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-card);
+  border-radius: 14px;
+  padding: 16px;
+}
+.slip-gaji-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.slip-gaji-preview-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--brand-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.slip-gaji-preview-periode {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.slip-gaji-preview-section {
+  margin-bottom: 14px;
+}
+.slip-gaji-preview-section:last-of-type {
+  margin-bottom: 0;
+}
+.slip-gaji-preview-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+.slip-gaji-preview-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1.2fr;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  padding: 5px 4px;
+}
+.slip-gaji-preview-row:nth-child(odd) {
+  background: var(--bg-page);
+  border-radius: 6px;
+}
+.slip-gaji-preview-row span:nth-child(2),
+.slip-gaji-preview-row span:nth-child(3) {
+  text-align: right;
+}
+.slip-gaji-preview-catatan {
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+.slip-gaji-preview-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-card);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--brand-primary);
 }
 
 @media (max-width: 768px) {

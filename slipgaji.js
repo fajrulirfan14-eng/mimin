@@ -15,6 +15,7 @@ const SLIP_GAJI_TEMPLATE = {
     { key: "bonusKunjungan",    label: "Bonus Kunjungan",             hari: 0, pembayaran: 0, fixed: true },
     { key: "bonusHariLiburPerusahaan", label: "Bonus Hari Libur Perusahaan", hari: 0, pembayaran: 0, fixed: true },
     { key: "bonusCustomerBaru", label: "Bonus Customer Baru",         hari: 0, pembayaran: 0, fixed: true },
+    { key: "bonusPay",          label: "Bonus Pay",                   hari: 0, pembayaran: 0, fixed: true, readonly: true },
   ],
   potongan: [
     { key: "targetData",     label: "Target Data",     hari: 0, pembayaran: 0, fixed: true },
@@ -146,6 +147,65 @@ async function cekSlipGajiFormBadge(uid) {
     console.error("❌ cekSlipGajiFormBadge:", err);
   }
 }
+async function loadSlipGajiPreview(uid) {
+  const wrap = document.getElementById("slipGajiPreviewWrap");
+  const body = document.getElementById("slipGajiPreviewBody");
+  const periodeEl = document.getElementById("slipGajiPreviewPeriode");
+  if (!wrap || !body) return;
+  wrap.style.display = "none";
+
+  const periode = `${slipGajiTahun}-${String(slipGajiBulan + 1).padStart(2, "0")}`;
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGaji", periode));
+    if (!snap.exists()) return;
+    const data = snap.data();
+
+    periodeEl.textContent = `Periode: ${SLIP_GAJI_BULAN_NAMA[slipGajiBulan]} ${slipGajiTahun}`;
+
+    const labelMap = {};
+    [...SLIP_GAJI_TEMPLATE.pendapatan, ...SLIP_GAJI_TEMPLATE.bonus, ...SLIP_GAJI_TEMPLATE.potongan]
+      .forEach(i => labelMap[i.key] = i.label);
+
+    const fromArr = key => (data.slipGaji || []).find(o => o[key])?.[key] || {};
+    const pendapatan = fromArr("pendapatan");
+    const bonus      = fromArr("bonus");
+    const potongan   = fromArr("potongan");
+
+    const renderRows = obj => Object.entries(obj).map(([key, v]) => {
+      const label = v.label || labelMap[key] || key;
+      const hari  = (v.hari === "-" || v.hari === undefined || v.hari === "") ? "-" : v.hari;
+      return `
+        <div class="slip-gaji-preview-row">
+          <span>${escSlip(label)}</span>
+          <span>${escSlip(String(hari))}</span>
+          <span>Rp ${(Number(v.pembayaran) || 0).toLocaleString("id-ID")}</span>
+        </div>`;
+    }).join("");
+
+    body.innerHTML = `
+      <div class="slip-gaji-preview-section">
+        <div class="slip-gaji-preview-section-title">Pendapatan</div>
+        ${renderRows(pendapatan)}
+      </div>
+      <div class="slip-gaji-preview-section">
+        <div class="slip-gaji-preview-section-title">Bonus</div>
+        ${renderRows(bonus)}
+      </div>
+      <div class="slip-gaji-preview-section">
+        <div class="slip-gaji-preview-section-title">Potongan</div>
+        ${renderRows(potongan)}
+      </div>
+      ${data.catatan ? `<div class="slip-gaji-preview-catatan"><b>Catatan:</b> ${escSlip(data.catatan)}</div>` : ""}
+      <div class="slip-gaji-preview-total">
+        <span>Total Penerimaan</span>
+        <span>Rp ${(Number(data.totalPenerimaan) || 0).toLocaleString("id-ID")}</span>
+      </div>
+    `;
+    wrap.style.display = "block";
+  } catch (err) {
+    console.error("❌ loadSlipGajiPreview:", err);
+  }
+}
 async function pilihKurirSlipGaji(uid, nama) {
   slipGajiSelectedUid  = uid;
   slipGajiSelectedNama = nama;
@@ -158,6 +218,7 @@ async function pilihKurirSlipGaji(uid, nama) {
   if (periodeEl) periodeEl.textContent = periodeLabelForm;
 
   await cekSlipGajiFormBadge(uid);
+  await loadSlipGajiPreview(uid);
   slipGajiData = JSON.parse(JSON.stringify(SLIP_GAJI_TEMPLATE));
   document.getElementById("slipGajiCatatan").value = "";
 
@@ -190,10 +251,12 @@ async function pilihKurirSlipGaji(uid, nama) {
   const bonusKehadiran = bonusInfo.bonusKehadiran;
 
   let bonusKunjungan = 0;
+  let bonusPay = 0;
   filteredLaporan.forEach(l => {
     const d = l.data?.[uid];
     if (!d) return;
     bonusKunjungan += Number(d.distribusi?.keuangan?.bonus?.bonusKunjungan) || 0;
+    bonusPay        += Number(d.distribusi?.keuangan?.bonus?.bonusPay) || 0;
   });
 
   const idxBonusKehadiran = slipGajiData.bonus.findIndex(i => i.key === "bonusKehadiran");
@@ -201,10 +264,10 @@ async function pilihKurirSlipGaji(uid, nama) {
     slipGajiData.bonus[idxBonusKehadiran].hari = bonusKehadiran > 0 ? hariMasukKerja : 0;
     slipGajiData.bonus[idxBonusKehadiran].pembayaran = bonusKehadiran;
   }
-  const idxBonusKunjungan = slipGajiData.bonus.findIndex(i => i.key === "bonusKunjungan");
-  if (idxBonusKunjungan !== -1) {
-    slipGajiData.bonus[idxBonusKunjungan].hari = "-";
-    slipGajiData.bonus[idxBonusKunjungan].pembayaran = bonusKunjungan;
+  const idxBonusPay = slipGajiData.bonus.findIndex(i => i.key === "bonusPay");
+  if (idxBonusPay !== -1) {
+    slipGajiData.bonus[idxBonusPay].hari = "-";
+    slipGajiData.bonus[idxBonusPay].pembayaran = bonusPay;
   }
 
   // ── Bonus Hari Libur Perusahaan ──
@@ -281,17 +344,17 @@ function renderSlipGajiItems() {
     const containerEl = document.getElementById(`slipGaji${capitalize(section)}Items`);
     if (!containerEl) return;
 
-    const jumlahSection = slipGajiData[section].reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
+    const jumlahSection = slipGajiData[section].reduce((a, v) => a + (v.readonly ? 0 : (Number(v.pembayaran) || 0)), 0);
 
     containerEl.innerHTML = slipGajiData[section].map((item, idx) => `
       <div class="slip-gaji-item-row" data-section="${section}" data-idx="${idx}">
         <input type="text" class="slip-gaji-input-label" value="${escSlip(item.label)}" ${item.fixed ? "readonly" : ""}>
-        <input type="number" class="slip-gaji-input-hari" min="0" value="${item.hari || ""}" placeholder="-">
-        <input type="text" class="slip-gaji-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0">
+        <input type="number" class="slip-gaji-input-hari" min="0" value="${item.hari || ""}" placeholder="-" ${item.readonly ? "readonly" : ""}>
+        <input type="text" class="slip-gaji-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0" ${item.readonly ? "readonly" : ""}>
         <button class="slip-gaji-remove-btn" ${item.fixed ? "style=\"visibility:hidden\"" : ""}>
           <i class="fa-solid fa-trash"></i>
         </button>
-      </div>`).join("") + `
+      </div>${item.readonly ? `<div class="slip-gaji-item-note"><i class="fa-solid fa-circle-info"></i> Bonus pay sudah diserahkan langsung pada hari kerja saat itu juga — tidak dihitung ke total penerimaan dan tidak disimpan ke slip gaji.</div>` : ""}`).join("") + `
       <div class="slip-gaji-item-row slip-gaji-jumlah-row">
         <span>Jumlah</span>
         <span></span>
@@ -336,7 +399,7 @@ function updateJumlahSection(section) {
   if (!containerEl) return;
   const jumlahRow = containerEl.querySelector(".slip-gaji-jumlah-row .slip-gaji-jumlah-val");
   if (!jumlahRow) return;
-  const jumlahSection = slipGajiData[section].reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
+  const jumlahSection = slipGajiData[section].reduce((a, v) => a + (v.readonly ? 0 : (Number(v.pembayaran) || 0)), 0);
   jumlahRow.textContent = jumlahSection ? jumlahSection.toLocaleString("id-ID") : "-";
 }
 function tambahItemCustom(section) {
@@ -347,7 +410,7 @@ function tambahItemCustom(section) {
 
 function hitungTotalPenerimaan() {
   if (!slipGajiData) return;
-  const sum = arr => arr.reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
+  const sum = arr => arr.reduce((a, v) => a + (v.readonly ? 0 : (Number(v.pembayaran) || 0)), 0);
   const totalPendapatan = sum(slipGajiData.pendapatan);
   const totalBonus      = sum(slipGajiData.bonus);
   const totalPotongan   = sum(slipGajiData.potongan);
@@ -370,11 +433,12 @@ async function simpanSlipGaji() {
     const catatan      = document.getElementById("slipGajiCatatan").value.trim();
 
     const toObj = arr => arr.reduce((acc, item) => {
-      acc[item.key] = { hari: item.hari, pembayaran: item.pembayaran };
+      if (item.readonly) return acc;
+      acc[item.key] = { label: item.label, hari: item.hari, pembayaran: item.pembayaran };
       return acc;
     }, {});
 
-    const sum = arr => arr.reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
+    const sum = arr => arr.reduce((a, v) => a + (v.readonly ? 0 : (Number(v.pembayaran) || 0)), 0);
     const totalPenerimaan = sum(slipGajiData.pendapatan) + sum(slipGajiData.bonus) - sum(slipGajiData.potongan);
 
     await window.setDoc(
@@ -399,6 +463,7 @@ async function simpanSlipGaji() {
     document.getElementById("slipGajiFormBadge").style.display = "flex";
     const badgeGrid = document.getElementById(`slipGajiBadge-${slipGajiSelectedUid}`);
     if (badgeGrid) badgeGrid.style.display = "flex";
+    await loadSlipGajiPreview(slipGajiSelectedUid);
   } catch (err) {
     console.error("❌ simpanSlipGaji:", err);
     window.showToast("Gagal menyimpan slip gaji", "error");
