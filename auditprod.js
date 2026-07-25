@@ -289,12 +289,24 @@ function renderAuditTable() {
     return;
   }
 
+  // kategori yang HPP Real-nya bisa diketik manual (Saldo yang tetap auto-hitung)
+  const HPP_REAL_EDITABLE_KATEGORI = ["loyang", "varian"];
+
   tbody.innerHTML = auditBahanList.map(row => {
     const { saldo, hppReal } = hitungAuditRow(row);
-    const belanja = Number(row.belanja) || 0;
-    const belanjaCell = row.kategori === "manual"
-      ? `<input type="number" min="0" class="audit-input audit-input-belanja" data-id="${row.id}" value="${row.belanja || ""}">`
-      : `<span class="audit-readonly-val audit-readonly-belanja">${belanja ? belanja.toLocaleString("id-ID") : ""}</span>`;
+    const hppRealEditable = HPP_REAL_EDITABLE_KATEGORI.includes(row.kategori);
+
+    // Belanja: sekarang selalu bisa diketik manual, semua kategori
+    const belanjaCell = `<input type="number" min="0" class="audit-input audit-input-belanja" data-id="${row.id}" value="${row.belanja || ""}">`;
+
+    // HPP Real: input kalau loyang/varian (override angka agregat), readonly kalau variable/manual (hasil hitung)
+    const hppRealCell = hppRealEditable
+      ? `<input type="number" min="0" class="audit-input audit-input-hppreal" data-id="${row.id}" value="${row.hppReal || ""}">`
+      : `<span class="audit-readonly-val audit-readonly-hppreal">${hppReal ? hppReal.toLocaleString("id-ID") : ""}</span>`;
+
+    // Saldo: tetap readonly, selalu hasil hitung live dari kolom lain
+    const saldoCell = `<span class="audit-readonly-val audit-readonly-saldo ${saldo < 0 ? "negative" : ""}">${saldo ? saldo.toLocaleString("id-ID") : ""}</span>`;
+
     return `
       <tr data-id="${row.id}">
         <td class="audit-td-jenis">
@@ -307,10 +319,10 @@ function renderAuditTable() {
           ${belanjaCell}
         </td>
         <td>
-          <span class="audit-readonly-val audit-readonly-hppreal">${hppReal ? hppReal.toLocaleString("id-ID") : ""}</span>
+          ${hppRealCell}
         </td>
         <td>
-          <span class="audit-readonly-val audit-readonly-saldo ${saldo < 0 ? "negative" : ""}">${saldo ? saldo.toLocaleString("id-ID") : ""}</span>
+          ${saldoCell}
         </td>
         <td>
           <input type="number" min="0" class="audit-input audit-input-stockakhir" data-id="${row.id}" value="${row.stockAkhir || ""}">
@@ -320,7 +332,7 @@ function renderAuditTable() {
   attachAuditInputListeners();
 }
 function attachAuditInputListeners() {
-  document.querySelectorAll(".audit-input-stockawal, .audit-input-stockakhir, .audit-input-belanja").forEach(input => {
+  document.querySelectorAll(".audit-input-stockawal, .audit-input-stockakhir, .audit-input-belanja, .audit-input-hppreal").forEach(input => {
     input.oninput = () => {
       const id  = input.dataset.id;
       const row = auditBahanList.find(r => r.id === id);
@@ -329,17 +341,24 @@ function attachAuditInputListeners() {
       if (input.classList.contains("audit-input-stockawal"))  row.stockAwal  = Number(input.value) || 0;
       if (input.classList.contains("audit-input-stockakhir")) row.stockAkhir = Number(input.value) || 0;
       if (input.classList.contains("audit-input-belanja"))    row.belanja    = Number(input.value) || 0;
+      if (input.classList.contains("audit-input-hppreal"))    row.hppReal    = Number(input.value) || 0;
 
+      // rumus tetap jalan live, pakai angka yang lagi ada di tiap kolom (otomatis atau manual, sama saja)
       const { saldo, hppReal } = hitungAuditRow(row);
       const tr = input.closest("tr");
 
       const saldoEl = tr.querySelector(".audit-readonly-saldo");
-      saldoEl.textContent = saldo ? saldo.toLocaleString("id-ID") : "";
-      saldoEl.classList.toggle("negative", saldo < 0);
+      if (saldoEl) {
+        saldoEl.textContent = saldo ? saldo.toLocaleString("id-ID") : "";
+        saldoEl.classList.toggle("negative", saldo < 0);
+      }
 
+      // HPP Real cuma diupdate otomatis kalau BUKAN kolom yang lagi diketik (kategori variable/manual)
       const hppRealEl = tr.querySelector(".audit-readonly-hppreal");
-      hppRealEl.textContent = hppReal ? hppReal.toLocaleString("id-ID") : "";
-      hppRealEl.classList.toggle("negative", hppReal < 0);
+      if (hppRealEl && !input.classList.contains("audit-input-hppreal")) {
+        hppRealEl.textContent = hppReal ? hppReal.toLocaleString("id-ID") : "";
+        hppRealEl.classList.toggle("negative", hppReal < 0);
+      }
     };
   });
 }
@@ -436,7 +455,7 @@ function initAuditFilter() {
   document.getElementById("auditReloadBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("auditReloadBtn");
     btn.classList.add("spinning");
-    await reloadStockOpnameData();
+    await getStockOpnameBulanCached(auditBulan, auditTahun, true);
     await loadAuditBahanList();
     renderAuditTable();
     await loadAuditPreview();
