@@ -267,20 +267,128 @@ async function hitungPemasukanPay() {
 
   return result;
 }
+async function hitungKerugianExpired() {
+  // hasil: { CB: { qty, nominal }, BB: { qty, nominal }, ... }
+  const result = {};
+  RINCIAN_PEMASUKAN_VARIAN_LIST.forEach(v => { result[v] = { qty: 0, nominal: 0 }; });
+
+  try {
+    if (!window.usersCache?.length) {
+      window.usersCache = await window.idb.getUsers();
+    }
+    const users = (window.usersCache || []).filter(u => u.role === "kurir");
+    if (!users.length) return result;
+
+    const allLaporan = await window.idb.getAllLaporanAdmin();
+    const mm = String(rincianPemasukanBulan + 1).padStart(2, "0");
+    const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${rincianPemasukanTahun}-${mm}`));
+
+    users.forEach(u => {
+      const hargaMap = {};
+      (u.varian || []).forEach(v => {
+        const key = Object.keys(v)[0];
+        if (key) hargaMap[key] = {
+          konsumen: Number(v[key]?.hargaKonsumen) || 0,
+          produksi: Number(v[key]?.hargaProduksi) || 0,
+        };
+      });
+
+      const expiredQty = {};
+      RINCIAN_PEMASUKAN_VARIAN_LIST.forEach(v => { expiredQty[v] = 0; });
+
+      filteredLaporan.forEach(l => {
+        const dist = l.data?.[u.uid]?.distribusi;
+        if (!dist) return;
+        RINCIAN_PEMASUKAN_VARIAN_LIST.forEach(v => {
+          expiredQty[v] += Number(dist.expired?.[v]) || 0;
+        });
+      });
+
+      RINCIAN_PEMASUKAN_VARIAN_LIST.forEach(v => {
+        const harga = hargaMap[v] || { produksi: 0 };
+        result[v].qty     += expiredQty[v];
+        result[v].nominal += expiredQty[v] * harga.produksi;
+      });
+    });
+  } catch (err) {
+    console.error("❌ hitungKerugianExpired:", err);
+  }
+
+  return result;
+}
+async function hitungKerugianCustomer() {
+  let totalCustomerNew = 0;
+  let totalCustomerPutus = 0;
+  let upahHunter = 0;
+
+  try {
+    const kantorCabang = await window.idb.getKantorCabang();
+    upahHunter = Number(kantorCabang?.upahHunter) || 0;
+
+    if (!window.usersCache?.length) {
+      window.usersCache = await window.idb.getUsers();
+    }
+    const users = (window.usersCache || []).filter(u => u.role === "kurir");
+    if (!users.length) return { totalCustomerNew, totalCustomerPutus, upahHunter };
+
+    const allLaporan = await window.idb.getAllLaporanAdmin();
+    const mm = String(rincianPemasukanBulan + 1).padStart(2, "0");
+    const filteredLaporan = allLaporan.filter(l => l.tanggal?.startsWith(`${rincianPemasukanTahun}-${mm}`));
+
+    const HARI_LIST = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
+
+    for (const u of users) {
+      filteredLaporan.forEach(l => {
+        const d = l.data?.[u.uid];
+        if (!d) return;
+        totalCustomerNew += Number(d.distribusi?.infoTarget?.customerNew) || 0;
+      });
+
+      for (const h of HARI_LIST) {
+        const custHari = await window.idb.getCustKurir(u.uid, h);
+        if (custHari?.length) {
+          totalCustomerPutus += custHari.filter(c => c.status === false).length;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("❌ hitungKerugianCustomer:", err);
+  }
+
+  return { totalCustomerNew, totalCustomerPutus, upahHunter };
+}
+async function gabungkanKerugianCustomerKeRincianPengeluaranDistribusi(groupedData) {
+  const jenisKerugianCustomer = "Kerugian Customer";
+  try {
+    const { totalCustomerNew, totalCustomerPutus, upahHunter } = await hitungKerugianCustomer();
+    const nominalCustomerNew   = totalCustomerNew * upahHunter;
+    const nominalCustomerPutus = totalCustomerPutus * upahHunter;
+
+    if (!groupedData[jenisKerugianCustomer]) {
+      groupedData[jenisKerugianCustomer] = { qty: 0, nominal: 0, items: {} };
+    }
+    groupedData[jenisKerugianCustomer].qty      += totalCustomerNew + totalCustomerPutus;
+    groupedData[jenisKerugianCustomer].nominal  += nominalCustomerNew + nominalCustomerPutus;
+    groupedData[jenisKerugianCustomer].items["Customer New"]   = { qty: totalCustomerNew,   nominal: nominalCustomerNew };
+    groupedData[jenisKerugianCustomer].items["Customer Putus"] = { qty: totalCustomerPutus, nominal: nominalCustomerPutus };
+  } catch (err) {
+    console.error("❌ gabungkanKerugianCustomerKeRincianPengeluaranDistribusi:", err);
+  }
+}
 async function loadRincianDistSlipGajiPerUser(kurirUid, periode) {
   try {
     const snap = await window.getDoc(window.doc(window.db, "users", kurirUid, "slipGaji", periode));
     if (!snap.exists()) return 0;
 
     const data = snap.data();
-    return Number(data.totalPenerimaan) || 0;
+    return Number(data.totalPendapatan) || 0;
   } catch (err) {
     console.error(`❌ loadRincianDistSlipGajiPerUser (${kurirUid}):`, err);
     return 0;
   }
 }
 async function gabungkanGajiKeRincianPengeluaranDistribusi(groupedData) {
-  const jenisGaji = "Total Pemberian Gaji";
+  const jenisGaji = "Beban Gaji";
   const periode = `${rincianPemasukanTahun}-${String(rincianPemasukanBulan + 1).padStart(2, "0")}`;
 
   try {
@@ -340,17 +448,46 @@ async function renderRincianPemasukanPanel() {
 
   pemasukanTbody.innerHTML = (rows || `<tr><td>-</td><td>-</td><td>Rp 0</td></tr>`) + totalRow;
 
+  const kerugianExpiredTbody = document.getElementById("rincianKerugianExpiredTable")?.querySelector("tbody");
+  let totalKerugianExpired = 0;
+  if (kerugianExpiredTbody) {
+    const expiredPerVarian = await hitungKerugianExpired();
+    let totalQtyExpired = 0;
+    const expiredRows = RINCIAN_PEMASUKAN_VARIAN_LIST.map(v => {
+      const { qty, nominal } = expiredPerVarian[v] || { qty: 0, nominal: 0 };
+      totalKerugianExpired += nominal;
+      totalQtyExpired += qty;
+      return `
+      <tr>
+        <td>${v}</td>
+        <td>${qty ? qty.toLocaleString("id-ID") : "-"}</td>
+        <td>${nominal ? "Rp " + nominal.toLocaleString("id-ID") : "Rp 0"}</td>
+      </tr>`;
+    }).join("");
+
+    const totalExpiredRow = `
+      <tr class="rincian-tabel-total-row">
+        <td>Total</td>
+        <td>${totalQtyExpired ? totalQtyExpired.toLocaleString("id-ID") : "-"}</td>
+        <td>Rp ${totalKerugianExpired.toLocaleString("id-ID")}</td>
+      </tr>`;
+
+    kerugianExpiredTbody.innerHTML = (expiredRows || `<tr><td>-</td><td>-</td><td>Rp 0</td></tr>`) + totalExpiredRow;
+  }
+
   const pengeluaranAgg   = await loadRincianDistribusiPengeluaranAgg();
   await gabungkanGajiKeRincianPengeluaranDistribusi(pengeluaranAgg);
+  await gabungkanKerugianCustomerKeRincianPengeluaranDistribusi(pengeluaranAgg);
   const totalPengeluaran = renderRincianDistribusiPengeluaranTable(pengeluaranAgg);
-  const selisih          = totalPemasukan - totalPengeluaran;
+  const totalPengeluaranDanKerugian = totalPengeluaran + totalKerugianExpired;
+  const selisih          = totalPemasukan - totalPengeluaranDanKerugian;
 
   const totalPemasukanCard   = document.querySelector('.rincian-summary-card[data-tipe="pemasukan"] .rincian-summary-total');
   const totalPengeluaranCard = document.querySelector('.rincian-summary-card[data-tipe="pengeluaran"] .rincian-summary-total');
   const selisihCard          = document.querySelector('.rincian-summary-card[data-tipe="selisih"] .rincian-summary-total');
 
   if (totalPemasukanCard)   totalPemasukanCard.textContent   = `Rp ${totalPemasukan.toLocaleString("id-ID")}`;
-  if (totalPengeluaranCard) totalPengeluaranCard.textContent = `Rp ${totalPengeluaran.toLocaleString("id-ID")}`;
+  if (totalPengeluaranCard) totalPengeluaranCard.textContent = `Rp ${totalPengeluaranDanKerugian.toLocaleString("id-ID")}`;
   if (selisihCard) {
     selisihCard.textContent = `${selisih < 0 ? "-Rp " : "Rp "}${Math.abs(selisih).toLocaleString("id-ID")}`;
   }
