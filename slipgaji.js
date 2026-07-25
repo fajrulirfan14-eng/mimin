@@ -459,6 +459,12 @@ async function simpanSlipGaji() {
     const sum = arr => arr.reduce((a, v) => a + (v.readonly ? 0 : (Number(v.pembayaran) || 0)), 0);
     const totalPenerimaan = sum(slipGajiData.pendapatan) + sum(slipGajiData.bonus) - sum(slipGajiData.potongan);
 
+    const potonganTanpaKlaimKasbon = slipGajiData.potongan.reduce((a, v) => {
+      if (v.readonly || v.key === "klaimInsentif" || v.key === "kasbon") return a;
+      return a + (Number(v.pembayaran) || 0);
+    }, 0);
+    const totalPendapatan = sum(slipGajiData.pendapatan) + sum(slipGajiData.bonus) - potonganTanpaKlaimKasbon;
+
     await window.setDoc(
       window.doc(window.db, "users", slipGajiSelectedUid, "slipGaji", periode),
       {
@@ -474,6 +480,7 @@ async function simpanSlipGaji() {
           { potongan:   toObj(slipGajiData.potongan) },
         ],
         totalPenerimaan,
+        totalPendapatan,
       }
     );
 
