@@ -76,21 +76,32 @@
   flex-direction: column;
   gap: 6px;
 }
-.slip-gaji-item-header {
-  display: grid;
-  grid-template-columns: 3fr 0.8fr 1.1fr 32px;
+.slip-gaji-item-header,
+.slip-gaji-item-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
+}
+.slip-gaji-item-header {
   font-size: 10px;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   padding: 0 4px;
 }
-.slip-gaji-item-row {
+.slip-gaji-item-fields {
+  flex: 1;
+  min-width: 0;
   display: grid;
-  grid-template-columns: 3fr 0.8fr 1.1fr 32px;
+  grid-template-columns: 3fr 0.8fr 1.1fr;
   gap: 8px;
-  align-items: center;
+}
+.slip-gaji-item-fields span:nth-child(2) { text-align: center; }
+.slip-gaji-item-fields span:nth-child(3) { text-align: right; }
+.slip-gaji-header-spacer,
+.slip-gaji-remove-btn {
+  flex-shrink: 0;
+  width: 32px;
 }
 .slip-gaji-item-row input {
   height: 36px;
@@ -116,9 +127,12 @@
   color: var(--text-muted);
   cursor: not-allowed;
 }
-.slip-gaji-input-hari,
+.slip-gaji-input-hari {
+  text-align: center;
+}
 .slip-gaji-input-nominal {
   text-align: right;
+  padding-right: 4px;
 }
 .slip-gaji-remove-btn {
   width: 32px;
@@ -258,87 +272,9 @@
   background: var(--bg-page);
   border-radius: 6px;
 }
-.slip-gaji-preview-row span:nth-child(2),
-.slip-gaji-preview-row span:nth-child(3) {
-  text-align: right;
+.slip-gaji-preview-row span:nth-child(2) {
+  text-align: center;
 }
-.slip-gaji-preview-catatan {
-  font-size: 12px;
-  color: var(--text-primary);
-  background: var(--bg-page);
-  border-radius: 8px;
-  padding: 10px 12px;
-  margin-top: 8px;
-  line-height: 1.5;
-}
-.slip-gaji-preview-total {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border-card);
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--brand-primary);
-}
-
-/* ── PREVIEW SLIP GAJI TERSIMPAN ── */
-.slip-gaji-preview-wrap {
-  margin-top: 20px;
-  background: var(--bg-hover);
-  border: 1px solid var(--border-card);
-  border-radius: 14px;
-  padding: 16px;
-}
-.slip-gaji-preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.slip-gaji-preview-title {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--brand-primary);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.slip-gaji-preview-periode {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-.slip-gaji-preview-section {
-  margin-bottom: 14px;
-}
-.slip-gaji-preview-section:last-of-type {
-  margin-bottom: 0;
-}
-.slip-gaji-preview-section-title {
-  font-size: 10px;
-  font-weight: 800;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 6px;
-}
-.slip-gaji-preview-row {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1.2fr;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-primary);
-  padding: 5px 4px;
-}
-.slip-gaji-preview-row:nth-child(odd) {
-  background: var(--bg-page);
-  border-radius: 6px;
-}
-.slip-gaji-preview-row span:nth-child(2),
 .slip-gaji-preview-row span:nth-child(3) {
   text-align: right;
 }
@@ -366,16 +302,22 @@
 @media (max-width: 768px) {
   .slip-gaji-item-header,
   .slip-gaji-item-row {
-    grid-template-columns: 2.4fr 0.7fr 1fr 26px;
     gap: 6px;
     font-size: 10.5px;
+  }
+  .slip-gaji-item-fields {
+    grid-template-columns: 2.4fr 0.7fr 1fr;
+    gap: 6px;
+  }
+  .slip-gaji-header-spacer,
+  .slip-gaji-remove-btn {
+    width: 26px;
   }
   .slip-gaji-item-row input {
     padding: 0 6px;
     font-size: 11px;
   }
   .slip-gaji-remove-btn {
-    width: 26px;
     height: 26px;
     font-size: 10px;
   }

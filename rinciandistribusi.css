@@ -66,9 +66,24 @@
   border-top: 1px solid rgba(0,0,0,0.06);
   color: var(--text-primary, #2d2d2d);
 }
-
+.rincian-tabel thead th:nth-child(2),
+.rincian-tabel tbody td:nth-child(2) {
+  text-align: center;
+}
+.rincian-tabel thead th:nth-child(3),
+.rincian-tabel tbody td:nth-child(3) {
+  text-align: right;
+}
 .rincian-tabel tbody tr:last-child td {
   font-weight: 700;
+}
+.rekap-dist-table thead th:nth-child(2),
+.rekap-dist-table tbody td:nth-child(2) {
+  text-align: center;
+}
+.rekap-dist-table thead th:nth-child(3),
+.rekap-dist-table tbody td:nth-child(3) {
+  text-align: right;
 }
 
 @media (max-width: 640px) {

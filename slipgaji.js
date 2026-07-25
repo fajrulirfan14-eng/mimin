@@ -355,18 +355,20 @@ function renderSlipGajiItems() {
 
     containerEl.innerHTML = slipGajiData[section].map((item, idx) => `
       <div class="slip-gaji-item-row" data-section="${section}" data-idx="${idx}">
-        <input type="text" class="slip-gaji-input-label" value="${escSlip(item.label)}" ${item.fixed ? "readonly" : ""}>
-        <input type="number" class="slip-gaji-input-hari" min="0" value="${item.hari || ""}" placeholder="-" ${item.readonly ? "readonly" : ""}>
-        <input type="text" class="slip-gaji-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0" ${item.readonly ? "readonly" : ""}>
-        <button class="slip-gaji-remove-btn" ${item.fixed ? "style=\"visibility:hidden\"" : ""}>
-          <i class="fa-solid fa-trash"></i>
-        </button>
+        <div class="slip-gaji-item-fields">
+          <input type="text" class="slip-gaji-input-label" value="${escSlip(item.label)}" ${item.fixed ? "readonly" : ""}>
+          <input type="number" class="slip-gaji-input-hari" min="0" value="${item.hari || ""}" placeholder="-" ${item.readonly ? "readonly" : ""}>
+          <input type="text" class="slip-gaji-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0" ${item.readonly ? "readonly" : ""}>
+        </div>
+        ${item.fixed ? "" : `<button class="slip-gaji-remove-btn"><i class="fa-solid fa-trash"></i></button>`}
       </div>${item.readonly ? `<div class="slip-gaji-item-note"><i class="fa-solid fa-circle-info"></i> Bonus pay sudah diserahkan langsung pada hari kerja saat itu juga — tidak dihitung ke total penerimaan dan tidak disimpan ke slip gaji.</div>` : ""}`).join("") + `
       <div class="slip-gaji-item-row slip-gaji-jumlah-row">
-        <span>Jumlah</span>
-        <span></span>
-        <span class="slip-gaji-jumlah-val">${jumlahSection ? jumlahSection.toLocaleString("id-ID") : "-"}</span>
-        <span></span>
+        <div class="slip-gaji-item-fields">
+          <span>Jumlah</span>
+          <span></span>
+          <span class="slip-gaji-jumlah-val">${jumlahSection ? jumlahSection.toLocaleString("id-ID") : "-"}</span>
+        </div>
+        <span class="slip-gaji-header-spacer"></span>
       </div>`;
 
     containerEl.querySelectorAll(".slip-gaji-item-row[data-idx]").forEach(row => {
