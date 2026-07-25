@@ -133,8 +133,10 @@ function syncAssetsFilterLabel(shouldRerender = true) {
 }
 let perKurirData = [];
 let assetsPenyusutanValue = 0;
+let assetsPenyusutanManualEdit = false;
 async function renderAssetsGrid() {
   perKurirData = [];
+  assetsExtraCards = [];
   const gridEl = document.getElementById("assetsGrid");
   if (!gridEl) return;
   gridEl.innerHTML = `<div class="dh-ringkasan-empty">Memuat...</div>`;
@@ -149,9 +151,28 @@ async function renderAssetsGrid() {
 
   const kantorCabang = await window.idb.getKantorCabang();
   const upahHunter   = Number(kantorCabang?.upahHunter) || 0;
+  const assetsAwalValue = Number(kantorCabang?.asetPendam) || 0;
   window._assetsKantorCabangCache = kantorCabang;
   const varianList   = ["CB", "BB", "BK", "MC"];
   const HARI_LIST    = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
+
+  // ── ASET BULAN SEBELUMNYA (buat hitung penyusutan per kurir) ──
+  const ASSETS_BULAN_NAMA_PREV = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+  let prevAssetsBulan = rekapDistBulan - 1;
+  let prevAssetsTahun = rekapDistTahun;
+  if (prevAssetsBulan < 0) { prevAssetsBulan = 11; prevAssetsTahun -= 1; }
+  const prevAssetsPeriode = `${prevAssetsTahun}-${String(prevAssetsBulan + 1).padStart(2, "0")}`;
+  const prevAssetsLabel = ASSETS_BULAN_NAMA_PREV[prevAssetsBulan];
+  let prevAssetsMap = {};
+  try {
+    const adminUidForPrev = window.auth?.currentUser?.uid;
+    const prevSnap = await window.getDoc(window.doc(window.db, "users", adminUidForPrev, "assets", prevAssetsPeriode));
+    if (prevSnap.exists()) {
+      (prevSnap.data()?.perKurir || []).forEach(k => { prevAssetsMap[k.uid] = Number(k.totalAssetKurir) || 0; });
+    }
+  } catch (err) {
+    console.error("❌ load aset bulan sebelumnya:", err);
+  }
 
   const cardsHtml = [];
   window._assetsBaseData = { totalJumlahCustomer: 0, totalNominalCustomer: 0, totalModalQty: {}, totalModalNominal: {} };
@@ -217,6 +238,10 @@ async function renderAssetsGrid() {
       window._assetsBaseData.totalModalNominal[v] = totalModalNominal[v];
     });
     const totalAssetKurir = nominalCustomer + jumlahModalNominal;
+    const prevTotalAsset = prevAssetsMap[u.uid] || 0;
+    const penyusutanKurir = totalAssetKurir - prevTotalAsset;
+    const penyusutanClass = penyusutanKurir > 0 ? "assets-penyusutan-plus" : (penyusutanKurir < 0 ? "assets-penyusutan-minus" : "");
+    const penyusutanSign  = penyusutanKurir > 0 ? "+" : "";
     perKurirData.push({
       uid: u.uid,
       nama,
@@ -249,12 +274,24 @@ async function renderAssetsGrid() {
           </div>
 
           <div>
-            <div class="rekap-dist-section-title">Modal Pending</div>
+            <div class="rekap-dist-section-title">Modal Pendam</div>
             <table class="rekap-dist-table">
               <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
               <tbody>
                 ${modalRows}
-                <tr><td>Jumlah Modal Pending</td><td>${jumlahModalQty || "-"}</td><td>${jumlahModalNominal ? jumlahModalNominal.toLocaleString("id-ID") : "-"}</td></tr>
+                <tr><td>Jumlah Modal Pendam</td><td>${jumlahModalQty || "-"}</td><td>${jumlahModalNominal ? jumlahModalNominal.toLocaleString("id-ID") : "-"}</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <div class="rekap-dist-section-title">Total Asset</div>
+            <table class="rekap-dist-table">
+              <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
+              <tbody>
+                <tr><td>Total Asset</td><td>-</td><td>${totalAssetKurir ? totalAssetKurir.toLocaleString("id-ID") : "-"}</td></tr>
+                <tr><td>Aset Bulan ${escAssets(prevAssetsLabel)}</td><td>-</td><td>${prevTotalAsset ? prevTotalAsset.toLocaleString("id-ID") : "-"}</td></tr>
+                <tr><td>Penyusutan</td><td>-</td><td class="${penyusutanClass}">${penyusutanKurir ? `${penyusutanSign}${penyusutanKurir.toLocaleString("id-ID")}` : "-"}</td></tr>
               </tbody>
             </table>
           </div>
@@ -299,7 +336,7 @@ async function renderAssetsGrid() {
         </div>
 
         <div>
-          <div class="rekap-dist-section-title">Modal Pending</div>
+          <div class="rekap-dist-section-title">Modal Pendam</div>
           <table class="rekap-dist-table">
             <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
             <tbody>${totalVarianRows}</tbody>
@@ -311,15 +348,15 @@ async function renderAssetsGrid() {
           <table class="rekap-dist-table">
             <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
             <tbody>
+              <tr><td>Total Asset</td><td>-</td><td id="assetsGrandTotalCell">${grandTotalNominal ? grandTotalNominal.toLocaleString("id-ID") : "-"}</td></tr>
+              <tr><td>Aset Awal</td><td>-</td><td id="assetsAwalCell">${assetsAwalValue ? assetsAwalValue.toLocaleString("id-ID") : "-"}</td></tr>
               <tr>
                 <td>Penyusutan Aset</td>
                 <td>-</td>
                 <td>
-                  <input type="number" id="assetsPenyusutanInput" class="assets-extra-input" style="width:100%; text-align:right;" placeholder="0">
+                  <input type="text" id="assetsPenyusutanInput" class="assets-extra-input" style="width:100%; text-align:right;" placeholder="0">
                 </td>
               </tr>
-              <tr><td>Jumlah Aset</td><td>-</td><td id="assetsJumlahAsetCell">-</td></tr>
-              <tr><td>Total Asset</td><td>-</td><td id="assetsGrandTotalCell">${grandTotalNominal ? grandTotalNominal.toLocaleString("id-ID") : "-"}</td></tr>
             </tbody>
           </table>
         </div>
@@ -358,6 +395,7 @@ async function renderAssetsGrid() {
   gridEl.innerHTML = cardsHtml.join("") + tambahCardHtml + totalCardHtml + historyCardHtml;
 
   initAssetsTambahCard(varianList);
+  autoLoadHunterSalesCards(varianList);
   loadAssetsHistory();
   initAssetsHistoryToggle();
 
@@ -370,47 +408,87 @@ async function renderAssetsGrid() {
   });
 
   cekAssetsSudahDisimpan();
-  initAssetsPenyusutan();
+  initAssetsPenyusutan(grandTotalNominal, assetsAwalValue);
 }
 
-async function initAssetsPenyusutan() {
+async function initAssetsPenyusutan(totalAsetNow, asetAwal) {
   const input = document.getElementById("assetsPenyusutanInput");
   if (!input) return;
 
-  // ganti tipe input jadi text biar bisa nampilin titik ribuan
-  input.type = "text";
   input.inputMode = "numeric";
+  assetsPenyusutanManualEdit = false;
 
-  // load nilai tersimpan sesuai periode filter aktif (kalau ada)
-  try {
-    const adminUid = window.auth?.currentUser?.uid;
-    const periode  = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
-    const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "assets", periode));
-    assetsPenyusutanValue = snap.exists() ? (Number(snap.data()?.penyusutanAset) || 0) : 0;
-  } catch (err) {
-    console.error("❌ initAssetsPenyusutan (load):", err);
-    assetsPenyusutanValue = 0;
-  }
+  // auto-hitung: Total Aset - Aset Awal (bisa - atau +), tapi tetap bisa diedit manual
+  assetsPenyusutanValue = (Number(totalAsetNow) || 0) - (Number(asetAwal) || 0);
 
   input.value = assetsPenyusutanValue ? assetsPenyusutanValue.toLocaleString("id-ID") : "";
-  updateAssetsJumlahAset();
+  updateAssetsPenyusutanStyle(input);
 
   input.addEventListener("input", () => {
-    const angka = Number(input.value.replace(/\D/g, "")) || 0;
-    input.value = angka ? angka.toLocaleString("id-ID") : "";
-    assetsPenyusutanValue = angka;
-    updateAssetsJumlahAset();
+    assetsPenyusutanManualEdit = true;
+    const isNegative = input.value.trim().startsWith("-");
+    const angka = Number(input.value.replace(/[^0-9]/g, "")) || 0;
+    assetsPenyusutanValue = isNegative ? -angka : angka;
+    input.value = assetsPenyusutanValue ? assetsPenyusutanValue.toLocaleString("id-ID") : "";
+    updateAssetsPenyusutanStyle(input);
   });
 }
+function updateAssetsPenyusutanStyle(input) {
+  input.classList.remove("assets-penyusutan-plus", "assets-penyusutan-minus");
+  if (assetsPenyusutanValue > 0) input.classList.add("assets-penyusutan-plus");
+  else if (assetsPenyusutanValue < 0) input.classList.add("assets-penyusutan-minus");
+}
+async function findLastSavedAssetsForUid(uid) {
+  try {
+    let historyData = assetsHistoryData;
+    if (!historyData || !historyData.length) {
+      const adminUid = window.auth?.currentUser?.uid;
+      const snap = await window.getDocs(window.collection(window.db, "users", adminUid, "assets"));
+      historyData = snap.docs.map(d => d.data()).sort((a, b) => a.periode.localeCompare(b.periode));
+    }
+    for (let i = historyData.length - 1; i >= 0; i--) {
+      const found = (historyData[i].perKurir || []).find(k => k.uid === uid);
+      if (found) return found;
+    }
+  } catch (err) {
+    console.error("❌ findLastSavedAssetsForUid:", err);
+  }
+  return null;
+}
+async function autoLoadHunterSalesCards(varianList) {
+  if (!window.usersCache?.length) {
+    window.usersCache = await window.idb.getUsers();
+  }
+  const hunterSalesUsers = (window.usersCache || []).filter(u => ["hunter", "sales"].includes(u.role));
+  if (!hunterSalesUsers.length) return;
 
-function updateAssetsJumlahAset() {
-  const grandTotalCell = document.getElementById("assetsGrandTotalCell");
-  const jumlahCell     = document.getElementById("assetsJumlahAsetCell");
-  if (!grandTotalCell || !jumlahCell) return;
+  const adminUid = window.auth?.currentUser?.uid;
+  let historyData = [];
+  try {
+    const snap = await window.getDocs(window.collection(window.db, "users", adminUid, "assets"));
+    historyData = snap.docs.map(d => d.data()).sort((a, b) => a.periode.localeCompare(b.periode));
+  } catch (err) {
+    console.error("❌ autoLoadHunterSalesCards:", err);
+    return;
+  }
+  if (!historyData.length) return;
 
-  const grandTotal = Number(String(grandTotalCell.textContent).replace(/\D/g, "")) || 0;
-  const jumlahAset = grandTotal + assetsPenyusutanValue;
-  jumlahCell.textContent = jumlahAset ? jumlahAset.toLocaleString("id-ID") : "-";
+  for (const u of hunterSalesUsers) {
+    let lastData = null;
+    for (let i = historyData.length - 1; i >= 0; i--) {
+      const found = (historyData[i].perKurir || []).find(k => k.uid === u.uid);
+      if (found) { lastData = found; break; }
+    }
+    if (!lastData) continue;
+
+    tambahAssetsExtraCard(varianList, {
+      uid: u.uid,
+      nama: u.nama || "Tanpa Nama",
+      role: u.role,
+      jumlahCustomer: lastData.jumlahCustomer || 0,
+      modalQty: lastData.modalQty || {},
+    });
+  }
 }
 let assetsExtraCards = [];
 function initAssetsTambahCard(varianList) {
@@ -418,7 +496,7 @@ function initAssetsTambahCard(varianList) {
     tambahAssetsExtraCard(varianList);
   });
 }
-async function tambahAssetsExtraCard(varianList) {
+async function tambahAssetsExtraCard(varianList, prefillUser = null) {
   if (!window.usersCache?.length) {
     window.usersCache = await window.idb.getUsers();
   }
@@ -426,20 +504,27 @@ async function tambahAssetsExtraCard(varianList) {
     ["kurir", "hunter", "sales"].includes(u.role)
   );
 
-  const cardId = `extra-${Date.now()}`;
-  assetsExtraCards.push({ id: cardId, uid: null, nama: null, role: null, qty: {}, jumlahCustomer: 0 });
+  const cardId = prefillUser ? `extra-${prefillUser.uid}` : `extra-${Date.now()}`;
+  assetsExtraCards.push({
+    id: cardId,
+    uid: prefillUser?.uid   || null,
+    nama: prefillUser?.nama || null,
+    role: prefillUser?.role || null,
+    qty: prefillUser ? { ...prefillUser.modalQty } : {},
+    jumlahCustomer: prefillUser?.jumlahCustomer || 0,
+  });
 
   const gridEl = document.getElementById("assetsGrid");
   const tambahBtnCard = document.getElementById("assetsTambahBtn")?.closest(".assets-tambah-card");
 
   const cardEl = document.createElement("div");
-  cardEl.className = "rekap-dist-card assets-extra-card";
+  cardEl.className = "rekap-dist-card assets-extra-card" + (prefillUser?.role ? ` assets-extra-card-${prefillUser.role}` : "");
   cardEl.dataset.cardId = cardId;
   cardEl.innerHTML = `
     <div class="rekap-dist-card-header">
       <div class="assets-extra-select-wrap">
         <button class="assets-extra-select-btn" data-card="${cardId}">
-          <span>Pilih nama</span>
+          <span>${prefillUser ? escAssets(`${prefillUser.nama} (${prefillUser.role})`) : "Pilih nama"}</span>
           <i class="fa-solid fa-chevron-down"></i>
         </button>
         <div class="assets-extra-select-dd" style="display:none">
@@ -467,7 +552,7 @@ async function tambahAssetsExtraCard(varianList) {
       </div>
 
       <div>
-        <div class="rekap-dist-section-title">Modal Pending</div>
+        <div class="rekap-dist-section-title">Modal Pendam</div>
         <table class="rekap-dist-table">
           <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
           <tbody>
@@ -478,10 +563,20 @@ async function tambahAssetsExtraCard(varianList) {
                 <td class="assets-extra-nominal" data-card="${cardId}" data-field="${v}">-</td>
               </tr>`).join("")}
             <tr>
-              <td>Jumlah Modal Pending</td>
+              <td>Jumlah Modal Pendam</td>
               <td class="assets-extra-jumlah-qty" data-card="${cardId}">-</td>
               <td class="assets-extra-jumlah-nominal" data-card="${cardId}">-</td>
             </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <div class="rekap-dist-section-title">Total Asset</div>
+        <table class="rekap-dist-table">
+          <thead><tr><th>Jenis</th><th>Qty</th><th>Nominal</th></tr></thead>
+          <tbody>
+            <tr><td>Total Asset</td><td>-</td><td class="assets-extra-total-asset" data-card="${cardId}">-</td></tr>
           </tbody>
         </table>
       </div>
@@ -498,13 +593,38 @@ async function tambahAssetsExtraCard(varianList) {
     selectDD.style.display = selectDD.style.display === "none" ? "block" : "none";
   });
   selectDD.querySelectorAll(".assets-extra-select-opt").forEach(opt => {
-    opt.addEventListener("click", () => {
+    opt.addEventListener("click", async () => {
       const cardData = assetsExtraCards.find(c => c.id === cardId);
       cardData.uid  = opt.dataset.uid;
       cardData.nama = opt.dataset.nama;
       cardData.role = opt.dataset.role;
       selectBtn.querySelector("span").textContent = `${opt.dataset.nama} (${opt.dataset.role})`;
       selectDD.style.display = "none";
+
+      cardEl.classList.remove("assets-extra-card-hunter", "assets-extra-card-sales");
+      if (["hunter", "sales"].includes(cardData.role)) {
+        cardEl.classList.add(`assets-extra-card-${cardData.role}`);
+      }
+
+      // khusus hunter & sales: prefill dari data assets tersimpan terakhir yang ada uid ini
+      if (["hunter", "sales"].includes(cardData.role)) {
+        const lastData = await findLastSavedAssetsForUid(cardData.uid);
+        if (lastData) {
+          const jumlahCustomerInput = cardEl.querySelector(`.assets-extra-input[data-field="jumlahCustomer"]`);
+          if (jumlahCustomerInput) {
+            jumlahCustomerInput.value = lastData.jumlahCustomer || "";
+            jumlahCustomerInput.dispatchEvent(new Event("input"));
+          }
+          varianList.forEach(v => {
+            const varInput = cardEl.querySelector(`.assets-extra-input[data-field="${v}"]`);
+            if (varInput) {
+              varInput.value = lastData.modalQty?.[v] || "";
+              varInput.dispatchEvent(new Event("input"));
+            }
+          });
+          window.showToast?.(`Data terakhir ${cardData.nama} dimuat`, "success");
+        }
+      }
     });
   });
   document.addEventListener("click", () => { selectDD.style.display = "none"; });
@@ -548,6 +668,22 @@ async function tambahAssetsExtraCard(varianList) {
     assetsExtraCards = assetsExtraCards.filter(c => c.id !== cardId);
     cardEl.remove();
   });
+
+  // isi otomatis kalau card ini dibuat dari data tersimpan sebelumnya
+  if (prefillUser) {
+    const jumlahCustomerInput = cardEl.querySelector(`.assets-extra-input[data-field="jumlahCustomer"]`);
+    if (jumlahCustomerInput) {
+      jumlahCustomerInput.value = prefillUser.jumlahCustomer || "";
+      jumlahCustomerInput.dispatchEvent(new Event("input"));
+    }
+    varianList.forEach(v => {
+      const varInput = cardEl.querySelector(`.assets-extra-input[data-field="${v}"]`);
+      if (varInput) {
+        varInput.value = prefillUser.modalQty?.[v] || "";
+        varInput.dispatchEvent(new Event("input"));
+      }
+    });
+  }
 }
 function recalculateTotalAssetsCard(varianList) {
   const base = window._assetsBaseData;
@@ -606,7 +742,18 @@ function recalculateTotalAssetsCard(varianList) {
   if (grandTotalCell) {
     grandTotalCell.textContent = grandTotal ? grandTotal.toLocaleString("id-ID") : "-";
   }
-  updateAssetsJumlahAset();
+
+  // refresh Penyusutan Aset pakai Total Aset terbaru, kecuali user udah edit manual
+  if (!assetsPenyusutanManualEdit) {
+    const asetAwalCell = document.getElementById("assetsAwalCell");
+    const asetAwal = Number(String(asetAwalCell?.textContent).replace(/\D/g, "")) || 0;
+    const input = document.getElementById("assetsPenyusutanInput");
+    assetsPenyusutanValue = grandTotal - asetAwal;
+    if (input) {
+      input.value = assetsPenyusutanValue ? assetsPenyusutanValue.toLocaleString("id-ID") : "";
+      updateAssetsPenyusutanStyle(input);
+    }
+  }
 }
 function buildFinalAssetsData(varianList, base) {
   const kantorCabang = window._assetsKantorCabangCache;
@@ -690,6 +837,13 @@ async function updateAssetsExtraJumlah(cardEl, cardId, varianList) {
     });
   }
   cardEl.querySelector(".assets-extra-jumlah-nominal").textContent = jumlahNominal ? jumlahNominal.toLocaleString("id-ID") : "-";
+
+  const kantorCabang = window._assetsKantorCabangCache;
+  const upahHunter = Number(kantorCabang?.upahHunter) || 0;
+  const nominalCustomer = (cardData.jumlahCustomer || 0) * upahHunter;
+  const totalAssetOrang = nominalCustomer + jumlahNominal;
+  const totalCell = cardEl.querySelector(".assets-extra-total-asset");
+  if (totalCell) totalCell.textContent = totalAssetOrang ? totalAssetOrang.toLocaleString("id-ID") : "-";
 }
 async function cekAssetsSudahDisimpan() {
   const badge = document.getElementById("assetsSavedBadge");
@@ -711,8 +865,6 @@ async function simpanAssetsSnapshot(perKurirData, totalData) {
     const adminUid = window.auth?.currentUser?.uid;
     const periode  = `${rekapDistTahun}-${String(rekapDistBulan + 1).padStart(2, "0")}`;
 
-    const jumlahAset = totalData.grandTotalNominal + assetsPenyusutanValue;
-
     await window.setDoc(
       window.doc(window.db, "users", adminUid, "assets", periode),
       {
@@ -724,7 +876,6 @@ async function simpanAssetsSnapshot(perKurirData, totalData) {
         totalModalNominal: totalData.totalModalNominal,
         grandTotal: totalData.grandTotalNominal,
         penyusutanAset: assetsPenyusutanValue,
-        jumlahAset,
         savedAt: window.serverTimestamp(),
       }
     );

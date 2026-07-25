@@ -55,6 +55,14 @@
   /* Layout */
   --sidebar-width:  260px;
   --topbar-height:  64px;
+  
+  /*Aset card khusus */
+  --assets-hunter-bg: rgba(255, 152, 0, 0.08);
+  --assets-hunter-border: rgba(255, 152, 0, 0.35);
+  --assets-hunter-header-bg: rgba(255, 152, 0, 0.14);
+  --assets-sales-bg: rgba(33, 150, 243, 0.08);
+  --assets-sales-border: rgba(33, 150, 243, 0.35);
+  --assets-sales-header-bg: rgba(33, 150, 243, 0.14);
 }
 
 [data-theme="dark"] {

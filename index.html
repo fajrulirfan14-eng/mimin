@@ -1930,6 +1930,14 @@
                     </div>
 
                     <button class="slip-gaji-save-btn" id="slipGajiSaveBtn">Simpan Slip Gaji</button>
+                    <!-- PREVIEW SLIP GAJI TERSIMPAN (dari Firestore) -->
+                    <div class="slip-gaji-preview-wrap" id="slipGajiPreviewWrap" style="display:none">
+                      <div class="slip-gaji-preview-header">
+                        <div class="slip-gaji-preview-title"><i class="fa-solid fa-file-invoice"></i> Slip Gaji Tersimpan</div>
+                        <div class="slip-gaji-preview-periode" id="slipGajiPreviewPeriode">-</div>
+                      </div>
+                      <div class="slip-gaji-preview-body" id="slipGajiPreviewBody"></div>
+                    </div>
                   </div>
 
                 </div>
@@ -3677,6 +3685,9 @@
 <script src="rincianpemasukan.js"></script>
 <script src="akun.js"></script>
 <script src="profil.js"></script>
+
+<div id="devConsoleMount"></div>
+<script src="devconsole.js"></script>
 
 </body>
 </html>

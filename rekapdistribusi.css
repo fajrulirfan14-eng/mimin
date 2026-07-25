@@ -417,6 +417,37 @@
   margin-left: 8px;
   flex-shrink: 0;
 }
+.assets-extra-card-hunter {
+  background: var(--assets-hunter-bg);
+  border-color: var(--assets-hunter-border);
+}
+.assets-extra-card-hunter .rekap-dist-card-header {
+  background: var(--assets-hunter-header-bg);
+}
+.assets-extra-card-sales {
+  background: var(--assets-sales-bg);
+  border-color: var(--assets-sales-border);
+}
+.assets-extra-card-sales .rekap-dist-card-header {
+  background: var(--assets-sales-header-bg);
+}
+
+/* ── PENYUSUTAN PER KURIR (+ / -) ── */
+.assets-penyusutan-plus {
+  color: #2f7d32 !important;
+  font-weight: 800 !important;
+}
+.assets-penyusutan-minus {
+  color: #c62828 !important;
+  font-weight: 800 !important;
+}
+input.assets-penyusutan-plus {
+  color: #2f7d32 !important;
+}
+input.assets-penyusutan-minus {
+  color: #c62828 !important;
+}
+
 .assets-history-row { cursor: pointer; }
 .assets-history-row:hover { background: rgba(0,0,0,0.03); }
 .assets-history-chevron { font-size: 11px; margin-right: 6px; transition: transform .15s; color: #888; }
