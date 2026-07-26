@@ -245,6 +245,14 @@ html, body {
   padding: 0 8px;
   padding-bottom: env(safe-area-inset-bottom);
 }
+#bottomNav {
+  transition: transform .25s ease, opacity .25s ease;
+}
+#bottomNav.bottomnav-auto-hide {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
 @media (max-width: 768px) {
   .bottom-nav { display: flex; }
   .hamburger  { display: none; }

@@ -654,12 +654,12 @@ function konfirmasiApproveVerifikasi(requestId, uid, nama, btn) {
 }
 async function approveVerifikasi(requestId, uid) {
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
-    const idCabang     = kantorCabang?.id || "";
+    const idCabang     = window.currentUser?.idCabang || "";
+    const kantorCabangNama = window.currentUser?.kantorCabang || "";
     const adminUid = window.auth?.currentUser?.uid;
     await window.setDoc(
       window.doc(window.db, "users", uid),
-      { idCabang, kantorCabang: kantorCabang?.namaCabang || "", createdBy: adminUid },
+      { idCabang, kantorCabang: kantorCabangNama, createdBy: adminUid },
       { merge: true }
     );
     await window.setDoc(
@@ -976,6 +976,8 @@ function resetCustRightPanel() {
   if (empty)   empty.style.display   = "flex";
   if (content) content.style.display = "none";
   if (body)    body.innerHTML        = "";
+  document.getElementById("custNonAktifEditBtn")?.remove();
+  document.getElementById("custNonAktifBottomBar")?.remove();
   if (window.innerWidth <= 768) {
     document.getElementById("custRightPanel")?.classList.remove("show");
   }
@@ -1048,6 +1050,32 @@ async function loadNonAktifCustomer(user, role) {
   if (content) content.style.display = "flex";
   if (title)   title.textContent     = `Non Aktif — ${user.nama || "-"}`;
 
+  // ── STATE MODE EDIT ──
+  let editMode = false;
+  let selectedIds = new Set();
+  let currentData = [];
+
+  // ── TOMBOL EDIT DI HEADER ──
+  document.getElementById("custNonAktifEditBtn")?.remove();
+  const headerEl = title?.parentElement;
+  let editBtn = null;
+  if (headerEl) {
+    editBtn = document.createElement("button");
+    editBtn.id = "custNonAktifEditBtn";
+    editBtn.className = "cust-nonaktif-edit-btn";
+    editBtn.innerHTML = `<i class="fa-solid fa-pen"></i> Edit`;
+    headerEl.appendChild(editBtn);
+    editBtn.addEventListener("click", () => {
+      editMode = !editMode;
+      selectedIds.clear();
+      editBtn.innerHTML = editMode
+        ? `<i class="fa-solid fa-xmark"></i> Batal`
+        : `<i class="fa-solid fa-pen"></i> Edit`;
+      editBtn.classList.toggle("active", editMode);
+      renderNonAktifList(currentData);
+    });
+  }
+
   if (body) body.innerHTML = `
     <div class="cust-nonaktif-search-wrap">
       <i class="fa-solid fa-magnifying-glass" style="color:var(--text-muted);font-size:12px"></i>
@@ -1056,7 +1084,56 @@ async function loadNonAktifCustomer(user, role) {
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
+    <div class="cust-nonaktif-selectall-row" id="custNonAktifSelectAllRow" style="display:none">
+      <label class="cust-checkbox-wrap">
+        <input type="checkbox" id="custNonAktifSelectAll">
+        <span>Pilih Semua</span>
+      </label>
+    </div>
     <div id="custNonAktifList"><div class="dh-ringkasan-empty">Memuat...</div></div>`;
+
+  // ── BOTTOM BAR AKSI MASSAL ──
+  document.getElementById("custNonAktifBottomBar")?.remove();
+  const bottomBar = document.createElement("div");
+  bottomBar.id = "custNonAktifBottomBar";
+  bottomBar.className = "cust-nonaktif-bottombar";
+  bottomBar.innerHTML = `
+    <button class="cust-bulk-btn cust-bulk-restore" id="custBulkRestoreBtn" disabled>
+      <i class="fa-solid fa-rotate-left"></i> Kembalikan (<span id="custBulkRestoreCount">0</span>)
+    </button>
+    <button class="cust-bulk-btn cust-bulk-hapus" id="custBulkHapusBtn" disabled>
+      <i class="fa-solid fa-trash"></i> Hapus Permanen (<span id="custBulkHapusCount">0</span>)
+    </button>`;
+  content?.appendChild(bottomBar);
+
+  function updateBulkBar() {
+    bottomBar.style.display = editMode ? "flex" : "none";
+    const count = selectedIds.size;
+    document.getElementById("custBulkRestoreCount").textContent = count;
+    document.getElementById("custBulkHapusCount").textContent   = count;
+    document.getElementById("custBulkRestoreBtn").disabled = count === 0;
+    document.getElementById("custBulkHapusBtn").disabled   = count === 0;
+
+    const selectAllRow = document.getElementById("custNonAktifSelectAllRow");
+    if (selectAllRow) selectAllRow.style.display = editMode ? "flex" : "none";
+    const selectAllChk = document.getElementById("custNonAktifSelectAll");
+    if (selectAllChk) selectAllChk.checked = currentData.length > 0 && selectedIds.size === currentData.length;
+  }
+
+  document.getElementById("custBulkRestoreBtn").addEventListener("click", () => {
+    if (!selectedIds.size) return;
+    konfirmasiBulkRestore([...selectedIds], role, user.uid, () => loadNonAktifCustomer(user, role));
+  });
+  document.getElementById("custBulkHapusBtn").addEventListener("click", () => {
+    if (!selectedIds.size) return;
+    konfirmasiBulkHapus([...selectedIds], role, user.uid, () => loadNonAktifCustomer(user, role));
+  });
+  document.getElementById("custNonAktifSelectAll")?.addEventListener("change", e => {
+    if (e.target.checked) currentData.forEach(c => selectedIds.add(c.id));
+    else selectedIds.clear();
+    renderNonAktifList(currentData);
+  });
+
   try {
     const idCabang = window.currentUser?.idCabang || "";
     let snap;
@@ -1083,12 +1160,17 @@ async function loadNonAktifCustomer(user, role) {
       ));
     }
     const customers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    currentData = customers;
     window._custNonAktifData = customers;
+    if (title) title.textContent = `Non Aktif — ${user.nama || "-"} (${customers.length})`;
     const nonAktifList = document.getElementById("custNonAktifList");
     if (!nonAktifList) return;
+
     function renderNonAktifList(data) {
+      currentData = data;
       if (!data.length) {
         nonAktifList.innerHTML = `<div class="dh-ringkasan-empty">Tidak ada customer non aktif</div>`;
+        updateBulkBar();
         return;
       }
       nonAktifList.innerHTML = `<div class="cust-nonaktif-list">${data.map(c => {
@@ -1096,13 +1178,17 @@ async function loadNonAktifCustomer(user, role) {
       const inisial = nama.trim().charAt(0).toUpperCase();
       const avatar  = c.foto ? `<img src="${esc(c.foto)}" alt="${esc(nama)}">` : inisial;
       const hasLokasi = c.lokasiCustomer?.latitude || c.lokasiCustomer?._lat;
+      const isChecked = selectedIds.has(c.id);
       return `
-        <div class="cust-card" data-id="${esc(c.id)}">
-          <div class="cust-card-avatar">${avatar}</div>
+        <div class="cust-card ${editMode ? "cust-card-editmode" : ""} ${isChecked ? "active" : ""}" data-id="${esc(c.id)}">
+          ${editMode
+            ? `<label class="cust-checkbox-wrap cust-card-checkbox"><input type="checkbox" class="cust-nonaktif-checkbox" data-id="${esc(c.id)}" ${isChecked ? "checked" : ""}></label>`
+            : `<div class="cust-card-avatar">${avatar}</div>`}
           <div class="cust-card-info">
             <div class="cust-card-nama">${esc(nama)}</div>
             <div class="cust-card-sub">${esc(c.alamatCustomer || "-")} · ${esc(c.hari || "-")}</div>
           </div>
+          ${editMode ? "" : `
           <div class="cust-card-actions">
             <button class="cust-card-restore-btn" data-id="${esc(c.id)}" data-role="${role}" title="Aktifkan Kembali">
               <i class="fa-solid fa-rotate-left"></i>
@@ -1113,48 +1199,53 @@ async function loadNonAktifCustomer(user, role) {
             ${hasLokasi ? `<button class="cust-card-map-btn" data-id="${esc(c.id)}" title="Lihat di Map">
               <i class="fa-solid fa-map-location-dot"></i>
             </button>` : ""}
-          </div>
+          </div>`}
         </div>`;
       }).join("")}</div>`;
 
-      // event restore
-    body.querySelectorAll(".cust-card-restore-btn").forEach(btn => {
-      btn.addEventListener("click", e => {
-        e.stopPropagation();
-        const id     = btn.dataset.id;
-        const cardEl = btn.closest(".cust-card");
-        konfirmasiRestore(id, role, user.uid, cardEl);
-      });
-    });
-
-    // event hapus permanen
-    body.querySelectorAll(".cust-card-trash-btn").forEach(btn => {
-      btn.addEventListener("click", async e => {
-        e.stopPropagation();
-        const id   = btn.dataset.id;
-        const role = btn.dataset.role;
-        const uid  = btn.dataset.uid;
-        konfirmasiHapusPermanen(id, role, uid, btn.closest(".cust-card"));
-      });
-    });
-
-    // event map
-      nonAktifList.querySelectorAll(".cust-card-map-btn").forEach(btn => {
-        btn.addEventListener("click", e => {
-          e.stopPropagation();
-          const id = btn.dataset.id;
-          const c  = data.find(x => x.id === id);
-          if (!c) return;
-          const lat = c.lokasiCustomer?.latitude || c.lokasiCustomer?._lat;
-          const lng = c.lokasiCustomer?.longitude || c.lokasiCustomer?._long;
-          if (lat && lng) window.openPetaGlobal({ id: c.id, lat, lng });
+      if (editMode) {
+        nonAktifList.querySelectorAll(".cust-card-editmode").forEach(cardEl => {
+          cardEl.addEventListener("click", () => {
+            const id = cardEl.dataset.id;
+            if (selectedIds.has(id)) selectedIds.delete(id); else selectedIds.add(id);
+            renderNonAktifList(data);
+          });
         });
-      });
+      } else {
+        nonAktifList.querySelectorAll(".cust-card-restore-btn").forEach(btn => {
+          btn.addEventListener("click", e => {
+            e.stopPropagation();
+            const id     = btn.dataset.id;
+            const cardEl = btn.closest(".cust-card");
+            konfirmasiRestore(id, role, user.uid, cardEl);
+          });
+        });
+        nonAktifList.querySelectorAll(".cust-card-trash-btn").forEach(btn => {
+          btn.addEventListener("click", async e => {
+            e.stopPropagation();
+            const id    = btn.dataset.id;
+            const role2 = btn.dataset.role;
+            const uid   = btn.dataset.uid;
+            konfirmasiHapusPermanen(id, role2, uid, btn.closest(".cust-card"));
+          });
+        });
+        nonAktifList.querySelectorAll(".cust-card-map-btn").forEach(btn => {
+          btn.addEventListener("click", e => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            const c  = data.find(x => x.id === id);
+            if (!c) return;
+            const lat = c.lokasiCustomer?.latitude || c.lokasiCustomer?._lat;
+            const lng = c.lokasiCustomer?.longitude || c.lokasiCustomer?._long;
+            if (lat && lng) window.openPetaGlobal({ id: c.id, lat, lng });
+          });
+        });
+      }
+      updateBulkBar();
     } // end renderNonAktifList
 
     renderNonAktifList(customers);
 
-    // search
     const searchInput = document.getElementById("custNonAktifSearch");
     const clearBtn    = document.getElementById("custNonAktifClear");
     searchInput?.addEventListener("input", e => {
@@ -1296,6 +1387,118 @@ function konfirmasiHapusPermanen(custId, role, uid, cardEl) {
       cardEl?.remove();
       updateMarketingBadge(uid, role);
       window.showToast("Customer dihapus permanen", "success");
+    } catch (err) {
+      window.showToast("Gagal menghapus", "error");
+    }
+  };
+}
+async function bulkRestoreNonAktif(ids, role, uid) {
+  const batch = window.writeBatch(window.db);
+  ids.forEach(id => {
+    let ref;
+    if (role === "kurir")  ref = window.doc(window.db, "customer", id);
+    if (role === "sales")  ref = window.doc(window.db, "customerSales", id);
+    if (role === "hunter") ref = window.doc(window.db, "users", uid, "customerBaruHunter", id);
+    if (!ref) return;
+    const payload = role === "kurir"
+      ? { status: true, updatedAt: window.serverTimestamp() }
+      : { diserahkan: false, updatedAt: window.serverTimestamp() };
+    batch.set(ref, payload, { merge: true });
+  });
+  await batch.commit();
+}
+async function hapusPermanenSatuCustomerBulk(custId, role, uid) {
+  try {
+    let custData = null;
+    let snap;
+    if (role === "kurir")  snap = await window.getDoc(window.doc(window.db, "customer", custId));
+    if (role === "sales")  snap = await window.getDoc(window.doc(window.db, "customerSales", custId));
+    if (role === "hunter") snap = await window.getDoc(window.doc(window.db, "users", uid, "customerBaruHunter", custId));
+    if (snap?.exists()) custData = snap.data();
+
+    try {
+      if (custData?.foto) {
+        const ref = window.storageRef(window.storage, custData.foto);
+        await window.deleteObject(ref);
+      }
+    } catch {}
+
+    try {
+      if (custData) {
+        await window.setDoc(
+          window.doc(window.db, "customerNonAktif", custId),
+          {
+            namaCustomer:   custData.namaCustomer   || "",
+            hari:           custData.hari            || "",
+            idCabang:       custData.idCabang        || "",
+            lokasiCustomer: custData.lokasiCustomer  || null,
+            pemilik:        custData.pemilik         || "",
+            createdAt:      custData.createdAt       || null,
+            createdBy:      custData.createdBy       || "",
+            nonAktifAt:     window.serverTimestamp(),
+          }
+        );
+      }
+    } catch {}
+
+    if (role === "kurir")  await window.deleteDoc(window.doc(window.db, "customer", custId));
+    if (role === "sales")  await window.deleteDoc(window.doc(window.db, "customerSales", custId));
+    if (role === "hunter") await window.deleteDoc(window.doc(window.db, "users", uid, "customerBaruHunter", custId));
+  } catch (err) {
+    console.error("❌ hapusPermanenSatuCustomerBulk:", err);
+  }
+}
+function konfirmasiBulkRestore(ids, role, uid, onDone) {
+  document.getElementById("custBulkRestoreOverlay")?.remove();
+  const el = document.createElement("div");
+  el.id = "custBulkRestoreOverlay";
+  el.className = "lap-frozen-overlay";
+  el.innerHTML = `
+    <div class="lap-frozen-box">
+      <div class="lap-frozen-icon">🔄</div>
+      <div class="lap-frozen-title">Aktifkan ${ids.length} Customer?</div>
+      <div class="lap-frozen-desc">Semua customer yang dipilih akan diaktifkan kembali.</div>
+      <div class="lap-frozen-footer">
+        <button class="lap-frozen-btn-cancel" id="custBulkRestoreNo">Batal</button>
+        <button class="lap-frozen-btn-save" id="custBulkRestoreYes">Aktifkan</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  document.getElementById("custBulkRestoreNo").onclick = () => el.remove();
+  document.getElementById("custBulkRestoreYes").onclick = async () => {
+    el.remove();
+    try {
+      await bulkRestoreNonAktif(ids, role, uid);
+      window.showToast(`${ids.length} customer diaktifkan kembali`, "success");
+      onDone?.();
+    } catch (err) {
+      window.showToast("Gagal mengaktifkan", "error");
+    }
+  };
+}
+function konfirmasiBulkHapus(ids, role, uid, onDone) {
+  document.getElementById("custBulkHapusOverlay")?.remove();
+  const el = document.createElement("div");
+  el.id = "custBulkHapusOverlay";
+  el.className = "lap-frozen-overlay";
+  el.innerHTML = `
+    <div class="lap-frozen-box">
+      <div class="lap-frozen-icon">🗑️</div>
+      <div class="lap-frozen-title">Hapus ${ids.length} Customer?</div>
+      <div class="lap-frozen-desc">Semua customer yang dipilih akan dihapus permanen dan tidak bisa dikembalikan.</div>
+      <div class="lap-frozen-footer">
+        <button class="lap-frozen-btn-cancel" id="custBulkHapusNo">Batal</button>
+        <button class="lap-frozen-btn-save" id="custBulkHapusYes" style="background:linear-gradient(135deg,#d05050,#e07070)">Hapus</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  document.getElementById("custBulkHapusNo").onclick = () => el.remove();
+  document.getElementById("custBulkHapusYes").onclick = async () => {
+    el.remove();
+    try {
+      await Promise.all(ids.map(id => hapusPermanenSatuCustomerBulk(id, role, uid)));
+      window.showToast(`${ids.length} customer dihapus permanen`, "success");
+      onDone?.();
     } catch (err) {
       window.showToast("Gagal menghapus", "error");
     }

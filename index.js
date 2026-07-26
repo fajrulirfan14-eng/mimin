@@ -187,11 +187,63 @@ function initApp() {
   initBottomNav();
   initPagePasswordPopup();
   initPullToRefresh();
+  initCustPanelBottomNavSync();
+  initBottomNavScrollHide();
   const last = localStorage.getItem("lastView") || "home";
   showView(last);
   requestAnimationFrame(() => {
     document.getElementById("app").style.visibility = "visible";
   });
+}
+/* ── SEMBUNYIKAN BOTTOM NAV OTOMATIS SAAT PANEL TENGAH/KANAN CUSTOMER TERBUKA (mobile) ── */
+/* ── STATE GABUNGAN: PANEL TERBUKA + ARAH SCROLL ── */
+const _navHideState = { panelOpen: false, scrolledDown: false };
+function updateBottomNavVisibility() {
+  const bottomNav = document.getElementById("bottomNav");
+  if (!bottomNav) return;
+  const shouldHide = _navHideState.panelOpen || _navHideState.scrolledDown;
+  bottomNav.classList.toggle("bottomnav-auto-hide", shouldHide);
+}
+
+/* ── SEMBUNYIKAN BOTTOM NAV OTOMATIS SAAT PANEL TENGAH/KANAN CUSTOMER TERBUKA (mobile) ── */
+function initCustPanelBottomNavSync() {
+  const middlePanel = document.getElementById("custMiddlePanel");
+  const rightPanel  = document.getElementById("custRightPanel");
+  if (!middlePanel && !rightPanel) return;
+
+  function syncPanelState() {
+    const isMobile = window.innerWidth <= 768;
+    _navHideState.panelOpen = isMobile && (
+      middlePanel?.classList.contains("show") ||
+      rightPanel?.classList.contains("show")
+    );
+    updateBottomNavVisibility();
+  }
+
+  const observer = new MutationObserver(syncPanelState);
+  if (middlePanel) observer.observe(middlePanel, { attributes: true, attributeFilter: ["class"] });
+  if (rightPanel)  observer.observe(rightPanel,  { attributes: true, attributeFilter: ["class"] });
+
+  window.addEventListener("resize", syncPanelState);
+  syncPanelState();
+}
+
+/* ── SEMBUNYIKAN BOTTOM NAV SAAT SCROLL KE BAWAH, MUNCUL LAGI SAAT SCROLL KE ATAS ── */
+function initBottomNavScrollHide() {
+  let lastY = 0;
+  document.addEventListener("scroll", e => {
+    const el = e.target;
+    const y  = (el === document ? window.scrollY : el.scrollTop) || 0;
+    const delta = y - lastY;
+    if (Math.abs(delta) < 6) return; // threshold kecil biar gak flicker tiap 1px
+    if (delta > 0 && y > 40) {
+      _navHideState.scrolledDown = true;
+    } else if (delta < 0) {
+      _navHideState.scrolledDown = false;
+    }
+    lastY = y;
+    updateBottomNavVisibility();
+  }, true); // capture:true — biar kedeteksi scroll di elemen manapun, bukan cuma window
 }
 window.showView = function(viewName) {
   if (!document.getElementById(`view-${viewName}`)) viewName = "home";
