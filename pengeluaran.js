@@ -467,12 +467,9 @@ function setupPengDropdown(btnId, ddId, labelId, onSelect) {
 async function loadPengKantorItems(kategori, jenis) {
   if (jenis === "marginal") return [];
   try {
-    if (!window.idb || typeof window.idb.getKantorCabang !== "function") {
-      console.error("❌ loadPengKantorItems: window.idb.getKantorCabang tidak tersedia. Pastikan indexdb.js sudah di-load sebelum pengeluaran.js.");
-      return [];
-    }
-    const kantorRaw = await window.idb.getKantorCabang();
-    const kantorData = kantorRaw?.data || kantorRaw || {};
+    const idCabangPeng = window.currentUser?.idCabang || "";
+    const snapKcPeng = await window.getDoc(window.doc(window.db, "kantorCabang", idCabangPeng));
+    const kantorData = snapKcPeng.exists() ? snapKcPeng.data() : {};
     const fieldName = kategori === "produksi" ? "pengeluaran" : "pengeluaranDistribusi";
     const src = kantorData?.[fieldName] || {};
 
@@ -908,8 +905,15 @@ function initPengKasbonPopup() {
 }
 async function loadPengKasbonUsers() {
   try {
-    const users = await window.idb.getUsers();
-    pengKasbonUsers = (users || []).filter(u => u.role === "adminCabang" || u.role === "produksi");
+    const idCabangKasbon = window.currentUser?.idCabang || "";
+    const adminUidKasbon = window.auth?.currentUser?.uid;
+    const snap = await window.getDocs(window.query(
+      window.collection(window.db, "users"),
+      window.where("idCabang", "==", idCabangKasbon),
+      window.where("createdBy", "==", adminUidKasbon)
+    ));
+    const users = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+    pengKasbonUsers = users.filter(u => u.role === "adminCabang" || u.role === "produksi");
   } catch (err) {
     console.error("❌ loadPengKasbonUsers:", err);
     pengKasbonUsers = [];

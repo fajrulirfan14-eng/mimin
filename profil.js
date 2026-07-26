@@ -14,7 +14,14 @@ window.initProfilView = async function() {
     }
   }
 
-  const kantorCabang = await window.idb.getKantorCabang();
+  let kantorCabang = null;
+  try {
+    const idCabang = window.currentUser?.idCabang || "";
+    const snap = await window.getDoc(window.doc(window.db, "kantorCabang", idCabang));
+    if (snap.exists()) kantorCabang = { id: snap.id, ...snap.data() };
+  } catch (err) {
+    console.error("❌ load kantorCabang (profil):", err);
+  }
 
   // render header
   document.getElementById("profilFoto").src = userData?.foto || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData?.nama||"A")}&background=random`;

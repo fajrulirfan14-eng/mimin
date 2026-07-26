@@ -212,7 +212,14 @@ window.openMapRolling = async function() {
   }
   await loadLeafletRolling();
 
-  const kantorCabang = await window.idb.getKantorCabang();
+  let kantorCabang = null;
+  try {
+    const idCabangRolling = window.currentUser?.idCabang || "";
+    const snapKcRolling = await window.getDoc(window.doc(window.db, "kantorCabang", idCabangRolling));
+    if (snapKcRolling.exists()) kantorCabang = { id: snapKcRolling.id, ...snapKcRolling.data() };
+  } catch (err) {
+    console.error("❌ fetch kantorCabang (maprolling):", err);
+  }
   const centerLat    = kantorCabang?.lokasiCabang?.latitude  || -6.2;
   const centerLng    = kantorCabang?.lokasiCabang?.longitude || 106.8;
 
@@ -258,66 +265,105 @@ window.openMapRolling = async function() {
       .addTo(rollingMap);
   }
 
-  // load semua customer dari IDB
+  // load semua customer — bulk fetch Firestore (3 query total), dikelompokkan per uid
   const HARI_LIST   = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"];
   const kurirUsers  = (window.usersCache||[]).filter(u => u.role === "kurir");
   const hunterUsers = (window.usersCache||[]).filter(u => u.role === "hunter");
   const salesUsers  = (window.usersCache||[]).filter(u => u.role === "sales");
   const allUsers    = [...kurirUsers, ...hunterUsers, ...salesUsers];
 
-  const allRoles = [
-    { users: kurirUsers,  getIdb: (uid, h) => window.idb.getCustKurir(uid, h),  pinType: "kurir"  },
-    { users: hunterUsers, getIdb: (uid, h) => window.idb.getCustHunter(uid, h), pinType: "hunter" },
-    { users: salesUsers,  getIdb: (uid, h) => window.idb.getCustSales(uid, h),  pinType: "sales"  },
-  ];
+  const idCabangCustRolling = window.currentUser?.idCabang || "";
+  const custByUidRolling = {};
+
+  try {
+    const snapKurir = await window.getDocs(window.query(
+      window.collection(window.db, "customer"),
+      window.where("idCabang", "==", idCabangCustRolling),
+      window.where("status", "==", true)
+    ));
+    snapKurir.forEach(d => {
+      const c = { id: d.id, ...d.data() };
+      if (!c.pemilik) return;
+      (custByUidRolling[c.pemilik] ||= { pinType: "kurir", list: [] }).list.push(c);
+    });
+  } catch (err) { console.error("❌ maprolling (customer):", err); }
+
+  try {
+    const snapSales = await window.getDocs(window.query(
+      window.collection(window.db, "customerSales"),
+      window.where("idCabang", "==", idCabangCustRolling),
+      window.where("diserahkan", "==", false)
+    ));
+    snapSales.forEach(d => {
+      const c = { id: d.id, ...d.data() };
+      if (!c.pemilik) return;
+      (custByUidRolling[c.pemilik] ||= { pinType: "sales", list: [] }).list.push(c);
+    });
+  } catch (err) { console.error("❌ maprolling (customerSales):", err); }
+
+  try {
+    const snapHunter = await window.getDocs(window.query(
+      window.collectionGroup(window.db, "customerBaruHunter"),
+      window.where("idCabang", "==", idCabangCustRolling),
+      window.where("diserahkan", "==", false)
+    ));
+    snapHunter.forEach(d => {
+      const c = { id: d.id, ...d.data() };
+      const uid = d.ref.parent.parent?.id;
+      if (!uid) return;
+      (custByUidRolling[uid] ||= { pinType: "hunter", list: [] }).list.push(c);
+    });
+  } catch (err) { console.error("❌ maprolling (hunter):", err); }
 
   const layerGroups = {};
   const allMarkers  = [];
   const allBounds   = [];
 
-  for (const h of HARI_LIST) {
-    layerGroups[h] = L.layerGroup().addTo(rollingMap);
-    for (const { users: roleUsers, getIdb, pinType } of allRoles) {
-      for (const u of roleUsers) {
-        const customers = await getIdb(u.uid, h) || [];
-        customers.forEach(c => {
-          const lat = c.lokasiCustomer?.latitude  || c.lokasiCustomer?._lat;
-          const lng = c.lokasiCustomer?.longitude || c.lokasiCustomer?._long;
-          if (!lat || !lng) return;
-          allBounds.push([lat, lng]);
+  HARI_LIST.forEach(h => { layerGroups[h] = L.layerGroup().addTo(rollingMap); });
 
-          let marker;
-          if (pinType === "hunter") {
-            marker = L.marker([lat, lng], { icon: L.icon({ iconUrl: "pinHunter.png", iconSize: [28,28], iconAnchor: [14,28] }) });
-          } else if (pinType === "sales") {
-            marker = L.marker([lat, lng], { icon: L.icon({ iconUrl: "pinSales.png", iconSize: [28,28], iconAnchor: [14,28] }) });
-          } else {
-            marker = L.circleMarker([lat, lng], {
-              renderer, radius: 7,
-              fillColor: hariColorsRolling[h], fillOpacity: 1, color: "#fff", weight: 2,
-            });
-          }
+  allUsers.forEach(u => {
+    const entry = custByUidRolling[u.uid];
+    if (!entry) return;
+    const pinType = entry.pinType;
 
-          marker._petaNama        = c.namaCustomer || "";
-          marker._petaHari        = h;
-          marker._petaPemilikId   = u.uid;
-          marker._petaPemilikNama = u.nama || "-";
-          marker._petaId          = c.id   || "";
-          marker.bindPopup(`
-            <div class="cust-popup">
-              ${c.foto ? `<img src="${c.foto}" class="cust-popup-foto">` : ""}
-              <div class="cust-popup-info">
-                <strong>${c.namaCustomer || "-"}</strong>
-                <span>${pinType}: ${u.nama || "-"}</span>
-                <span style="color:${hariColorsRolling[h]};font-weight:600">${h}</span>
-              </div>
-            </div>`, { maxWidth: 220 });
-          layerGroups[h].addLayer(marker);
-          allMarkers.push(marker);
+    entry.list.forEach(c => {
+      const h = c.hari;
+      if (!h || !layerGroups[h]) return;
+      const lat = c.lokasiCustomer?.latitude  || c.lokasiCustomer?._lat;
+      const lng = c.lokasiCustomer?.longitude || c.lokasiCustomer?._long;
+      if (!lat || !lng) return;
+      allBounds.push([lat, lng]);
+
+      let marker;
+      if (pinType === "hunter") {
+        marker = L.marker([lat, lng], { icon: L.icon({ iconUrl: "pinHunter.png", iconSize: [28,28], iconAnchor: [14,28] }) });
+      } else if (pinType === "sales") {
+        marker = L.marker([lat, lng], { icon: L.icon({ iconUrl: "pinSales.png", iconSize: [28,28], iconAnchor: [14,28] }) });
+      } else {
+        marker = L.circleMarker([lat, lng], {
+          renderer, radius: 7,
+          fillColor: hariColorsRolling[h], fillOpacity: 1, color: "#fff", weight: 2,
         });
       }
-    }
-  }
+
+      marker._petaNama        = c.namaCustomer || "";
+      marker._petaHari        = h;
+      marker._petaPemilikId   = u.uid;
+      marker._petaPemilikNama = u.nama || "-";
+      marker._petaId          = c.id   || "";
+      marker.bindPopup(`
+        <div class="cust-popup">
+          ${c.foto ? `<img src="${c.foto}" class="cust-popup-foto">` : ""}
+          <div class="cust-popup-info">
+            <strong>${c.namaCustomer || "-"}</strong>
+            <span>${pinType}: ${u.nama || "-"}</span>
+            <span style="color:${hariColorsRolling[h]};font-weight:600">${h}</span>
+          </div>
+        </div>`, { maxWidth: 220 });
+      layerGroups[h].addLayer(marker);
+      allMarkers.push(marker);
+    });
+  });
   window.rollingMap = rollingMap;
   window._rollingAllMarkers = allMarkers;
   if (allBounds.length) rollingMap.fitBounds(allBounds, { padding: [40,40] });

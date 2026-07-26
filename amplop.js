@@ -286,8 +286,15 @@ function showAmplopKonfirmasi(tanggal, diterimaSekarang) {
 
     if (!passInput) { errEl.textContent = "Password wajib diisi"; return; }
 
-    // validasi password dari IDB kantorCabang (dibandingkan dalam bentuk hash)
-    const kantorCabang    = await window.idb.getKantorCabang();
+    // validasi password dari kantorCabang (dibandingkan dalam bentuk hash)
+    let kantorCabang = null;
+    try {
+      const idCabangAmp = window.currentUser?.idCabang || "";
+      const snapKcAmp = await window.getDoc(window.doc(window.db, "kantorCabang", idCabangAmp));
+      if (snapKcAmp.exists()) kantorCabang = { id: snapKcAmp.id, ...snapKcAmp.data() };
+    } catch (err) {
+      console.error("❌ fetch kantorCabang (amplop):", err);
+    }
     const correctPassword = kantorCabang?.pagePassword || "";
     const hashedInput     = await window.hashPassword(passInput);
 
