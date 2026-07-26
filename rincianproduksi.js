@@ -464,6 +464,37 @@ function renderRincianPengeluaranTable(groupedData) {
 
   return totalNominal;
 }
+// versi murni hitung angka (tanpa render DOM, tanpa nyentuh state global rincianProd*),
+// aman dipanggil dari view manapun (misal Neraca Saldo)
+async function hitungSelisihRincianProduksi(bulan, tahun) {
+  const savedBulan = rekapProdBulan, savedTahun = rekapProdTahun;
+  rekapProdBulan = bulan;
+  rekapProdTahun = tahun;
+  try {
+    const marketingList = await loadRincianMarketingList();
+    const laporanAgg    = await loadRincianLaporanAgg();
+
+    let totalPemasukan = 0;
+    marketingList.forEach(u => {
+      const agg = laporanAgg[u.uid] || { pembayaran: 0, keterangan: 0 };
+      totalPemasukan += (agg.pembayaran || 0) + (agg.keterangan || 0);
+    });
+
+    const pengeluaranAgg = await loadRincianPengeluaranAgg();
+    await gabungkanPembelianBahanBakuKeVariable(pengeluaranAgg);
+    await gabungkanGajiKeRincianPengeluaran(pengeluaranAgg);
+    const totalPengeluaran = Object.values(pengeluaranAgg || {}).reduce((s, d) => s + (Number(d.nominal) || 0), 0);
+
+    const selisih = totalPemasukan - totalPengeluaran;
+    return { totalPemasukan, totalPengeluaran, selisih };
+  } catch (err) {
+    console.error("❌ hitungSelisihRincianProduksi:", err);
+    return { totalPemasukan: 0, totalPengeluaran: 0, selisih: 0 };
+  } finally {
+    rekapProdBulan = savedBulan;
+    rekapProdTahun = savedTahun;
+  }
+}
 function initRincianPengeluaranToggle() {
   const tbody = document.getElementById("rincianPengeluaranTableBody");
   if (!tbody) return;

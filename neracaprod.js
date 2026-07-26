@@ -95,7 +95,68 @@ async function getGrandTotalAssets() {
     return 0;
   }
 }
-async function getHasilAuditStockBahan() {
+// hitung total saldo akhir bahan mentah (semua varian) — replikasi rumus hitungSaldoAkhir()
+// dari rekapproduksi.js, tapi pakai variable LOKAL (tidak menyentuh rekapProdData global,
+// biar aman kalau view Rekap Produksi lagi kebuka bareng dengan periode berbeda)
+async function getSaldoAkhirBahanMentahTotal() {
+  const savedBulan = rekapProdBulan, savedTahun = rekapProdTahun;
+  rekapProdBulan = neracaBulan;
+  rekapProdTahun = neracaTahun;
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    const varianList = await loadRekapProdVarianList();
+
+    const [saldoKemarin, stockAgg, laporanAgg] = await Promise.all([
+      loadSaldoKemarin(adminUid),
+      loadStockOpnameAggregates(),
+      loadLaporanAdminAggregates()
+    ]);
+    const data = { "Saldo Kemarin": saldoKemarin, ...stockAgg, ...laporanAgg };
+
+    let total = 0;
+    varianList.forEach(v => {
+      const sK          = Number(data["Saldo Kemarin"]?.[v])  || 0;
+      const input       = Number(data["Input"]?.[v])          || 0;
+      const reject      = Number(data["Reject"]?.[v])         || 0;
+      const output      = Number(data["Output"]?.[v])         || 0;
+      const fee         = Number(data["Fee"]?.[v])            || 0;
+      const rusakFreezer= Number(data["Rusak Freezer"]?.[v])  || 0;
+      const basiFreezer = Number(data["Basi Freezer"]?.[v])   || 0;
+      const offFlavor   = Number(data["Off Flavor"]?.[v])     || 0;
+      const barangHilang= Number(data["Barang Hilang"]?.[v])  || 0;
+      const promosi     = Number(data["Promosi"]?.[v])        || 0;
+      total += sK + input - reject - output - fee - rusakFreezer - basiFreezer - offFlavor - barangHilang - promosi;
+    });
+    return total;
+  } catch (err) {
+    console.error("❌ getSaldoAkhirBahanMentahTotal:", err);
+    return 0;
+  } finally {
+    rekapProdBulan = savedBulan;
+    rekapProdTahun = savedTahun;
+  }
+}
+
+// Stock Bahan Mentah = hppReal × total saldo akhir bahan mentah
+async function getStockBahanMentahNilai() {
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return 0;
+
+    const periode = `${neracaTahun}-${String(neracaBulan + 1).padStart(2, "0")}`;
+    const auditSnap = await window.getDoc(window.doc(window.db, "users", adminUid, "audit", periode));
+    const hppReal = auditSnap.exists() ? (Number(auditSnap.data()?.hppReal) || 0) : 0;
+
+    const totalSaldoAkhirBahan = await getSaldoAkhirBahanMentahTotal();
+    return Math.round(hppReal * totalSaldoAkhirBahan);
+  } catch (err) {
+    console.error("❌ getStockBahanMentahNilai:", err);
+    return 0;
+  }
+}
+
+// Stock Barang Jadi = hasilAudit (sudah benar dari audit.js, tinggal dibaca langsung)
+async function getStockBarangJadiNilai() {
   try {
     const adminUid = window.auth?.currentUser?.uid;
     if (!adminUid) return 0;
@@ -104,50 +165,22 @@ async function getHasilAuditStockBahan() {
     const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "audit", periode));
     if (!snap.exists()) return 0;
 
-    const nilai = Number(snap.data()?.hasilAudit) || 0;
-    return Math.round(nilai);
+    return Math.round(Number(snap.data()?.hasilAudit) || 0);
   } catch (err) {
-    console.error("❌ getHasilAuditStockBahan:", err);
-    return 0;
-  }
-}
-async function getStockBarangJadi() {
-  try {
-    const adminUid = window.auth?.currentUser?.uid;
-    if (!adminUid) return 0;
-
-    const periode = `${neracaTahun}-${String(neracaBulan + 1).padStart(2, "0")}`;
-
-    // ambil hppReal dari dokumen audit periode ini (root field, sejajar hasilAudit)
-    const auditSnap = await window.getDoc(window.doc(window.db, "users", adminUid, "audit", periode));
-    const hppReal = auditSnap.exists() ? (Number(auditSnap.data()?.hppReal) || 0) : 0;
-
-    // jumlahkan Input semua varian jadi satu angka (dari stock opname, field "produksi")
-    const filtered = await getStockOpnameBulanCached(neracaBulan, neracaTahun);
-
-    let totalInput = 0;
-    filtered.forEach(record => {
-      const produksiMap = record.data?.produksi || {};
-      Object.values(produksiMap).forEach(nilai => {
-        totalInput += Number(nilai) || 0;
-      });
-    });
-
-    return Math.round(totalInput * hppReal);
-  } catch (err) {
-    console.error("❌ getStockBarangJadi:", err);
+    console.error("❌ getStockBarangJadiNilai:", err);
     return 0;
   }
 }
 async function getDefaultNeracaLancar() {
-  const [modalPendam, stockBahanMentah, stockBarangJadi] = await Promise.all([
+  const [modalPendam, stockBahanMentah, stockBarangJadi, rincianSelisih] = await Promise.all([
     getGrandTotalAssets(),
-    getHasilAuditStockBahan(),
-    getStockBarangJadi()
+    getStockBahanMentahNilai(),
+    getStockBarangJadiNilai(),
+    hitungSelisihRincianProduksi(neracaBulan, neracaTahun)
   ]);
 
   return [
-    { id: "default-saldokas",   nama: "Saldo Kas",          nilai: 0 },
+    { id: "default-saldokas",   nama: "Saldo Kas",          nilai: Math.round(rincianSelisih.selisih) },
     { id: "default-stockbahan", nama: "Stock Bahan Mentah", nilai: stockBahanMentah },
     { id: "default-stockjadi",  nama: "Stock Barang Jadi",  nilai: stockBarangJadi },
     { id: "default-modalpend",  nama: "Modal Pendam",       nilai: modalPendam }
