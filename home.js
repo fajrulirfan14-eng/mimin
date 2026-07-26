@@ -109,8 +109,9 @@ function renderUsersList() {
   const wrapEl = document.getElementById("homeUsersList");
   if (!wrapEl) return;
 
-  // hentikan animasi lama dulu (kalau ada), biar gak numpuk loop pas reload
+  // hentikan animasi & interval lama dulu (kalau ada), biar gak numpuk loop pas reload
   if (window._homeBubbleRaf) { cancelAnimationFrame(window._homeBubbleRaf); window._homeBubbleRaf = null; }
+  if (window._homeBubbleTooltipInterval) { clearInterval(window._homeBubbleTooltipInterval); window._homeBubbleTooltipInterval = null; }
 
   if (!usersCache.length) {
     wrapEl.innerHTML = `<div class="home-users-empty">Belum ada anggota</div>`;
@@ -121,6 +122,51 @@ function renderUsersList() {
   const container = document.getElementById("homeBubbleWrap");
   const rect = () => container.getBoundingClientRect();
   const { width: W, height: H } = rect();
+
+  // canvas buat jejak trail (titik memudar warna-warni)
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  canvas.style.position = "absolute";
+  canvas.style.top = "0"; canvas.style.left = "0";
+  canvas.style.pointerEvents = "none";
+  container.appendChild(canvas);
+  const ctx = canvas.getContext("2d");
+
+  let trailPoints = [];
+  function addTrailPoint(pos) {
+    trailPoints.push({
+      x: pos.x, y: pos.y,
+      color: `hsl(${Math.floor(Math.random() * 360)}, 75%, 60%)`,
+      born: performance.now()
+    });
+    if (trailPoints.length > 60) trailPoints.shift();
+  }
+
+  // ── TOOLTIP GODAIN ACAK ──
+  const TOOLTIP_MESSAGES = [
+    "😜 Tangkap Akuu!", "🙈 Jangan sentuh!", "😝 Coba tangkap!",
+    "🤪 Hihi geli!", "😆 Kena deh!", "🫣 Awas nangkep!",
+    "😋 Gak kena-kena!", "🤭 Sini deh!"
+  ];
+  const tooltipEl = document.createElement("div");
+  tooltipEl.className = "home-bubble-tooltip";
+  container.appendChild(tooltipEl);
+  let tooltipTarget = null;
+  let tooltipHideTimeout = null;
+
+  function showRandomTooltip() {
+    if (!bubbles.length) return;
+    tooltipTarget = bubbles[Math.floor(Math.random() * bubbles.length)];
+    tooltipEl.textContent = TOOLTIP_MESSAGES[Math.floor(Math.random() * TOOLTIP_MESSAGES.length)];
+    tooltipEl.classList.add("show");
+    clearTimeout(tooltipHideTimeout);
+    tooltipHideTimeout = setTimeout(() => {
+      tooltipEl.classList.remove("show");
+      tooltipTarget = null;
+    }, 1800);
+  }
+  if (window._homeBubbleTooltipInterval) clearInterval(window._homeBubbleTooltipInterval);
+  window._homeBubbleTooltipInterval = setInterval(showRandomTooltip, 4000);
 
   const isMobile = window.innerWidth <= 768;
   const bubbleSize = isMobile
@@ -156,9 +202,9 @@ function renderUsersList() {
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
     return { x: cx - r.left, y: cy - r.top };
   };
-  container.addEventListener("pointermove", e => { pointer = getRelPos(e); });
+  container.addEventListener("pointermove", e => { pointer = getRelPos(e); addTrailPoint(pointer); });
   container.addEventListener("pointerleave", () => { pointer = null; });
-  container.addEventListener("touchmove", e => { pointer = getRelPos(e); }, { passive: true });
+  container.addEventListener("touchmove", e => { pointer = getRelPos(e); addTrailPoint(pointer); }, { passive: true });
   container.addEventListener("touchend", () => { pointer = null; });
 
   // klik vs drag: kalau geser kurang dari 6px dianggap klik → buka detail akun
@@ -177,6 +223,29 @@ function renderUsersList() {
 
   function step() {
     const { width, height } = rect();
+
+    // resize canvas kalau ukuran container berubah (misal rotate HP)
+    if (canvas.width !== Math.round(width) || canvas.height !== Math.round(height)) {
+      canvas.width = width; canvas.height = height;
+    }
+
+    // gambar trail — titik memudar seiring waktu
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const now = performance.now();
+    const LIFETIME = 500;
+    trailPoints = trailPoints.filter(p => now - p.born < LIFETIME);
+    trailPoints.forEach(p => {
+      const age   = (now - p.born) / LIFETIME;
+      const alpha = 1 - age;
+      const size  = 8 * (1 - age * 0.6);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(size, 0), 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = alpha;
+      ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
     bubbles.forEach(b => {
       // gerak dasar: belok pelan-pelan, kecepatan tetap (gak diredam)
       b.angle += (Math.random() - 0.5) * TURN_RATE;
@@ -207,6 +276,12 @@ function renderUsersList() {
 
       b.el.style.transform = `translate(${b.x - radius}px, ${b.y - radius}px)`;
     });
+
+    if (tooltipTarget) {
+      tooltipEl.style.left = tooltipTarget.x + "px";
+      tooltipEl.style.top  = (tooltipTarget.y - radius - 14) + "px";
+    }
+
     window._homeBubbleRaf = requestAnimationFrame(step);
   }
   step();
