@@ -1,7 +1,8 @@
 import { initializeApp, deleteApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged,
-  createUserWithEmailAndPassword, signOut
+  createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut,
+  updatePassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore,
@@ -38,7 +39,9 @@ window.initializeApp                 = initializeApp;
 window.deleteApp                     = deleteApp;
 window.getAuth                       = getAuth;
 window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+window.signInWithEmailAndPassword     = signInWithEmailAndPassword;
 window.signOut                       = signOut;
+window.updatePassword                = updatePassword;
 window.firebaseConfig                = firebaseConfig;
 window.db              = db;
 window.storage         = storage;
@@ -128,7 +131,13 @@ async function verifyPagePassword() {
   if (!targetView) return;
 
   let kantor = null;
-  try { kantor = await window.idb.getKantorCabang(); } catch (err) { console.error("❌ getKantorCabang:", err); }
+  try {
+    const idCabangPass = window.currentUser?.idCabang || "";
+    const snapKantor = await window.getDoc(window.doc(window.db, "kantorCabang", idCabangPass));
+    if (snapKantor.exists()) kantor = { id: snapKantor.id, ...snapKantor.data() };
+  } catch (err) {
+    console.error("❌ getKantorCabang:", err);
+  }
   const savedPass = kantor?.pagePassword || "";
 
   if (!savedPass) {
