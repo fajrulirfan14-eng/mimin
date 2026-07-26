@@ -214,6 +214,47 @@
 .akun-select-option:last-child { border-bottom: none; }
 .akun-select-option:hover { background: var(--bg-hover); }
 .akun-saving { opacity: 0.6; pointer-events: none; transition: opacity .2s; }
+.akun-btn-hapus {
+  padding: 10px 16px;
+  border: 1px solid rgba(208,80,80,0.35);
+  background: rgba(208,80,80,0.08);
+  color: #d05050;
+  border-radius: 10px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+.akun-btn-hapus:hover { background: rgba(208,80,80,0.15); }
+.akun-btn-hapus:disabled { opacity: .5; cursor: not-allowed; }
+.akun-btn-password {
+  padding: 10px 16px;
+  border: 1px solid rgba(60,110,220,0.35);
+  background: rgba(60,110,220,0.08);
+  color: #3c6edc;
+  border-radius: 10px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+.akun-btn-password:hover { background: rgba(60,110,220,0.15); }
+.akun-btn-password:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── POPUP INPUT/ERROR (dipakai di popup hapus & ubah password) ── */
+.akun-popup-input-spaced { margin-bottom: 8px; }
+.akun-popup-err {
+  color: #d05050;
+  font-size: 11.5px;
+  margin-top: 6px;
+}
+.amplop-konfirmasi-oke-brand {
+  background: var(--brand-primary) !important;
+  border-color: var(--brand-primary) !important;
+  color: #fff !important;
+}
 
 /* ── MOBILE ── */
 @media (max-width: 768px) {
@@ -233,5 +274,27 @@
   }
   .akun-detail-footer {
     padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px) + 64px);
+    flex-wrap: wrap;
+  }
+
+  /* tombol sekunder (toggle/password/hapus) jadi grid 2 kolom */
+  .akun-btn-toggle,
+  .akun-btn-password,
+  .akun-btn-hapus {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+    height: 42px;
+    padding: 0 8px;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Simpan jadi full-width sendiri di baris bawah */
+  .akun-btn-save {
+    flex: 1 1 100%;
+    order: 10;
+    height: 44px;
   }
 }
