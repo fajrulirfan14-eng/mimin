@@ -182,6 +182,17 @@
 .rekap-prod-kpi-card.kpi-c4 .rekap-prod-kpi-label,
 .rekap-prod-kpi-card.kpi-c4 .rekap-prod-kpi-value { color: var(--accent); }
 
+.rekap-prod-persen-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+}
+
 /* ── REKAP PRODUKSI: DETAIL WRAPPER & PANEL (khusus, tidak share dengan view lain) ── */
 .rekapprod-detail-wrapper {
   flex: 1;
@@ -302,5 +313,11 @@
   }
   .rekapprod-detail-panel {
     border-radius: 0;
+  }
+
+  .rekap-prod-th-jenis,
+  .rekap-prod-td-jenis {
+    position: static;
+    left: auto;
   }
 }

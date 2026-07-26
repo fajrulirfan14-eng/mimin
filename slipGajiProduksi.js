@@ -13,7 +13,77 @@ const SLIP_GAJI_PROD_TEMPLATE = {
 let slipGajiProdData = null;
 let slipGajiProdSelectedRole = null;
 let slipGajiProdPendapatanTotal = 0;
-let slipGajiProdPendapatanDetail = {}; // { jenisLoyang: { qty, harga, pembayaran, hari } }
+let slipGajiProdPendapatanDetail = {};
+let slipGajiProdTotalPendapatanNilai = 0;
+
+/* ── PERSENTASE BARANG MATI (mandiri, gak sentuh state global Rekap Produksi) ── */
+async function hitungPersentaseBarangMatiSlip() {
+  const stockAgg   = await loadStockOpnameAggregates();
+  const laporanAgg = await loadLaporanAdminAggregates();
+  const varianList = await loadRekapProdVarianList();
+
+  const totalInput = varianList.reduce((a, v) => a + (Number(stockAgg["Input"]?.[v]) || 0), 0);
+
+  const totalRugi = varianList.reduce((a, v) => {
+    const fee          = Number(laporanAgg["Fee"]?.[v])          || 0;
+    const reject       = Number(stockAgg["Reject"]?.[v])         || 0;
+    const basiFreezer  = Number(stockAgg["Basi Freezer"]?.[v])   || 0;
+    const offFlavor    = Number(laporanAgg["Off Flavor"]?.[v])   || 0;
+    const promosi      = Number(stockAgg["Promosi"]?.[v])        || 0;
+    const barangHilang = Number(stockAgg["Barang Hilang"]?.[v])  || 0;
+    return a + fee + reject + basiFreezer + offFlavor + promosi + barangHilang;
+  }, 0);
+
+  return totalInput > 0 ? (totalRugi / totalInput) * 100 : 0;
+}
+function hitungBonusEfisiensiDariRules(bonusAdminRules, persentaseRugi) {
+  for (const rule of (bonusAdminRules || [])) {
+    const target = Number(rule.target) || 0;
+    if (persentaseRugi < target) {
+      return Number(rule.bonus) || 0; // dalam persen
+    }
+  }
+  return 0;
+}
+
+/* ── CEK TARGET MC TIDAK MINUS SEBULAN (syarat Bonus Efisiensi Produksi role koki) ── */
+async function cekTargetMcTidakMinusSebulan(bulan, tahun) {
+  try {
+    const records = await getStockOpnameBulanCached(bulan, tahun);
+    if (!records.length) return true; // gak ada data sama sekali = gak ada yang minus
+
+    const kantorCabang = await getKantorCabangCached();
+    const patokanCB = Number(kantorCabang?.bonusProduksi?.[0]?.patokan) || 230;
+    const loyangArr = kantorCabang?.loyang || [];
+    const loyangAktif = loyangArr.filter(l => l.status === true).map(l => l.jenisLoyang).filter(Boolean);
+    const loyangList = loyangAktif.length ? loyangAktif : ["Original"];
+
+    for (const record of records) {
+      const existing = record.data || {};
+
+      const totalSemuaLoyang = loyangList.reduce((total, jenis) => {
+        const fieldKey = jenis === "Original" ? "jumlahLoyang" : `jumlahLoyang${jenis}`;
+        return total + Number(existing[fieldKey] || 0);
+      }, 0);
+
+      const inputCB = Number(existing.produksi?.CB || 0);
+      const inputBB = Number(existing.produksi?.BB || 0);
+      const inputBK = Number(existing.produksi?.BK || 0);
+      const inputMC = Number(existing.produksi?.MC || 0);
+
+      const targetCB = totalSemuaLoyang * patokanCB;
+      const targetBB = targetCB - inputCB - inputBB;
+      const targetBK = (targetBB / 2) * 2.8;
+      const targetMC = inputBK + inputMC - targetBK;
+
+      if (targetMC < 0) return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("❌ cekTargetMcTidakMinusSebulan:", err);
+    return false;
+  }
+}
 
 window.initSlipGajiProdView = function() {
   document.getElementById("slipGajiProdReloadBtn")?.addEventListener("click", async () => {
@@ -235,6 +305,7 @@ async function pilihKurirSlipGajiProd(uid, nama, role) {
   if (periodeEl) periodeEl.textContent = periodeLabelForm;
 
   await cekSlipGajiProdFormBadge(uid);
+  await loadSlipGajiProdPreview(uid);
 
   slipGajiProdData = JSON.parse(JSON.stringify(SLIP_GAJI_PROD_TEMPLATE));
   document.getElementById("slipGajiProdCatatan").value = "";
@@ -261,6 +332,25 @@ async function pilihKurirSlipGajiProd(uid, nama, role) {
         </tr>`;
     }
     await renderSlipGajiProdPendapatanTable(uid);
+
+    // ── BONUS EFISIENSI PRODUKSI (role koki, auto, read only, selalu muncul di UI) ──
+    try {
+      const targetAman = await cekTargetMcTidakMinusSebulan(rekapProdBulan, rekapProdTahun);
+      const kantorCabangBonusProd = await getKantorCabangCached();
+      const bonusPercentProd = targetAman ? (Number(kantorCabangBonusProd?.bonusProduksi?.[0]?.bonus) || 0) : 0;
+      const nominalBonusProd = Math.round(slipGajiProdPendapatanTotal * (bonusPercentProd / 100));
+
+      slipGajiProdData.bonus.push({
+        key: "bonusEfisiensiProduksiKoki",
+        label: "Bonus Efisiensi Produksi",
+        hari: "-",
+        pembayaran: nominalBonusProd,
+        fixed: true,
+        readonly: true
+      });
+    } catch (err) {
+      console.error("❌ hitung Bonus Efisiensi Produksi (koki):", err);
+    }
   } else {
     // adminCabang: Pendapatan cuma "Gaji Pokok" input manual, tabel cuma 2 kolom (Keterangan, Upah)
     pendapatanTable?.classList.add("slipgajiprod-pendapatan-2col");
@@ -285,12 +375,49 @@ async function pilihKurirSlipGajiProd(uid, nama, role) {
     slipGajiProdData.pendapatan = [
       { key: "gajiPokok", label: "Gaji Pokok", pembayaran: gajiPokokValue, fixed: true },
     ];
+    slipGajiProdPendapatanTotal = gajiPokokValue;
     renderSlipGajiProdPendapatanManual();
+
+    // ── BONUS EFISIENSI PRODUKSI (auto, read only) ──
+    try {
+      const persentaseRugi   = await hitungPersentaseBarangMatiSlip();
+      const kantorCabangBonus = await getKantorCabangCached();
+      const bonusPercent     = hitungBonusEfisiensiDariRules(kantorCabangBonus?.bonusAdmin, persentaseRugi);
+      const nominalBonus     = Math.round(gajiPokokValue * (bonusPercent / 100));
+
+      slipGajiProdData.bonus.push({
+        key: "bonusEfisiensiProduksi",
+        label: "Bonus Efisiensi Produksi",
+        hari: "-",
+        pembayaran: nominalBonus,
+        fixed: true,
+        readonly: true
+      });
+    } catch (err) {
+      console.error("❌ hitung Bonus Efisiensi Produksi:", err);
+    }
   }
 
   renderSlipGajiProdItems();
 }
+window.testBonusEfisiensi = async function(persentaseTest, gajiPokokTest = 3000000) {
+  const kantorCabangBonus = await getKantorCabangCached();
+  const rules = kantorCabangBonus?.bonusAdmin || [];
+  console.log("📋 Rules bonusAdmin:", rules);
+  console.log(`🧪 Testing persentase: ${persentaseTest}% | Gaji Pokok: Rp ${gajiPokokTest.toLocaleString("id-ID")}`);
 
+  rules.forEach((rule, i) => {
+    const target = Number(rule.target) || 0;
+    const cocok  = persentaseTest < target;
+    console.log(`   Rule[${i}]: target=${target}%, bonus=${rule.bonus}% → ${persentaseTest} < ${target} = ${cocok ? "✅ COCOK" : "❌ tidak cocok"}`);
+  });
+
+  const bonusPercent = hitungBonusEfisiensiDariRules(rules, persentaseTest);
+  const nominalBonus = Math.round(gajiPokokTest * (bonusPercent / 100));
+  console.log(`🎯 HASIL bonusPercent: ${bonusPercent}%`);
+  console.log(`💰 HASIL nominal bonus: Rp ${nominalBonus.toLocaleString("id-ID")} (dari gajiPokok Rp ${gajiPokokTest.toLocaleString("id-ID")} × ${bonusPercent}%)`);
+  return { bonusPercent, nominalBonus };
+};
 async function renderSlipGajiProdPendapatanTable(uid) {
   const bodyEl = document.getElementById("slipGajiProdPendapatanBody");
   if (!bodyEl) return;
@@ -391,6 +518,72 @@ async function cekSlipGajiProdFormBadge(uid) {
     console.error("❌ cekSlipGajiProdFormBadge:", err);
   }
 }
+async function loadSlipGajiProdPreview(uid) {
+  const wrap = document.getElementById("slipGajiProdPreviewWrap");
+  const body = document.getElementById("slipGajiProdPreviewBody");
+  const periodeEl = document.getElementById("slipGajiProdPreviewPeriode");
+  if (!wrap || !body) return;
+  wrap.style.display = "none";
+
+  const periode = `${rekapProdTahun}-${String(rekapProdBulan + 1).padStart(2, "0")}`;
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", uid, "slipGaji", periode));
+    if (!snap.exists()) return;
+    const data = snap.data();
+
+    if (periodeEl) periodeEl.textContent = `Periode: ${REKAP_PROD_BULAN_NAMA[rekapProdBulan]} ${rekapProdTahun}`;
+
+    const labelMap = {
+      gajiPokok: "Gaji Pokok",
+      kasbon: "Kasbon",
+      bonusEfisiensiProduksi: "Bonus Efisiensi Produksi",
+      bonusEfisiensiProduksiKoki: "Bonus Efisiensi Produksi",
+    };
+
+    const fromArr = key => (data.slipGaji || []).find(o => o[key])?.[key] || {};
+    const pendapatan = fromArr("pendapatan");
+    const bonus      = fromArr("bonus");
+    const potongan   = fromArr("potongan");
+
+    const renderRows = obj => Object.entries(obj).map(([key, v]) => {
+      const label = v.label || labelMap[key] || key;
+      const hari  = (v.hari === "-" || v.hari === undefined || v.hari === "") ? "-" : v.hari;
+      return `
+        <div class="slip-gaji-preview-row">
+          <span>${escSlip(label)}</span>
+          <span>${escSlip(String(hari))}</span>
+          <span>Rp ${(Number(v.pembayaran) || 0).toLocaleString("id-ID")}</span>
+        </div>`;
+    }).join("");
+
+    body.innerHTML = `
+      <div class="slip-gaji-preview-section">
+        <div class="slip-gaji-preview-section-title">Pendapatan</div>
+        ${renderRows(pendapatan)}
+      </div>
+      <div class="slip-gaji-preview-section">
+        <div class="slip-gaji-preview-section-title">Bonus</div>
+        ${renderRows(bonus)}
+      </div>
+      <div class="slip-gaji-preview-section">
+        <div class="slip-gaji-preview-section-title">Potongan</div>
+        ${renderRows(potongan)}
+      </div>
+      ${data.catatan ? `<div class="slip-gaji-preview-catatan"><b>Catatan:</b> ${escSlip(data.catatan)}</div>` : ""}
+      <div class="slip-gaji-preview-total">
+        <span>Total Pendapatan</span>
+        <span>Rp ${(Number(data.totalPendapatan) || 0).toLocaleString("id-ID")}</span>
+      </div>
+      <div class="slip-gaji-preview-total">
+        <span>Total Penerimaan</span>
+        <span>Rp ${(Number(data.totalPenerimaan) || 0).toLocaleString("id-ID")}</span>
+      </div>
+    `;
+    wrap.style.display = "block";
+  } catch (err) {
+    console.error("❌ loadSlipGajiProdPreview:", err);
+  }
+}
 
 /* ── RENDER ITEM (Pendapatan/Bonus/Potongan) ── */
 function renderSlipGajiProdItems() {
@@ -412,7 +605,7 @@ function renderSlipGajiProdItems() {
           <input type="text" class="slipgajiprod-input-label" value="${escSlip(item.label)}" ${item.fixed ? "readonly" : ""}>
         </td>
         <td>
-          <input type="text" class="slipgajiprod-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0">
+          <input type="text" class="slipgajiprod-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0" ${item.readonly ? "readonly" : ""}>
         </td>
         <td>
           ${item.fixed ? "" : `<button class="slipgajiprod-remove-btn"><i class="fa-solid fa-trash"></i></button>`}
@@ -458,6 +651,10 @@ function hitungTotalPenerimaanProd() {
   const totalBonus    = sum(slipGajiProdData.bonus);
   const totalPotongan = sum(slipGajiProdData.potongan);
   const total = slipGajiProdPendapatanTotal + totalBonus - totalPotongan;
+
+  slipGajiProdTotalPendapatanNilai = slipGajiProdPendapatanTotal + totalBonus;
+  const elPendapatan = document.getElementById("slipGajiProdTotalPendapatan");
+  if (elPendapatan) elPendapatan.textContent = `Rp ${slipGajiProdTotalPendapatanNilai.toLocaleString("id-ID")}`;
 
   const el = document.getElementById("slipGajiProdTotalPenerimaan");
   if (el) el.textContent = `Rp ${total.toLocaleString("id-ID")}`;
@@ -505,7 +702,7 @@ async function simpanSlipGajiProd() {
         idCabang: kantorCabang?.id || "",
         idUser: slipGajiProdSelectedUid,
         periode,
-        totalPendapatan: slipGajiProdPendapatanTotal,
+        totalPendapatan: slipGajiProdTotalPendapatanNilai,
         slipGaji: slipGajiPayload,
         totalPenerimaan,
       }
@@ -515,6 +712,7 @@ async function simpanSlipGajiProd() {
     document.getElementById("slipGajiProdFormBadge").style.display = "flex";
     const badgeGrid = document.getElementById(`slipGajiProdBadge-${slipGajiProdSelectedUid}`);
     if (badgeGrid) badgeGrid.style.display = "flex";
+    await loadSlipGajiProdPreview(slipGajiProdSelectedUid);
   } catch (err) {
     console.error("❌ simpanSlipGajiProd:", err);
     window.showToast("Gagal menyimpan slip gaji", "error");

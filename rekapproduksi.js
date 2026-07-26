@@ -376,7 +376,7 @@ function renderRekapProdUserCards(loyangPerUser, kasbonPerUser) {
   const gridEl = document.getElementById("rekapProdUserGrid");
   if (!gridEl) return;
 
-  const users = (window.usersCache || []).filter(u => u.role === "produksi" || u.role === "adminCabang");
+  const users = (window.usersCache || []).filter(u => u.role === "produksi");
 
   if (!users.length) {
     gridEl.innerHTML = `<div class="dh-ringkasan-empty">Belum ada pegawai produksi</div>`;
@@ -461,19 +461,31 @@ function renderRekapProduksiTable() {
   if (!thead || !tbody) return;
 
   thead.innerHTML = `<th class="rekap-prod-th-jenis">Jenis</th>` +
-    rekapProdVarianList.map(v => `<th>${v}</th>`).join("");
+    rekapProdVarianList.map(v => `<th>${v}</th>`).join("") +
+    `<th class="rekap-prod-th-total">Total</th>`;
+
+  const totalInputSemua = rekapProdVarianList.reduce((a, v) => a + (Number(rekapProdData["Input"]?.[v]) || 0), 0);
 
   tbody.innerHTML = REKAP_PROD_JENIS.map(jenis => {
     const jenisData = rekapProdData[jenis] || {};
     const slug = jenis.toLowerCase().replace(/\s+/g, "-");
+    const totalJenis = rekapProdVarianList.reduce((a, v) => a + (Number(jenisData[v]) || 0), 0);
+
+    let labelJenis = jenis;
+    if (jenis === "Jumlah Rugi") {
+      const persenRugi = totalInputSemua > 0 ? Math.round((totalJenis / totalInputSemua) * 100) : 0;
+      labelJenis = `${jenis} <span class="rekap-prod-persen-badge">${persenRugi}% Barang Mati</span>`;
+    }
+
     return `
     <tr data-jenis="${slug}">
-      <td class="rekap-prod-td-jenis">${jenis}</td>
+      <td class="rekap-prod-td-jenis">${labelJenis}</td>
       ${rekapProdVarianList.map(v => {
         const nilai = jenisData[v];
         const tampil = nilai ? nilai.toLocaleString("id-ID") : "";
         return `<td>${tampil}</td>`;
       }).join("")}
+      <td class="rekap-prod-td-total">${totalJenis ? totalJenis.toLocaleString("id-ID") : ""}</td>
     </tr>
   `;
   }).join("");

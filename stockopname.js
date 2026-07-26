@@ -72,7 +72,14 @@ async function renderSoPopupForm(mode) {
   let kokiList = [];
   try {
     if (!window.usersCache?.length) {
-      window.usersCache = await window.idb.getUsers();
+      const idCabang = window.currentUser?.idCabang || "";
+      const adminUid = window.auth?.currentUser?.uid;
+      const snapUsers = await window.getDocs(window.query(
+        window.collection(window.db, "users"),
+        window.where("idCabang", "==", idCabang),
+        window.where("createdBy", "==", adminUid)
+      ));
+      window.usersCache = snapUsers.docs.map(d => ({ ...d.data(), uid: d.id }));
     }
     kokiList = (window.usersCache || [])
       .filter(u => u.role === "produksi" || u.role === "adminCabang")
@@ -152,7 +159,7 @@ async function renderSoPopupForm(mode) {
     // auto hitung tanggal expired dari setting kantorCabang.target.expired
     const tglEntry = document.getElementById("soTanggalEntry");
     const tglExpired = document.getElementById("soTanggalExpired");
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     const expiredDays = Number(kantorCabang?.target?.expired) || 0;
     const updateExpired = () => {
       if (!tglEntry?.value) return;
@@ -410,7 +417,7 @@ let SO_LOYANG_LIST = ["Original"]; // fallback sementara sebelum ke-load
 
 async function loadSoLoyangList() {
   try {
-    const kantorCabang = await window.idb.getKantorCabang();
+    const kantorCabang = await getKantorCabangCached();
     const loyangArr = kantorCabang?.loyang || [];
 
     const aktifList = loyangArr
@@ -708,6 +715,10 @@ async function loadSoData(forceReload = false) {
     const laporanByDate = {};
     laporanResults.forEach(r => { if (r) laporanByDate[r.id] = r; });
 
+    // ambil patokan CB per loyang dari kantorCabang.bonusProduksi[0].patokan (fallback 230)
+    const kantorCabangSo = await getKantorCabangCached();
+    const patokanCB = Number(kantorCabangSo?.bonusProduksi?.[0]?.patokan) || 230;
+
     // field top-level non-UID yang harus di-skip saat looping
     const LAPORAN_SKIP_KEYS = new Set(["tanggal", "createdBy"]);
 
@@ -771,7 +782,7 @@ async function loadSoData(forceReload = false) {
       const inputBB = Number(existing.produksi?.BB || 0);
       const inputBK = Number(existing.produksi?.BK || 0);
       const inputMC = Number(existing.produksi?.MC || 0);
-      targetMap.CB = totalSemuaLoyang * 230;
+      targetMap.CB = totalSemuaLoyang * patokanCB;
       targetMap.BB = targetMap.CB - inputCB - inputBB;
       targetMap.BK = (targetMap.BB / 2) * 2.8;
       targetMap.MC = inputBK + inputMC - targetMap.BK;

@@ -3058,8 +3058,8 @@
                       <div class="dh-ringkasan-empty">Memuat...</div>
                     </div>
 
-                    <!-- FORM SLIP GAJI (muncul setelah pilih pegawai) -->
-                    <div class="slipgajiprod-form-wrap" id="slipGajiProdFormWrap" style="display:none">
+                    <!-- FORM SLIP GAJI (muncul setelah pilih pegawai) — dibungkus 1 card besar -->
+                    <div class="slipgajiprod-form-wrap slipgajiprod-single-card" id="slipGajiProdFormWrap" style="display:none">
                       <div class="slipgajiprod-form-header">
                         <div class="slipgajiprod-form-title">Form Slip Gaji — <span id="slipGajiProdFormNama">-</span></div>
                         <div class="slipgajiprod-form-header-right">
@@ -3132,6 +3132,12 @@
                         <textarea class="slipgajiprod-catatan" id="slipGajiProdCatatan" rows="3" placeholder="Catatan tambahan (opsional)"></textarea>
                       </div>
 
+                      <!-- TOTAL PENDAPATAN (belum dikurangi potongan) -->
+                      <div class="slipgajiprod-total-bar slipgajiprod-total-bar-pendapatan">
+                        <span>Total Pendapatan</span>
+                        <span id="slipGajiProdTotalPendapatan">Rp 0</span>
+                      </div>
+
                       <!-- TOTAL PENERIMAAN -->
                       <div class="slipgajiprod-total-bar">
                         <span>Total Penerimaan</span>
@@ -3139,6 +3145,17 @@
                       </div>
 
                       <button class="slipgajiprod-save-btn" id="slipGajiProdSaveBtn">Simpan Slip Gaji</button>
+
+                      <!-- PREVIEW SLIP TERSIMPAN (kalau sudah pernah disimpan periode ini) -->
+                      <div class="slipgajiprod-card" id="slipGajiProdPreviewWrap" style="display:none">
+                        <div class="slipgajiprod-card-title">
+                          <i class="fa-solid fa-eye"></i>
+                          Preview Slip Tersimpan
+                          <span id="slipGajiProdPreviewPeriode" style="margin-left:auto;font-weight:400;font-size:12px"></span>
+                        </div>
+                        <div id="slipGajiProdPreviewBody"></div>
+                      </div>
+
                     </div>
 
                   </div>
