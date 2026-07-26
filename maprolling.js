@@ -151,60 +151,6 @@ window.openMapRolling = async function() {
     const closeBtn = document.getElementById("custRollingCloseBtn");
     if (closeBtn) {
       closeBtn.style.display = window.innerWidth <= 768 ? "flex" : "none";
-      // filter hari dropdown
-    let rollingFilterHari = localStorage.getItem("rollingFilterHari") || "Senin";
-    const hariWrap     = document.getElementById("custRollingHariWrap");
-    const hariBtn      = document.getElementById("custRollingHariBtn");
-    const hariLabel    = document.getElementById("custRollingHariLabel");
-    const hariClear    = document.getElementById("custRollingHariClear");
-    const hariDropdown = document.getElementById("custRollingHariDropdown");
-    if (hariWrap) hariWrap.style.display = "flex";
-
-    // restore state
-    if (rollingFilterHari) {
-      if (hariLabel) hariLabel.textContent = rollingFilterHari;
-      hariBtn?.classList.add("active");
-      if (hariClear) hariClear.style.display = "flex";
-      hariDropdown?.querySelectorAll(".peta-filter-option").forEach(o => {
-        o.classList.toggle("selected", o.dataset.hari === rollingFilterHari);
-      });
-    }
-
-    hariBtn?.addEventListener("click", e => {
-      e.stopPropagation();
-      const isOpen = hariDropdown?.style.display !== "none";
-      hariDropdown.style.display = isOpen ? "none" : "block";
-    });
-
-    hariDropdown?.querySelectorAll(".peta-filter-option").forEach(opt => {
-      opt.addEventListener("click", e => {
-        e.stopPropagation();
-        rollingFilterHari = opt.dataset.hari;
-        localStorage.setItem("rollingFilterHari", rollingFilterHari);
-        if (hariLabel) hariLabel.textContent = rollingFilterHari || "Hari";
-        hariBtn?.classList.toggle("active", !!rollingFilterHari);
-        if (hariClear) hariClear.style.display = rollingFilterHari ? "flex" : "none";
-        hariDropdown.querySelectorAll(".peta-filter-option").forEach(o => o.classList.remove("selected"));
-        opt.classList.add("selected");
-        hariDropdown.style.display = "none";
-      });
-    });
-
-    hariClear?.addEventListener("click", e => {
-      e.stopPropagation();
-      rollingFilterHari = "";
-      localStorage.removeItem("rollingFilterHari");
-      if (hariLabel) hariLabel.textContent = "Hari";
-      hariBtn?.classList.remove("active");
-      hariClear.style.display = "none";
-      hariDropdown?.querySelectorAll(".peta-filter-option").forEach(o => {
-        o.classList.toggle("selected", o.dataset.hari === "Senin");
-      });
-    });
-
-    document.addEventListener("click", e => {
-      if (!hariWrap?.contains(e.target)) hariDropdown.style.display = "none";
-    });
       const newClose = closeBtn.cloneNode(true);
       closeBtn.parentNode.replaceChild(newClose, closeBtn);
       newClose.addEventListener("click", () => window.closeMapRolling());
@@ -314,6 +260,9 @@ window.openMapRolling = async function() {
       (custByUidRolling[uid] ||= { pinType: "hunter", list: [] }).list.push(c);
     });
   } catch (err) { console.error("❌ maprolling (hunter):", err); }
+
+  // expose ke window — dipakai popup "Pindah ke" (customer.js) biar gak query ulang
+  window._rollingCustByUid = custByUidRolling;
 
   const layerGroups = {};
   const allMarkers  = [];
@@ -614,9 +563,6 @@ window.closeMapRolling = function() {
   // hide tombol X
   const closeBtn = document.getElementById("custRollingCloseBtn");
   if (closeBtn) closeBtn.style.display = "none";
-  // hide filter hari
-  const hariWrap = document.getElementById("custRollingHariWrap");
-  if (hariWrap) hariWrap.style.display = "none";
   // mobile — hide panel kanan
   if (window.innerWidth <= 768) {
     document.getElementById("custRightPanel")?.classList.remove("show");

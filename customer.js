@@ -89,7 +89,7 @@ async function initRollingDrag(card, customer) {
   card.addEventListener("touchstart", e => {
     if (!document.getElementById("mapRollingWrap")) return;
     const touch = e.touches[0];
-    longPressTimer = setTimeout(() => startDrag(touch.clientX, touch.clientY), 500);
+    longPressTimer = setTimeout(() => startDrag(touch.clientX, touch.clientY), 150);
   }, { passive: true });
   card.addEventListener("touchmove", e => {
     if (!isDragging) { clearTimeout(longPressTimer); return; }
@@ -115,7 +115,7 @@ async function initRollingDrag(card, customer) {
   card.addEventListener("mousedown", e => {
     if (!document.getElementById("mapRollingWrap")) return;
     e.preventDefault();
-    longPressTimer = setTimeout(() => startDrag(e.clientX, e.clientY), 500);
+    longPressTimer = setTimeout(() => startDrag(e.clientX, e.clientY), 150);
 
     const onMouseMove = e => {
       if (!isDragging) { clearTimeout(longPressTimer); return; }
@@ -156,42 +156,45 @@ async function showRollingTargetPopup(x, y) {
   popup.style.left = left + "px";
   popup.style.top  = top  + "px";
 
-  // ambil jumlah customer per kurir/sales sesuai filter hari — langsung Firestore
+  // ambil jumlah customer per kurir/sales sesuai filter Hari di Peta Rolling (maprolling.js)
   const hariFilter    = localStorage.getItem("rollingFilterHari") || "";
   const targets       = (window.usersCache||[]).filter(u => ["kurir","sales"].includes(u.role));
   const idCabangPopup = window.currentUser?.idCabang || "";
 
-  popup.innerHTML = `<div class="cust-rolling-popup-title">Pindah ke</div>`;
-
-  for (const u of targets) {
-    const nama    = u.nama || "Tanpa Nama";
-    const inisial = nama.trim().charAt(0).toUpperCase();
-    const avatar  = u.foto ? `<img src="${esc(u.foto)}" alt="">` : inisial;
-
-    // hitung jumlah customer langsung dari Firestore
-    let count = 0;
-    try {
-      const baseWhere = u.role === "kurir"
-        ? [window.where("pemilik", "==", u.uid), window.where("idCabang", "==", idCabangPopup), window.where("status", "==", true)]
-        : [window.where("pemilik", "==", u.uid), window.where("idCabang", "==", idCabangPopup), window.where("diserahkan", "==", false)];
-      if (hariFilter) baseWhere.push(window.where("hari", "==", hariFilter));
-      const collName = u.role === "kurir" ? "customer" : "customerSales";
-      const snapCount = await window.getDocs(window.query(window.collection(window.db, collName), ...baseWhere));
-      count = snapCount.size;
-    } catch (err) {}
-
-    popup.innerHTML += `
-      <div class="cust-rolling-target" data-uid="${esc(u.uid)}" data-role="${u.role}">
-        <div class="cust-rolling-target-avatar">${avatar}</div>
-        <div class="cust-rolling-target-info">
-          <div class="cust-rolling-target-nama">${esc(nama)}</div>
-          <div class="cust-rolling-target-count">${count} Customer</div>
-        </div>
-      </div>`;
-  }
+  // render langsung (nama+foto), tanpa nunggu network — popup muncul instan
+  popup.innerHTML = `<div class="cust-rolling-popup-title">Pindah ke</div>` +
+    targets.map(u => {
+      const nama    = u.nama || "Tanpa Nama";
+      const inisial = nama.trim().charAt(0).toUpperCase();
+      const avatar  = u.foto ? `<img src="${esc(u.foto)}" alt="">` : inisial;
+      return `
+        <div class="cust-rolling-target" data-uid="${esc(u.uid)}" data-role="${u.role}">
+          <div class="cust-rolling-target-avatar">${avatar}</div>
+          <div class="cust-rolling-target-info">
+            <div class="cust-rolling-target-nama">${esc(nama)}</div>
+            <div class="cust-rolling-target-count" id="rollingCount-${esc(u.uid)}">…</div>
+            ${hariFilter ? `<div class="cust-rolling-target-hari" id="rollingHariCount-${esc(u.uid)}">${esc(hariFilter)} …</div>` : ""}
+          </div>
+        </div>`;
+    }).join("");
 
   document.body.appendChild(popup);
   _rollingPopupEl = popup;
+
+  // ambil dari cache RAM (diisi pas openMapRolling), bukan query Firestore lagi
+  const custByUid = window._rollingCustByUid || {};
+  targets.forEach(u => {
+    const list = custByUid[u.uid]?.list || [];
+
+    const countEl = document.getElementById(`rollingCount-${u.uid}`);
+    if (countEl) countEl.textContent = `${list.length} Customer`;
+
+    if (hariFilter) {
+      const hariCount = list.filter(c => c.hari === hariFilter).length;
+      const hariEl = document.getElementById(`rollingHariCount-${u.uid}`);
+      if (hariEl) hariEl.textContent = `${hariFilter} ${hariCount}`;
+    }
+  });
 }
 function highlightRollingTarget(x, y) {
   if (!_rollingPopupEl) return;
@@ -344,6 +347,17 @@ async function eksekusiDragRolling(customer, targetUser, hari) {
     updateMarketingBadge(targetUser.uid, targetUser.role);
     const remaining = document.querySelectorAll("#custDetailList .cust-card").length;
     updateHariBadge(custActiveHari, remaining);
+
+    // update cache RAM peta rolling — biar popup "Pindah ke" berikutnya akurat tanpa query ulang
+    if (window._rollingCustByUid) {
+      const hunterList = window._rollingCustByUid[hunterUid]?.list;
+      if (hunterList) {
+        const idx = hunterList.findIndex(c => c.id === custId);
+        if (idx > -1) hunterList.splice(idx, 1);
+      }
+      const targetEntry = (window._rollingCustByUid[targetUser.uid] ||= { pinType: targetUser.role, list: [] });
+      targetEntry.list.push({ id: custId, hari: newHari });
+    }
 
   } catch (err) {
     window.showToast("Gagal menyerahkan customer", "error");
@@ -1955,6 +1969,7 @@ function showCustDetail(title, user = null, menu = null) {
 
   // init hari chips
   initCustHariChips();
+  initCustRollingHariFilter();
   // tombol rolling — hanya untuk hunter
   const rollingBtn = document.getElementById("custRollingMapBtn");
   if (rollingBtn) {
@@ -1987,6 +2002,83 @@ function showCustDetail(title, user = null, menu = null) {
   }
   if (user) updateMarketingBadge(user.uid, user.role);
   subscribeCustActiveMarketing();
+}
+/* ── FILTER HARI ROLLING (dipakai buat nentuin field hari baru pas customer di-roll) ── */
+function initCustRollingHariFilter() {
+  const hariWrapOld = document.getElementById("custRollingHariWrap");
+  if (!hariWrapOld) return;
+
+  // khusus role hunter — sama aturannya kayak tombol Peta Rolling
+  if (custActiveUser?.role !== "hunter") {
+    hariWrapOld.style.display = "none";
+    return;
+  }
+
+  const hariBtnOld      = document.getElementById("custRollingHariBtn");
+  const hariClearOld    = document.getElementById("custRollingHariClear");
+  const hariDropdownOld = document.getElementById("custRollingHariDropdown");
+
+  // clone dulu semua elemen yang bakal dikasih listener baru (biar listener lama gak numpuk)
+  const hariBtn = hariBtnOld.cloneNode(true);
+  hariBtnOld.parentNode.replaceChild(hariBtn, hariBtnOld);
+  const hariClear = hariClearOld.cloneNode(true);
+  hariClearOld.parentNode.replaceChild(hariClear, hariClearOld);
+  const hariDropdown = hariDropdownOld.cloneNode(true);
+  hariDropdownOld.parentNode.replaceChild(hariDropdown, hariDropdownOld);
+
+  // ambil referensi SETELAH clone — biar nunjuk ke node yang beneran ada di DOM
+  const hariWrap  = document.getElementById("custRollingHariWrap");
+  const hariLabel = document.getElementById("custRollingHariLabel");
+
+  let rollingFilterHari = localStorage.getItem("rollingFilterHari") || "";
+  hariWrap.style.display = "flex";
+
+  if (rollingFilterHari) {
+    hariLabel.textContent = rollingFilterHari;
+    hariBtn.classList.add("active");
+    hariClear.style.display = "flex";
+  } else {
+    hariLabel.textContent = "Hari";
+    hariBtn.classList.remove("active");
+    hariClear.style.display = "none";
+  }
+  hariDropdown.querySelectorAll(".peta-filter-option").forEach(o => {
+    o.classList.toggle("selected", o.dataset.hari === rollingFilterHari);
+  });
+
+  hariBtn.addEventListener("click", e => {
+    e.stopPropagation();
+    const isOpen = hariDropdown.style.display !== "none";
+    hariDropdown.style.display = isOpen ? "none" : "block";
+  });
+
+  hariDropdown.querySelectorAll(".peta-filter-option").forEach(opt => {
+    opt.addEventListener("click", e => {
+      e.stopPropagation();
+      rollingFilterHari = opt.dataset.hari;
+      localStorage.setItem("rollingFilterHari", rollingFilterHari);
+      hariLabel.textContent = rollingFilterHari || "Hari";
+      hariBtn.classList.toggle("active", !!rollingFilterHari);
+      hariClear.style.display = rollingFilterHari ? "flex" : "none";
+      hariDropdown.querySelectorAll(".peta-filter-option").forEach(o => o.classList.remove("selected"));
+      opt.classList.add("selected");
+      hariDropdown.style.display = "none";
+    });
+  });
+
+  hariClear.addEventListener("click", e => {
+    e.stopPropagation();
+    rollingFilterHari = "";
+    localStorage.removeItem("rollingFilterHari");
+    hariLabel.textContent = "Hari";
+    hariBtn.classList.remove("active");
+    hariClear.style.display = "none";
+    hariDropdown.querySelectorAll(".peta-filter-option").forEach(o => o.classList.remove("selected"));
+  });
+
+  document.addEventListener("click", e => {
+    if (!hariWrap.contains(e.target)) hariDropdown.style.display = "none";
+  });
 }
 function initCustHariChips() {
   const chips = document.getElementById("custHariChips");
@@ -2138,13 +2230,32 @@ function renderCustCards(customers = []) {
       const id       = card.dataset.id;
       const customer = customers.find(c => c.id === id);
       if (!customer) return;
+
       const mapWrap = document.getElementById("mapRollingWrap");
       if (mapWrap) {
-        window.closeMapRolling?.();
+        // mode rolling aktif — jangan buka detail, cukup aktifkan popup pin-nya (tanpa pan/zoom)
+        if (window.innerWidth <= 768) {
+          document.getElementById("custRightPanel")?.classList.add("show");
+          const backBtn = document.getElementById("topbarBackBtn");
+          if (backBtn) backBtn.style.display = "flex";
+          setTimeout(() => window.rollingMap?.invalidateSize(), 150);
+        }
+        const marker = (window._rollingAllMarkers || []).find(m => m._petaId === id);
+        if (marker) marker.openPopup();
+        return;
       }
 
       openCustDetail(customer);
     });
+  });
+
+  // klik area kosong (bukan card) — batalin active + tutup popup pin yang lagi kebuka
+  list.addEventListener("click", e => {
+    if (e.target.closest(".cust-card")) return;
+    list.querySelectorAll(".cust-card").forEach(c => c.classList.remove("active"));
+    if (document.getElementById("mapRollingWrap")) {
+      window.rollingMap?.closePopup();
+    }
   });
   // init rolling drag — hanya saat mode rolling aktif
   list.querySelectorAll(".cust-card").forEach(card => {

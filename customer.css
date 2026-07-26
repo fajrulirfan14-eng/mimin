@@ -782,6 +782,10 @@
 .cust-rolling-target-count {
   font-size: 11px; color: var(--text-muted); margin-top: 1px;
 }
+.cust-rolling-target-hari {
+  font-size: 10.5px; color: var(--brand-primary); font-weight: 600;
+  margin-top: 1px;
+}
 
 .cust-verifikasi-card {
   display: flex;
