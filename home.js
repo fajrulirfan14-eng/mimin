@@ -22,7 +22,6 @@ window.initHomeView = async function() {
     if (icon) icon.classList.add("fa-spin");
     if (reloadBtn) reloadBtn.disabled = true;
     try {
-      await window.idb.clearUsers();
       await loadUsers();
     } catch {}
     if (icon) icon.classList.remove("fa-spin");
@@ -48,7 +47,6 @@ async function loadUsers() {
     usersCache        = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
     window.usersCache = usersCache;
 
-    await window.idb.saveUsers(usersCache);
     await loadKantorCabang();
 
     renderStats();
@@ -69,7 +67,6 @@ async function loadKantorCabang() {
     if (snap.exists()) {
       const data = { id: snap.id, ...snap.data() };
       window.kantorCabang = data;
-      await window.idb.saveKantorCabang(data);
     }
   } catch (err) {
     console.error("❌ loadKantorCabang:", err);
@@ -109,30 +106,110 @@ function renderStats() {
 }
 
 function renderUsersList() {
-  const listEl = document.getElementById("homeUsersList");
-  if (!listEl) return;
+  const wrapEl = document.getElementById("homeUsersList");
+  if (!wrapEl) return;
+
+  // hentikan animasi lama dulu (kalau ada), biar gak numpuk loop pas reload
+  if (window._homeBubbleRaf) { cancelAnimationFrame(window._homeBubbleRaf); window._homeBubbleRaf = null; }
 
   if (!usersCache.length) {
-    listEl.innerHTML = `<div class="home-users-empty">Belum ada anggota</div>`;
+    wrapEl.innerHTML = `<div class="home-users-empty">Belum ada anggota</div>`;
     return;
   }
 
-  listEl.innerHTML = usersCache.map(u => {
+  wrapEl.innerHTML = `<div class="home-bubble-wrap" id="homeBubbleWrap"></div>`;
+  const container = document.getElementById("homeBubbleWrap");
+  const rect = () => container.getBoundingClientRect();
+  const { width: W, height: H } = rect();
+
+  const isMobile = window.innerWidth <= 768;
+  const bubbleSize = isMobile
+    ? (usersCache.length > 20 ? 32 : usersCache.length > 10 ? 40 : 48)
+    : (usersCache.length > 20 ? 60 : usersCache.length > 10 ? 72 : 88);
+  const radius = bubbleSize / 2;
+
+  const bubbles = usersCache.map(u => {
     const nama    = u.nama || "Tanpa Nama";
     const inisial = nama.trim().charAt(0).toUpperCase();
-    const avatar  = u.foto
+    const el = document.createElement("div");
+    el.className = `home-bubble badge-${esc(u.role || "kurir")}`;
+    el.style.width  = bubbleSize + "px";
+    el.style.height = bubbleSize + "px";
+    el.innerHTML = u.foto
       ? `<img src="${esc(u.foto)}" alt="${esc(nama)}">`
-      : inisial;
-    return `
-      <div class="home-user-card">
-        <div class="home-user-avatar">${avatar}</div>
-        <div class="home-user-info">
-          <div class="home-user-nama">${esc(nama)}</div>
-          <div class="home-user-role">${esc(u.role || "-")}</div>
-        </div>
-        <span class="home-user-badge badge-${esc(u.role || "kurir")}">${esc(u.role || "-")}</span>
-      </div>`;
-  }).join("");
+      : `<span>${esc(inisial)}</span>`;
+    container.appendChild(el);
+    return {
+      uid: u.uid,
+      el,
+      x: Math.random() * Math.max(W - bubbleSize, 1) + radius,
+      y: Math.random() * Math.max(H - bubbleSize, 1) + radius,
+      angle: Math.random() * Math.PI * 2, // arah gerak dasar
+      ix: 0, iy: 0, // impuls dari dorongan kursor/jari (meredam sendiri)
+    };
+  });
+
+  let pointer = null; // posisi kursor/jari relatif ke container, null kalau gak aktif
+  const getRelPos = e => {
+    const r  = rect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: cx - r.left, y: cy - r.top };
+  };
+  container.addEventListener("pointermove", e => { pointer = getRelPos(e); });
+  container.addEventListener("pointerleave", () => { pointer = null; });
+  container.addEventListener("touchmove", e => { pointer = getRelPos(e); }, { passive: true });
+  container.addEventListener("touchend", () => { pointer = null; });
+
+  // klik vs drag: kalau geser kurang dari 6px dianggap klik → buka detail akun
+  bubbles.forEach(b => {
+    let downX = 0, downY = 0, moved = false;
+    b.el.addEventListener("pointerdown", e => { downX = e.clientX; downY = e.clientY; moved = false; });
+    b.el.addEventListener("pointermove", e => {
+      if (Math.abs(e.clientX - downX) > 6 || Math.abs(e.clientY - downY) > 6) moved = true;
+    });
+    b.el.addEventListener("pointerup", () => {
+      if (!moved) window.openAkunDetailByUid?.(b.uid);
+    });
+  });
+
+  const BASE_SPEED = 0.8, TURN_RATE = 0.15, REPEL_RADIUS = 90, REPEL_STRENGTH = 7, IMPULSE_FRICTION = 0.93;
+
+  function step() {
+    const { width, height } = rect();
+    bubbles.forEach(b => {
+      // gerak dasar: belok pelan-pelan, kecepatan tetap (gak diredam)
+      b.angle += (Math.random() - 0.5) * TURN_RATE;
+      const baseVx = Math.cos(b.angle) * BASE_SPEED;
+      const baseVy = Math.sin(b.angle) * BASE_SPEED;
+
+      // impuls dorongan dari kursor/jari (ini yang diredam)
+      if (pointer) {
+        const dx = b.x - pointer.x, dy = b.y - pointer.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        if (dist < REPEL_RADIUS) {
+          const force = (REPEL_RADIUS - dist) / REPEL_RADIUS * REPEL_STRENGTH;
+          b.ix += (dx / dist) * force;
+          b.iy += (dy / dist) * force;
+        }
+      }
+      b.ix *= IMPULSE_FRICTION;
+      b.iy *= IMPULSE_FRICTION;
+
+      b.x += baseVx + b.ix;
+      b.y += baseVy + b.iy;
+
+      // pantul dari tepi — belokin arah dasar (bukan cuma impuls)
+      if (b.x < radius)          { b.x = radius;          b.angle = Math.PI - b.angle; }
+      if (b.x > width - radius)  { b.x = width - radius;  b.angle = Math.PI - b.angle; }
+      if (b.y < radius)          { b.y = radius;          b.angle = -b.angle; }
+      if (b.y > height - radius) { b.y = height - radius; b.angle = -b.angle; }
+
+      b.el.style.transform = `translate(${b.x - radius}px, ${b.y - radius}px)`;
+    });
+    window._homeBubbleRaf = requestAnimationFrame(step);
+  }
+  step();
 }
 
 function esc(str) {
