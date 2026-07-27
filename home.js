@@ -1,5 +1,14 @@
 window.initHomeView = async function() {
   const user = window.currentUser;
+
+  // Guard: home cuma boleh diakses adminCabang, role lain paksa logout
+  if (!user || user.role !== "adminCabang") {
+    try { await window.auth?.signOut(); } catch (e) {}
+    try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}
+    window.location.href = "login.html";
+    return;
+  }
+
   const now  = new Date();
 
   const greeting = now.getHours() < 11 ? "Selamat Pagi ☀️"
