@@ -102,6 +102,9 @@ function isPageUnlocked(viewName) {
   if (!unlockedAt) return false;
   return (Date.now() - unlockedAt) < PAGE_PASSWORD_COOLDOWN_MS;
 }
+window.getUidAdminCabang = async function() {
+  return window.currentUser?.createdBy || null;
+};
 window.requestView = function(viewName) {
   if (PAGE_PASSWORD_VIEWS.includes(viewName) && !isPageUnlocked(viewName)) {
     openPagePasswordPopup(viewName);
