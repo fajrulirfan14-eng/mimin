@@ -55,6 +55,24 @@ async function loadPembelianList() {
   }
 }
 
+/* ── SALDO PEMBAYARAN (subcollection singleton) ── */
+async function loadPembelianSaldoPembayaran() {
+  const adminUid = window.auth?.currentUser?.uid;
+  const saldoEl  = document.getElementById("pembelianSaldoPembayaran");
+  if (!adminUid || !saldoEl) return;
+
+  try {
+    const snap = await window.getDoc(
+      window.doc(window.db, "users", adminUid, "saldoPembayaran", "current")
+    );
+    const jumlah = snap.exists() ? (Number(snap.data()?.jumlah) || 0) : 0;
+    saldoEl.textContent = `Rp ${jumlah.toLocaleString("id-ID")}`;
+  } catch (err) {
+    console.error("❌ loadPembelianSaldoPembayaran:", err);
+    saldoEl.textContent = "Rp 0";
+  }
+}
+
 /* ── RENDER RINGKASAN (pakai pola rincian-summary-card) ── */
 function renderPembelianSummary() {
   let totalPembelian = 0, totalDibayar = 0, totalSisa = 0;
@@ -135,6 +153,7 @@ async function refreshPembelianData() {
   await loadPembelianList();
   renderPembelianSummary();
   renderPembelianTable();
+  loadPembelianSaldoPembayaran();
 }
 
 /* ── FORMAT RIBUAN (1.000) ── */
