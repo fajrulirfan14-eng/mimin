@@ -106,17 +106,16 @@ async function simpanSetoranAmplop() {
   try {
     if (btn) { btn.disabled = true; btn.textContent = "Menyimpan..."; }
 
-    const users = await window.idb.getUsers();
-    const adminCabang = users.find(u => u.role === "adminCabang");
-    if (!adminCabang) {
+    const uidAdminCabang = await getUidAdminCabang();
+    if (!uidAdminCabang) {
       showToast("Data admin cabang tidak ditemukan", "error");
       return;
     }
 
     const payload = {
-      createdBy: adminCabang.uid,
-      createdAt: serverTimestamp(),
-      idCabang: adminCabang.idCabang || "",
+      createdBy: uidAdminCabang,
+      createdAt: window.serverTimestamp(),
+      idCabang: window.currentUser?.idCabang || "",
       tanggal,
       catatan,
       diterima: false,
@@ -125,11 +124,12 @@ async function simpanSetoranAmplop() {
       produksi: buildProduksiPayload()
     };
 
-    const ref = doc(db, "users", adminCabang.uid, "setoranAmplop", tanggal);
-    await setDoc(ref, payload);
+    const ref = window.doc(window.db, "users", uidAdminCabang, "setoranAmplop", tanggal);
+    await window.setDoc(ref, payload);
 
     showToast("Setoran amplop berhasil disimpan", "");
   } catch (err) {
+    console.error("❌ simpanSetoranAmplop:", err);
     showToast("Gagal menyimpan setoran amplop", "error");
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = "Simpan"; }
@@ -258,16 +258,7 @@ function updateDistribusiUI() {
   if (elAmplop) elAmplop.textContent = formatRupiah(amplop);
 }
 async function getUidAdminCabang() {
-  try {
-    const users = await window.idb.getUsers();
-    const adminCabang = users.find(u => u.role === "adminCabang");
-    if (!adminCabang) {
-      return null;
-    }
-    return adminCabang.uid;
-  } catch (err) {
-    return null;
-  }
+  return window.currentUser?.uid || window.auth?.currentUser?.uid || null;
 }
 window.getUidAdminCabang = getUidAdminCabang;
 async function loadRumusData(tanggal) {
@@ -293,8 +284,8 @@ async function loadRumusData(tanggal) {
   toggleRumusTanggalCheck(false);
 
   // ── laporanAdmin ──
-  const ref = doc(db, "users", uidAdminCabang, "laporanAdmin", tanggal);
-  rumusUnsubscribe = onSnapshot(
+  const ref = window.doc(window.db, "users", uidAdminCabang, "laporanAdmin", tanggal);
+  rumusUnsubscribe = window.onSnapshot(
     ref,
     (snap) => {
       rumusLaporanData = snap.exists() ? snap.data() : null;
@@ -305,8 +296,8 @@ async function loadRumusData(tanggal) {
   );
 
   // ── pengeluaran ──
-  const refPengeluaran = doc(db, "users", uidAdminCabang, "pengeluaran", tanggal);
-  rumusPengeluaranUnsubscribe = onSnapshot(
+  const refPengeluaran = window.doc(window.db, "users", uidAdminCabang, "pengeluaran", tanggal);
+  rumusPengeluaranUnsubscribe = window.onSnapshot(
     refPengeluaran,
     (snap) => {
       rumusPengeluaranData = snap.exists() ? snap.data() : null;
@@ -317,8 +308,8 @@ async function loadRumusData(tanggal) {
   );
 
   // ── setoranAmplop (cek sudah disetor atau belum) ──
-  const refSetoran = doc(db, "users", uidAdminCabang, "setoranAmplop", tanggal);
-  rumusSetoranUnsubscribe = onSnapshot(
+  const refSetoran = window.doc(window.db, "users", uidAdminCabang, "setoranAmplop", tanggal);
+  rumusSetoranUnsubscribe = window.onSnapshot(
     refSetoran,
     (snap) => {
       toggleRumusTanggalCheck(snap.exists());
