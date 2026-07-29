@@ -598,15 +598,16 @@ async function tambahAkun() {
 
   try {
     const idCabang     = window.currentUser?.idCabang || "";
-    const namaCabang   = window.currentUser?.kantorCabang || "";
     const adminUid     = window.auth?.currentUser?.uid;
 
     let adminVarian = [];
+    let namaCabang  = "";
     try {
       const adminSnap = await window.getDoc(window.doc(window.db, "users", adminUid));
       adminVarian = adminSnap.exists() ? (adminSnap.data()?.varian || []) : [];
+      namaCabang  = adminSnap.exists() ? (adminSnap.data()?.kantorCabang || "") : "";
     } catch (err) {
-      console.error("❌ ambil varian admin:", err);
+      console.error("❌ ambil data admin:", err);
     }
 
     const secondaryApp  = window.initializeApp(window.firebaseConfig, "secondary-akun");
