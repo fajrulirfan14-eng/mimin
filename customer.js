@@ -266,8 +266,8 @@ function konfirmasiDragRolling(customer, targetUser, hari) {
 }
 async function eksekusiDragRolling(customer, targetUser, hari) {
   try {
-    const custId   = customer.id;
-    const hunterUid = custActiveUser?.uid;
+    const custId    = customer.id;
+    const hunterUid = customer.hunterUid || custActiveUser?.uid;
     const newHari   = hari || customer.hari;
     const adminUid  = window.auth?.currentUser?.uid;
     const idCabang  = window.currentUser?.idCabang || "";
@@ -343,7 +343,6 @@ async function eksekusiDragRolling(customer, targetUser, hari) {
     if (card) card.remove();
 
     // update badge
-    updateMarketingBadge(hunterUid, "hunter");
     updateMarketingBadge(targetUser.uid, targetUser.role);
     const remaining = document.querySelectorAll("#custDetailList .cust-card").length;
     updateHariBadge(custActiveHari, remaining);
@@ -387,15 +386,13 @@ async function loadRollingBadge() {
 }
 async function loadCustGroups() {
   const kurir   = window.usersCache.filter(u => u.role === "kurir");
-  const hunter  = window.usersCache.filter(u => u.role === "hunter");
   const sales   = window.usersCache.filter(u => u.role === "sales");
 
   // render dulu baru badge
   renderCustExpand("custExpandKurir",  kurir,  "kurir");
-  renderCustExpand("custExpandHunter", hunter, "hunter");
   renderCustExpand("custExpandSales",  sales,  "sales");
 
-  await renderAllMarketingBadges([...kurir, ...hunter, ...sales]);
+  await renderAllMarketingBadges([...kurir, ...sales]);
 
   initCustGroupsStaticListeners();
 }
@@ -431,18 +428,6 @@ async function renderAllMarketingBadges(allMarketing) {
     });
   } catch (err) {}
 
-  try {
-    const snapHunter = await window.getDocs(window.query(
-      window.collectionGroup(window.db, "customerBaruHunter"),
-      window.where("idCabang",   "==", idCabang),
-      window.where("diserahkan", "==", false)
-    ));
-    snapHunter.forEach(d => {
-      const uid = d.ref.parent.parent?.id;
-      if (uid) countByUid[uid] = (countByUid[uid] || 0) + 1;
-    });
-  } catch (err) {}
-
   allMarketing.forEach(u => {
     const total = countByUid[u.uid] || 0;
     const item = document.querySelector(`.cust-sub-item[data-uid="${u.uid}"]`);
@@ -467,6 +452,22 @@ function initCustGroupsStaticListeners() {
     trigger.addEventListener("click", () => {
       const group  = trigger.dataset.group;
       if (document.getElementById("mapRollingWrap")) window.closeMapRolling?.();
+
+      if (group === "hunter") {
+        document.querySelectorAll(".cust-menu-item").forEach(i => i.classList.remove("active"));
+        document.querySelectorAll(".cust-group-trigger").forEach(t => { t.classList.remove("active"); t.classList.remove("open"); });
+        document.querySelectorAll(".cust-group-expand").forEach(e => e.classList.remove("open"));
+        document.querySelectorAll(".cust-sub-item").forEach(s => s.classList.remove("active"));
+        trigger.classList.add("active");
+        showCustDetail("Customer Hunter", { role: "hunter" }, null);
+        if (window.innerWidth <= 768) {
+          document.getElementById("custMiddlePanel")?.classList.add("show");
+          const backBtn = document.getElementById("topbarBackBtn");
+          if (backBtn) backBtn.style.display = "flex";
+        }
+        return;
+      }
+
       const expand = document.getElementById(`custExpand${capitalize(group)}`);
       const isOpen = expand?.classList.contains("open");
 
@@ -1924,13 +1925,6 @@ async function updateMarketingBadge(uid, role) {
         window.where("diserahkan", "==", false)
       ));
       total = snap.size;
-    } else if (role === "hunter") {
-      const snap = await window.getDocs(window.query(
-        window.collection(window.db, "users", uid, "customerBaruHunter"),
-        window.where("idCabang",   "==", idCabang),
-        window.where("diserahkan", "==", false)
-      ));
-      total = snap.size;
     }
   } catch (err) {
     console.error("❌ updateMarketingBadge:", err);
@@ -2000,7 +1994,7 @@ function showCustDetail(title, user = null, menu = null) {
       filterCustList("");
     });
   }
-  if (user) updateMarketingBadge(user.uid, user.role);
+  if (user?.uid) updateMarketingBadge(user.uid, user.role);
   subscribeCustActiveMarketing();
 }
 /* ── FILTER HARI ROLLING (dipakai buat nentuin field hari baru pas customer di-roll) ── */
@@ -2121,7 +2115,8 @@ function subscribeCustActiveMarketing() {
   const role     = custActiveUser?.role;
   const uid      = custActiveUser?.uid;
   const idCabang = window.currentUser?.idCabang || "";
-  if (!role || !uid || !idCabang) return;
+  if (!role || !idCabang) return;
+  if (role !== "hunter" && !uid) return;
 
   let q = null;
   if (role === "kurir") {
@@ -2132,8 +2127,10 @@ function subscribeCustActiveMarketing() {
       window.where("status",   "==", true)
     );
   } else if (role === "hunter") {
+    // gabungan semua hunter cabang ini — filter idCabang di dokumen itu sendiri,
+    // bukan idCabang staff hunter saat ini (hunter bisa pindah cabang)
     q = window.query(
-      window.collection(window.db, "users", uid, "customerBaruHunter"),
+      window.collectionGroup(window.db, "customerBaruHunter"),
       window.where("idCabang",   "==", idCabang),
       window.where("diserahkan", "==", false)
     );
@@ -2148,7 +2145,11 @@ function subscribeCustActiveMarketing() {
   if (!q) return;
 
   custActiveUnsub = window.onSnapshot(q, snap => {
-    custActiveRawData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    custActiveRawData = snap.docs.map(d => {
+      const data = { id: d.id, ...d.data(), role };
+      if (role === "hunter") data.hunterUid = d.ref.parent.parent?.id || null;
+      return data;
+    });
     renderActiveCustDataForHari();
     computeAndRenderHariBadges(custActiveRawData);
   }, err => {
@@ -2341,6 +2342,25 @@ async function nonAktifkanCustomer(custId, customers) {
     window.showToast("Gagal menonaktifkan", "error");
   }
 }
+window._staffNameCache = window._staffNameCache || {};
+async function resolveStaffNama(uid) {
+  if (!uid) return null;
+  const cached = (window.usersCache||[]).find(u => u.uid === uid);
+  if (cached) return cached;
+  if (window._staffNameCache[uid]) return window._staffNameCache[uid];
+  try {
+    const snap = await window.getDoc(window.doc(window.db, "users", uid));
+    if (snap.exists()) {
+      const data = { uid, ...snap.data() };
+      window._staffNameCache[uid] = data;
+      return data;
+    }
+  } catch (err) {
+    console.warn("⚠️ resolveStaffNama, staff mungkin sudah tidak ada:", uid);
+  }
+  return null;
+}
+
 function openCustDetail(customer) {
   const empty   = document.getElementById("custRightEmpty");
   const content = document.getElementById("custRightContent");
@@ -2353,6 +2373,11 @@ function openCustDetail(customer) {
 
   // state edit sementara
   window._custEditData = { ...customer };
+
+  const isHunterCust  = customer.role === "hunter";
+  const ownerUid      = isHunterCust ? customer.hunterUid : customer.pemilik;
+  const ownerCached    = (window.usersCache||[]).find(u => u.uid === ownerUid);
+  const ownerNamaAwal  = ownerCached?.nama || (ownerUid ? "Memuat..." : "Pilih Pemilik");
 
   if (body) body.innerHTML = `
     <!-- FOTO -->
@@ -2395,9 +2420,13 @@ function openCustDetail(customer) {
 
       <div class="cust-edit-group">
         <label class="cust-edit-label">Pemilik</label>
+        ${isHunterCust ? `
+        <div class="cust-dropdown-trigger" id="custDropPemilikTrigger" style="pointer-events:none">
+          <span id="custDropPemilikLabel">${esc(ownerNamaAwal)}</span>
+        </div>` : `
         <div class="cust-dropdown" id="custDropPemilik">
           <div class="cust-dropdown-trigger" id="custDropPemilikTrigger">
-            <span id="custDropPemilikLabel">${esc((window.usersCache||[]).find(u=>u.uid===customer.pemilik)?.nama || customer.pemilik || "Pilih Pemilik")}</span>
+            <span id="custDropPemilikLabel">${esc(ownerNamaAwal)}</span>
             <i class="fa-solid fa-chevron-down cust-dropdown-arrow"></i>
           </div>
           <div class="cust-dropdown-list" id="custDropPemilikList">
@@ -2405,7 +2434,7 @@ function openCustDetail(customer) {
               `<div class="cust-dropdown-item ${customer.pemilik === u.uid ? "active" : ""}" data-val="${esc(u.uid)}">${esc(u.nama||"Tanpa Nama")}</div>`
             ).join("")}
           </div>
-        </div>
+        </div>`}
       </div>
 
       <div class="cust-edit-group">
@@ -2518,10 +2547,17 @@ function openCustDetail(customer) {
     window._custEditData.hari = val;
   });
 
-  // init dropdown pemilik
-  initCustDropdown("custDropPemilik", "custDropPemilikTrigger", "custDropPemilikLabel", "custDropPemilikList", val => {
-    window._custEditData.pemilik = val;
-  });
+  // init dropdown pemilik — hunter read-only (bukan field yang bisa direassign dari sini)
+  if (!isHunterCust) {
+    initCustDropdown("custDropPemilik", "custDropPemilikTrigger", "custDropPemilikLabel", "custDropPemilikList", val => {
+      window._custEditData.pemilik = val;
+    });
+  } else if (ownerUid && !ownerCached) {
+    resolveStaffNama(ownerUid).then(staff => {
+      const labelEl = document.getElementById("custDropPemilikLabel");
+      if (labelEl) labelEl.textContent = staff?.nama || ownerUid;
+    });
+  }
   // init toggle isNew
   const toggleNew = document.getElementById("custToggleNew");
   toggleNew?.addEventListener("click", () => {
@@ -2606,12 +2642,16 @@ async function simpanCustEdit(custId) {
       updatedAt: window.serverTimestamp()
     };
 
-    // 1. simpan ke Firestore
-    await window.setDoc(
-      window.doc(window.db, "customer", custId),
-      updateData,
-      { merge: true }
-    );
+    // 1. simpan ke Firestore — path beda tergantung sumber customer (kurir/hunter/sales)
+    let refSimpan;
+    if (d.role === "hunter") {
+      refSimpan = window.doc(window.db, "users", d.hunterUid, "customerBaruHunter", custId);
+    } else if (d.role === "sales") {
+      refSimpan = window.doc(window.db, "customerSales", custId);
+    } else {
+      refSimpan = window.doc(window.db, "customer", custId);
+    }
+    await window.setDoc(refSimpan, updateData, { merge: true });
     // 2. update card di list
     const card = document.querySelector(`#custDetailList .cust-card[data-id="${custId}"]`);
     if (card) {

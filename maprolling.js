@@ -270,10 +270,22 @@ window.openMapRolling = async function() {
 
   HARI_LIST.forEach(h => { layerGroups[h] = L.layerGroup().addTo(rollingMap); });
 
-  allUsers.forEach(u => {
-    const entry = custByUidRolling[u.uid];
-    if (!entry) return;
+  // resolve nama staff yang gak ketemu di usersCache (khususnya hunter yang udah pindah cabang,
+  // tapi masih punya sisa customerBaruHunter belum diserahkan di cabang ini)
+  const missingUidsRolling = Object.keys(custByUidRolling).filter(uid => !allUsers.some(u => u.uid === uid));
+  const resolvedNameMapRolling = {};
+  if (missingUidsRolling.length && window.resolveStaffNama) {
+    await Promise.all(missingUidsRolling.map(async uid => {
+      const staff = await window.resolveStaffNama(uid);
+      resolvedNameMapRolling[uid] = staff?.nama || null;
+    }));
+  }
+
+  Object.keys(custByUidRolling).forEach(uid => {
+    const entry = custByUidRolling[uid];
     const pinType = entry.pinType;
+    const staffCached = allUsers.find(u => u.uid === uid);
+    const staffNama = staffCached?.nama || resolvedNameMapRolling[uid] || "-";
 
     entry.list.forEach(c => {
       const h = c.hari;
@@ -297,15 +309,15 @@ window.openMapRolling = async function() {
 
       marker._petaNama        = c.namaCustomer || "";
       marker._petaHari        = h;
-      marker._petaPemilikId   = u.uid;
-      marker._petaPemilikNama = u.nama || "-";
+      marker._petaPemilikId   = uid;
+      marker._petaPemilikNama = staffNama;
       marker._petaId          = c.id   || "";
       marker.bindPopup(`
         <div class="cust-popup">
           ${c.foto ? `<img src="${c.foto}" class="cust-popup-foto">` : ""}
           <div class="cust-popup-info">
             <strong>${c.namaCustomer || "-"}</strong>
-            <span>${pinType}: ${u.nama || "-"}</span>
+            <span>${pinType}: ${staffNama}</span>
             <span style="color:${hariColorsRolling[h]};font-weight:600">${h}</span>
           </div>
         </div>`, { maxWidth: 220 });
