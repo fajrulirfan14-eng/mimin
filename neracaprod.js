@@ -180,10 +180,10 @@ async function getDefaultNeracaLancar() {
   ]);
 
   return [
-    { id: "default-saldokas",   nama: "Saldo Kas",          nilai: Math.round(rincianSelisih.selisih) },
-    { id: "default-stockbahan", nama: "Stock Bahan Mentah", nilai: stockBahanMentah },
-    { id: "default-stockjadi",  nama: "Stock Barang Jadi",  nilai: stockBarangJadi },
-    { id: "default-modalpend",  nama: "Modal Pendam",       nilai: modalPendam }
+    { id: "default-saldokas",   nama: "Saldo Kas",           nilai: Math.round(rincianSelisih.selisih) },
+    { id: "default-stockbahan", nama: "Stock Barang Mentah", nilai: stockBarangJadi },
+    { id: "default-stockjadi",  nama: "Stock Barang Jadi",   nilai: stockBahanMentah },
+    { id: "default-modalpend",  nama: "Modal Pendam",        nilai: modalPendam }
   ];
 }
 async function hitungNilaiAssetProd() {

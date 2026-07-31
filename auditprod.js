@@ -168,6 +168,38 @@ async function loadAuditSlipGajiTotal() {
   }
   return total;
 }
+async function loadAuditOperasionalTotal() {
+  let total = 0;
+  try {
+    const adminUid = window.auth?.currentUser?.uid;
+    if (!adminUid) return total;
+
+    const mm    = String(auditBulan + 1).padStart(2, "0");
+    const start = `${auditTahun}-${mm}-01`;
+    const end   = `${auditTahun}-${mm}-31`;
+
+    // Pengeluaran variable, kecuali Pembelian Paket Bahan Baku, Galon & Gas
+    const EXCLUDE_NAMA_OPERASIONAL = ["pembelian paket bahan baku", "galon", "gas"];
+    const snapPengeluaran = await window.getDocs(window.query(
+      window.collection(window.db, "users", adminUid, "pengeluaran"),
+      window.where("tanggal", ">=", start),
+      window.where("tanggal", "<=", end)
+    ));
+    snapPengeluaran.forEach(docSnap => {
+      const data = docSnap.data();
+      const produksi = data.produksi || [];
+      produksi.forEach(item => {
+        if (item.jenis !== "variable") return;
+        const namaLower = (item.nama || "").trim().toLowerCase();
+        if (EXCLUDE_NAMA_OPERASIONAL.includes(namaLower)) return;
+        total += Number(item.nominal) || 0;
+      });
+    });
+  } catch (err) {
+    console.error("❌ loadAuditOperasionalTotal:", err);
+  }
+  return total;
+}
 async function loadAuditStockAkhirBulanLalu(periodeSekarang) {
   const result = {};
   const adminUid = window.auth?.currentUser?.uid;
@@ -280,12 +312,109 @@ function hitungAuditRow(row) {
   const saldo   = stockAwal + belanja - hppReal;
   return { saldo, hppReal };
 }
+let auditTotalSaldoAkhirVarian = 0;
+
+async function loadAuditSaldoAkhirVarianTotal() {
+  auditTotalSaldoAkhirVarian = 0;
+  try {
+    const varianList = await loadRekapProdVarianList();
+    if (!varianList.length) return auditTotalSaldoAkhirVarian;
+
+    const adminUid    = window.auth?.currentUser?.uid;
+    const prevPeriode = getPrevMonthTanggal(auditBulan, auditTahun);
+
+    // Saldo Kemarin
+    let saldoKemarin = {};
+    try {
+      const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "saldoBulanKemarin", prevPeriode));
+      saldoKemarin = snap.exists() ? (snap.data()?.saldo || {}) : {};
+    } catch (err) {
+      console.error("❌ loadAuditSaldoAkhirVarianTotal (saldoKemarin):", err);
+    }
+
+    // Input, Reject, Rusak Freezer, Basi Freezer, Barang Hilang, Promosi — dari stock opname
+    const stockAgg = {};
+    Object.keys(REKAP_PROD_FIELD_MAP).forEach(jenis => { stockAgg[jenis] = {}; });
+    const filteredStock = await getStockOpnameBulanCached(auditBulan, auditTahun);
+    filteredStock.forEach(record => {
+      const data = record.data || {};
+      Object.entries(REKAP_PROD_FIELD_MAP).forEach(([jenis, field]) => {
+        const fieldMap = data[field] || {};
+        Object.entries(fieldMap).forEach(([varian, nilai]) => {
+          stockAgg[jenis][varian] = (stockAgg[jenis][varian] || 0) + Number(nilai || 0);
+        });
+      });
+    });
+
+    // Fee, Off Flavor, Output — dari laporanAdmin
+    const laporanAgg = {};
+    Object.keys(REKAP_PROD_LAPORAN_FIELD_MAP).forEach(jenis => { laporanAgg[jenis] = {}; });
+    const filteredLaporan = await getLaporanAdminBulanCached(auditBulan, auditTahun);
+    filteredLaporan.forEach(record => {
+      const dataPerUid = record.data || {};
+      Object.values(dataPerUid).forEach(uidData => {
+        Object.entries(REKAP_PROD_LAPORAN_FIELD_MAP).forEach(([jenis, path]) => {
+          const fieldMap = getNestedField(uidData, path) || {};
+          Object.entries(fieldMap).forEach(([varian, nilai]) => {
+            laporanAgg[jenis][varian] = (laporanAgg[jenis][varian] || 0) + Number(nilai || 0);
+          });
+        });
+      });
+    });
+
+    varianList.forEach(v => {
+      const sk           = Number(saldoKemarin[v])                || 0;
+      const input        = Number(stockAgg["Input"]?.[v])         || 0;
+      const reject       = Number(stockAgg["Reject"]?.[v])        || 0;
+      const rusakFreezer = Number(stockAgg["Rusak Freezer"]?.[v]) || 0;
+      const basiFreezer  = Number(stockAgg["Basi Freezer"]?.[v])  || 0;
+      const barangHilang = Number(stockAgg["Barang Hilang"]?.[v]) || 0;
+      const promosi      = Number(stockAgg["Promosi"]?.[v])       || 0;
+      const fee          = Number(laporanAgg["Fee"]?.[v])         || 0;
+      const offFlavor    = Number(laporanAgg["Off Flavor"]?.[v])  || 0;
+      const output       = Number(laporanAgg["Output"]?.[v])      || 0;
+
+      const saldoAkhir = sk + input - reject - output - fee - rusakFreezer - basiFreezer - offFlavor - barangHilang - promosi;
+      auditTotalSaldoAkhirVarian += saldoAkhir;
+    });
+  } catch (err) {
+    console.error("❌ loadAuditSaldoAkhirVarianTotal:", err);
+  }
+  return auditTotalSaldoAkhirVarian;
+}
+
+function hitungAuditKpiLive() {
+  let totalHargaHppReal = 0;
+  let totalInputVarian  = 0;
+
+  auditBahanList.forEach(row => {
+    const { hppReal } = hitungAuditRow(row);
+    if (row.kategori === "loyang")   totalHargaHppReal += hppReal * (Number(row.hargaPaket) || 0);
+    if (row.kategori === "variable") totalHargaHppReal += hppReal * (Number(row.harga)      || 0);
+    if (row.kategori === "varian")   totalInputVarian   += hppReal;
+  });
+
+  return { totalHargaHppReal, totalInputVarian };
+}
+function updateAuditKpiHargaHppReal() {
+  const hargaEl = document.getElementById("auditKpiHargaHppReal");
+  const inputEl = document.getElementById("auditKpiTotalInput");
+  const saldoEl = document.getElementById("auditKpiTotalSaldoAkhir");
+  if (!hargaEl && !inputEl && !saldoEl) return;
+
+  const { totalHargaHppReal, totalInputVarian } = hitungAuditKpiLive();
+
+  if (hargaEl) hargaEl.textContent = `Rp ${totalHargaHppReal.toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
+  if (inputEl) inputEl.textContent = totalInputVarian.toLocaleString("id-ID", { maximumFractionDigits: 2 });
+  if (saldoEl) saldoEl.textContent = auditTotalSaldoAkhirVarian.toLocaleString("id-ID", { maximumFractionDigits: 2 });
+}
 function renderAuditTable() {
   const tbody = document.getElementById("auditTableBody");
   if (!tbody) return;
 
   if (!auditBahanList.length) {
     tbody.innerHTML = `<tr class="audit-empty-row"><td colspan="6">Belum ada bahan baku</td></tr>`;
+    updateAuditKpiHargaHppReal();
     return;
   }
 
@@ -330,6 +459,7 @@ function renderAuditTable() {
       </tr>`;
   }).join("");
   attachAuditInputListeners();
+  updateAuditKpiHargaHppReal();
 }
 function attachAuditInputListeners() {
   document.querySelectorAll(".audit-input-stockawal, .audit-input-stockakhir, .audit-input-belanja, .audit-input-hppreal").forEach(input => {
@@ -359,6 +489,8 @@ function attachAuditInputListeners() {
         hppRealEl.textContent = hppReal ? hppReal.toLocaleString("id-ID") : "";
         hppRealEl.classList.toggle("negative", hppReal < 0);
       }
+
+      updateAuditKpiHargaHppReal();
     };
   });
 }
@@ -433,6 +565,7 @@ function initAuditFilter() {
       opt.classList.add("selected");
       closeAll();
       await loadAuditBahanList();
+      await loadAuditSaldoAkhirVarianTotal();
       renderAuditTable();
       await loadAuditPreview();
     });
@@ -448,6 +581,7 @@ function initAuditFilter() {
     opt.classList.add("selected");
     closeAll();
     await loadAuditBahanList();
+    await loadAuditSaldoAkhirVarianTotal();
     renderAuditTable();
     await loadAuditPreview();
   });
@@ -457,36 +591,40 @@ function initAuditFilter() {
     btn.classList.add("spinning");
     await getStockOpnameBulanCached(auditBulan, auditTahun, true);
     await loadAuditBahanList();
+    await loadAuditSaldoAkhirVarianTotal();
     renderAuditTable();
     await loadAuditPreview();
     btn.classList.remove("spinning");
   });
 }
 
-function hitungHppRealDanHasilAudit(dataBahan, hasilFixed = 0, hasilGaji = 0) {
+function hitungHppRealDanHasilAudit(dataBahan, hasilFixed = 0, hasilGaji = 0, hasilOperasional = 0) {
   let hasilLoyang = 0;
   let hasilVariable = 0;
-  let totalSaldoVarian = 0;
-  let totalStockAkhirVarian = 0;
+  let hasilSaldoLoyang = 0;
+  let hasilSaldoVariable = 0;
+  let totalInputVarian = 0;
 
   dataBahan.forEach(row => {
     if (row.kategori === "loyang") {
-      hasilLoyang += (Number(row.saldo) || 0) * (Number(row.hargaPaket) || 0);
+      hasilLoyang      += (Number(row.hppReal) || 0) * (Number(row.hargaPaket) || 0);
+      hasilSaldoLoyang += (Number(row.saldo)   || 0) * (Number(row.hargaPaket) || 0);
     }
     if (row.kategori === "variable") {
-      hasilVariable += (Number(row.saldo) || 0) * (Number(row.harga) || 0);
+      hasilVariable      += (Number(row.hppReal) || 0) * (Number(row.harga) || 0);
+      hasilSaldoVariable += (Number(row.saldo)   || 0) * (Number(row.harga) || 0);
     }
     if (row.kategori === "varian") {
-      totalSaldoVarian      += Number(row.saldo)      || 0;
-      totalStockAkhirVarian += Number(row.stockAkhir) || 0;
+      totalInputVarian += Number(row.hppReal) || 0;
     }
   });
 
-  const hasilJumlah = hasilLoyang + hasilVariable + Number(hasilFixed || 0) + Number(hasilGaji || 0);
-  const hppReal     = totalSaldoVarian !== 0 ? hasilJumlah / totalSaldoVarian : 0;
-  const hasilAudit  = hppReal * totalStockAkhirVarian;
+  const totalHppRealHarga = hasilLoyang + hasilVariable;
+  const totalSemua = totalHppRealHarga + Number(hasilFixed || 0) + Number(hasilGaji || 0) + Number(hasilOperasional || 0);
+  const hppReal    = totalInputVarian !== 0 ? totalSemua / totalInputVarian : 0;
+  const hasilAudit = hasilSaldoLoyang + hasilSaldoVariable;
 
-  return { hppReal, hasilAudit };
+  return { hppReal, hasilAudit, totalHppRealHarga };
 }
 async function simpanAuditData() {
   const adminUid = window.auth?.currentUser?.uid;
@@ -513,9 +651,10 @@ async function simpanAuditData() {
     };
   });
 
-  const hasilFixed = await loadAuditFixedTotal();
-  const hasilGaji  = await loadAuditSlipGajiTotal();
-  const { hppReal, hasilAudit } = hitungHppRealDanHasilAudit(dataBahan, hasilFixed, hasilGaji);
+  const hasilFixed       = await loadAuditFixedTotal();
+  const hasilGaji        = await loadAuditSlipGajiTotal();
+  const hasilOperasional = await loadAuditOperasionalTotal();
+  const { hppReal, hasilAudit, totalHppRealHarga } = hitungHppRealDanHasilAudit(dataBahan, hasilFixed, hasilGaji, hasilOperasional);
 
   try {
     await window.setDoc(window.doc(window.db, "users", adminUid, "audit", periode), {
@@ -526,6 +665,8 @@ async function simpanAuditData() {
       hasilAudit,
       hasilFixed,
       hasilGaji,
+      hasilOperasional,
+      totalHppRealHarga,
       updatedAt: new Date().toISOString()
     });
     window.showToast("Data audit berhasil disimpan", "success");
@@ -536,11 +677,13 @@ async function simpanAuditData() {
   }
 }
 
-function updateAuditFixedGajiCards(hasilFixed, hasilGaji) {
+function updateAuditFixedGajiCards(hasilFixed, hasilGaji, hasilOperasional) {
   const fixedEl = document.getElementById("auditKpiFixed");
   const gajiEl  = document.getElementById("auditKpiGaji");
+  const opsEl   = document.getElementById("auditKpiOperasional");
   if (fixedEl) fixedEl.textContent = `Rp ${Number(hasilFixed || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
   if (gajiEl)  gajiEl.textContent  = `Rp ${Number(hasilGaji  || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
+  if (opsEl)   opsEl.textContent   = `Rp ${Number(hasilOperasional || 0).toLocaleString("id-ID", { maximumFractionDigits: 2 })}`;
 }
 function updateAuditKpiCards(docData) {
   const hppRealEl    = document.getElementById("auditKpiHppReal");
@@ -585,12 +728,13 @@ async function loadAuditPreview() {
 
   const periode = `${auditTahun}-${String(auditBulan + 1).padStart(2, "0")}`;
 
-  // hasilFixed & hasilGaji selalu live query, gak tergantung sudah disimpan atau belum
-  const [hasilFixedLive, hasilGajiLive] = await Promise.all([
+  // hasilFixed, hasilGaji, & hasilOperasional selalu live query, gak tergantung sudah disimpan atau belum
+  const [hasilFixedLive, hasilGajiLive, hasilOperasionalLive] = await Promise.all([
     loadAuditFixedTotal(),
-    loadAuditSlipGajiTotal()
+    loadAuditSlipGajiTotal(),
+    loadAuditOperasionalTotal()
   ]);
-  updateAuditFixedGajiCards(hasilFixedLive, hasilGajiLive);
+  updateAuditFixedGajiCards(hasilFixedLive, hasilGajiLive, hasilOperasionalLive);
 
   try {
     const snap = await window.getDoc(window.doc(window.db, "users", adminUid, "audit", periode));
@@ -667,6 +811,7 @@ window.initAuditProduksiView = function() {
         if (backBtn) backBtn.style.display = "flex";
       }
       loadAuditBahanList().then(renderAuditTable);
+      loadAuditSaldoAkhirVarianTotal().then(updateAuditKpiHargaHppReal);
       loadAuditPreview();
     });
   });
