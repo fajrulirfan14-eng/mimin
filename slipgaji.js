@@ -357,7 +357,7 @@ function renderSlipGajiItems() {
     const containerEl = document.getElementById(`slipGaji${capitalize(section)}Items`);
     if (!containerEl) return;
 
-    const jumlahSection = slipGajiData[section].reduce((a, v) => a + (v.readonly ? 0 : (Number(v.pembayaran) || 0)), 0);
+    const jumlahSection = slipGajiData[section].reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
 
     containerEl.innerHTML = slipGajiData[section].map((item, idx) => `
       <div class="slip-gaji-item-row" data-section="${section}" data-idx="${idx}">
@@ -367,7 +367,7 @@ function renderSlipGajiItems() {
           <input type="text" class="slip-gaji-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0" ${item.readonly ? "readonly" : ""}>
         </div>
         ${item.fixed ? "" : `<button class="slip-gaji-remove-btn"><i class="fa-solid fa-trash"></i></button>`}
-      </div>${item.readonly ? `<div class="slip-gaji-item-note"><i class="fa-solid fa-circle-info"></i> Bonus pay sudah diserahkan langsung pada hari kerja saat itu juga — tidak dihitung ke total penerimaan dan tidak disimpan ke slip gaji.</div>` : ""}`).join("") + `
+      </div>${item.readonly ? `<div class="slip-gaji-item-note"><i class="fa-solid fa-circle-info"></i> Bonus pay sudah diserahkan langsung pada hari kerja saat itu juga.</div>` : ""}`).join("") + `
       <div class="slip-gaji-item-row slip-gaji-jumlah-row">
         <div class="slip-gaji-item-fields">
           <span>Jumlah</span>
@@ -414,7 +414,7 @@ function updateJumlahSection(section) {
   if (!containerEl) return;
   const jumlahRow = containerEl.querySelector(".slip-gaji-jumlah-row .slip-gaji-jumlah-val");
   if (!jumlahRow) return;
-  const jumlahSection = slipGajiData[section].reduce((a, v) => a + (v.readonly ? 0 : (Number(v.pembayaran) || 0)), 0);
+  const jumlahSection = slipGajiData[section].reduce((a, v) => a + (Number(v.pembayaran) || 0), 0);
   jumlahRow.textContent = jumlahSection ? jumlahSection.toLocaleString("id-ID") : "-";
 }
 function tambahItemCustom(section) {
