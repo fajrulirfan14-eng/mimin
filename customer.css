@@ -486,6 +486,28 @@
   font-size: 13px; font-weight: 700; color: var(--text-primary);
 }
 .cust-dk-chip.active .cust-dk-chip-val { color: var(--brand-primary); }
+
+/* ── DATA KEMARIN EDITABLE (khusus kurir) ── */
+.cust-dk-chip-editable {
+  padding: 4px 10px 4px 12px;
+}
+.cust-dk-edit-input {
+  width: 44px; height: 24px; padding: 0 6px;
+  border: 1px solid var(--border-card); border-radius: 8px;
+  background: var(--bg-page); font-family: 'Poppins', sans-serif;
+  font-size: 12px; font-weight: 700; color: var(--text-primary);
+  text-align: center; outline: none;
+  -moz-appearance: textfield;
+  transition: border-color .15s;
+}
+.cust-dk-edit-input::-webkit-outer-spin-button,
+.cust-dk-edit-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+.cust-dk-edit-input:focus { border-color: var(--brand-primary); }
+.cust-dk-chip-editable.active .cust-dk-edit-input {
+  color: var(--brand-primary); border-color: var(--brand-light);
+}
 .cust-dk-val {
   font-size: 14px; font-weight: 700;
   color: var(--text-primary);

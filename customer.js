@@ -2375,6 +2375,7 @@ function openCustDetail(customer) {
   window._custEditData = { ...customer };
 
   const isHunterCust  = customer.role === "hunter";
+  const isKurirCust   = !customer.role || customer.role === "kurir";
   const ownerUid      = isHunterCust ? customer.hunterUid : customer.pemilik;
   const ownerCached    = (window.usersCache||[]).find(u => u.uid === ownerUid);
   const ownerNamaAwal  = ownerCached?.nama || (ownerUid ? "Memuat..." : "Pilih Pemilik");
@@ -2445,10 +2446,15 @@ function openCustDetail(customer) {
             .map(v => {
               const k   = Object.keys(v)[0];
               const qty = customer.dataKemarin?.[k]?.qty ?? 0;
-              return `<div class="cust-dk-chip ${qty > 0 ? "active" : ""}">
-                <span class="cust-dk-chip-key">${esc(k)}</span>
-                <span class="cust-dk-chip-val">${qty}</span>
-              </div>`;
+              return isKurirCust
+                ? `<div class="cust-dk-chip cust-dk-chip-editable ${qty > 0 ? "active" : ""}">
+                    <span class="cust-dk-chip-key">${esc(k)}</span>
+                    <input type="number" min="0" class="cust-dk-edit-input" data-varian="${esc(k)}" value="${qty}">
+                  </div>`
+                : `<div class="cust-dk-chip ${qty > 0 ? "active" : ""}">
+                    <span class="cust-dk-chip-key">${esc(k)}</span>
+                    <span class="cust-dk-chip-val">${qty}</span>
+                  </div>`;
             }).join("")}
         </div>
       </div>
@@ -2566,6 +2572,19 @@ function openCustDetail(customer) {
     document.getElementById("custToggleNewDesc").textContent = window._custEditData.isNew ? "Baru" : "Lama";
   });
 
+  // init input Data Kemarin — hanya editable untuk customer kurir
+  if (isKurirCust) {
+    window._custEditData.dataKemarin = { ...(customer.dataKemarin || {}) };
+    document.querySelectorAll("#custRightBody .cust-dk-edit-input").forEach(input => {
+      input.addEventListener("input", () => {
+        const k   = input.dataset.varian;
+        const qty = Number(input.value) || 0;
+        window._custEditData.dataKemarin[k] = { qty };
+        input.closest(".cust-dk-chip")?.classList.toggle("active", qty > 0);
+      });
+    });
+  }
+
   // simpan
   document.getElementById("custEditSaveBtn")?.addEventListener("click", () => simpanCustEdit(customer.id));
 
@@ -2641,6 +2660,10 @@ async function simpanCustEdit(custId) {
       foto:      d.foto || "",
       updatedAt: window.serverTimestamp()
     };
+    // Data Kemarin hanya boleh diubah kalau customer milik kurir
+    if (!d.role || d.role === "kurir") {
+      updateData.dataKemarin = d.dataKemarin || {};
+    }
 
     // 1. simpan ke Firestore — path beda tergantung sumber customer (kurir/hunter/sales)
     let refSimpan;
