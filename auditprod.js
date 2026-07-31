@@ -272,12 +272,12 @@ function hitungAuditRow(row) {
 
   if (row.kategori === "variable" || row.kategori === "manual") {
     const saldo   = Number(row.stockAkhir) || 0;
-    const hppReal = stockAwal + belanja + saldo;
+    const hppReal = stockAwal + belanja - saldo;
     return { saldo, hppReal };
   }
 
   const hppReal = Number(row.hppReal) || 0;
-  const saldo   = stockAwal + belanja + hppReal;
+  const saldo   = stockAwal + belanja - hppReal;
   return { saldo, hppReal };
 }
 function renderAuditTable() {
