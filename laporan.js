@@ -488,7 +488,7 @@ function initKeuanganModal() {
   const header  = document.getElementById("lapKeuHeader");
 
   // format ribuan
-  ["lapKeuOmset","lapKeuInsentif","lapKeuKasbon"].forEach(id => {
+  ["lapKeuOmset","lapKeuInsentif","lapKeuPay","lapKeuKasbon"].forEach(id => {
     document.getElementById(id)?.addEventListener("input", e => {
       const angka = e.target.value.replace(/\D/g, "");
       e.target.value = angka ? Number(angka).toLocaleString("id-ID") : "";
@@ -643,6 +643,17 @@ async function openKeuModal(tanggal) {
     if (insentifInput) insentifInput.disabled = false;
     if (insentifNote)  insentifNote.style.display = "none";
   }
+
+  // cek gak dapat bonus pay — disable klaim pay
+  const payInput = document.getElementById("lapKeuPay");
+  const payNote  = document.getElementById("lapKeuPayNote");
+  if (bonusPay <= 0) {
+    if (payInput) { payInput.disabled = true; payInput.value = ""; }
+    if (payNote)  payNote.style.display = "flex";
+  } else {
+    if (payInput) payInput.disabled = false;
+    if (payNote)  payNote.style.display = "none";
+  }
   const omsetData = data?.pembayaran?.bayarKonsumen || 0;
   window._lapOmsetData = omsetData;
   const refEl = document.getElementById("lapKeuOmsetRef");
@@ -670,6 +681,7 @@ async function openKeuModal(tanggal) {
     };
     setInput("lapKeuOmset",    keuangan.inputOmset    || 0);
     setInput("lapKeuInsentif", keuangan.klaimInsentif || 0);
+    setInput("lapKeuPay",      keuangan.klaimPay      || 0);
     setInput("lapKeuKasbon",   keuangan.kasbon        || 0);
     cekOmsetRef();
   } catch {}
@@ -757,6 +769,7 @@ async function simpanKeuangan() {
     const parse = id => Number((document.getElementById(id)?.value || "").replace(/\./g, "")) || 0;
     const inputOmset    = parse("lapKeuOmset");
     const klaimInsentif = parse("lapKeuInsentif");
+    const klaimPay      = parse("lapKeuPay");
     const kasbon        = parse("lapKeuKasbon");
 
     const bonusPay          = window._lapBonusPay          || 0;
@@ -829,7 +842,7 @@ async function simpanKeuangan() {
         omset, inputOmset, grossMargin,
         profitSekarang: grossMargin - jumlahBonus - upahHarian,
         profitKemarin:  payMargin - expiredMargin - jumlahBonus - upahHarian,
-        klaimInsentif, kasbon,
+        klaimInsentif, klaimPay, kasbon,
         bonus: { bonusInsentif, bonusKunjungan, bonusPay, bonusCustomerBaru, jumlahBonus }
       }
     };

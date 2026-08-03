@@ -22,7 +22,7 @@ function buildDistribusiPayload() {
       if (!keuangan) return;
 
       const nilaiOmset = keuangan.grossMargin || 0;
-      const bonusPay = keuangan.bonus?.bonusPay || 0;
+      const bonusPay = keuangan.klaimPay || 0;
       const klaimInsentif = keuangan.klaimInsentif || 0;
       const kasbon = keuangan.kasbon || 0;
       const totalKurirLainnya = bonusPay + klaimInsentif + kasbon;
@@ -202,7 +202,7 @@ function updateDistribusiUI() {
       if (!keuangan) return;
 
       const nilaiOmset    = keuangan.grossMargin || 0;
-      const bonusPay      = keuangan.bonus?.bonusPay || 0;
+      const bonusPay      = keuangan.klaimPay || 0;
       const klaimInsentif = keuangan.klaimInsentif || 0;
       const kasbon        = keuangan.kasbon || 0;
       const totalKurir    = bonusPay + klaimInsentif + kasbon;
