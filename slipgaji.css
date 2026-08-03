@@ -164,21 +164,6 @@
 .slip-gaji-add-btn:hover {
   background: var(--brand-pale);
 }
-.slip-gaji-item-note {
-  font-size: 10.5px;
-  font-style: italic;
-  color: var(--text-muted);
-  padding: 2px 4px 4px;
-  display: flex;
-  align-items: flex-start;
-  gap: 5px;
-  line-height: 1.4;
-}
-.slip-gaji-item-note i {
-  margin-top: 1px;
-  color: var(--brand-primary);
-  flex-shrink: 0;
-}
 .slip-gaji-catatan {
   width: 100%;
   border: 1px solid var(--border-card);

@@ -15,12 +15,13 @@ const SLIP_GAJI_TEMPLATE = {
     { key: "bonusKunjungan",    label: "Bonus Kunjungan",             hari: 0, pembayaran: 0, fixed: true },
     { key: "bonusHariLiburPerusahaan", label: "Bonus Hari Libur Perusahaan", hari: 0, pembayaran: 0, fixed: true },
     { key: "bonusCustomerBaru", label: "Bonus Customer Baru",         hari: 0, pembayaran: 0, fixed: true },
-    { key: "bonusPay",          label: "Bonus Pay",                   hari: 0, pembayaran: 0, fixed: true, readonly: true },
+    { key: "bonusPay",          label: "Bonus Pay",                   hari: 0, pembayaran: 0, fixed: true },
   ],
   potongan: [
     { key: "targetData",     label: "Target Data",     hari: 0, pembayaran: 0, fixed: true },
     { key: "targetCustomer", label: "Target Customer", hari: 0, pembayaran: 0, fixed: true },
     { key: "klaimInsentif",  label: "Klaim Insentif",  hari: 0, pembayaran: 0, fixed: true },
+    { key: "klaimPay",       label: "Klaim Pay",       hari: 0, pembayaran: 0, fixed: true },
     { key: "kasbon",         label: "Kasbon",          hari: 0, pembayaran: 0, fixed: true },
   ],
 };
@@ -302,7 +303,7 @@ async function pilihKurirSlipGaji(uid, nama) {
   }
 
   // ── POTONGAN: Target Data, Target Customer, Klaim Insentif, Kasbon ──
-  let klaimInsentif = 0, kasbon = 0;
+  let klaimInsentif = 0, klaimPay = 0, kasbon = 0;
   let potonganTargetData = 0, potonganTargetCustomer = 0;
   let customerNew = 0;
   filteredLaporan.forEach(l => {
@@ -310,6 +311,7 @@ async function pilihKurirSlipGaji(uid, nama) {
     if (!d) return;
     const dist = d.distribusi || {};
     klaimInsentif += Number(dist.keuangan?.klaimInsentif) || 0;
+    klaimPay      += Number(dist.keuangan?.klaimPay)      || 0;
     kasbon        += Number(dist.keuangan?.kasbon)        || 0;
     potonganTargetData     += Number(dist.infoTarget?.potongan?.potonganTargetData)     || 0;
     potonganTargetCustomer += Number(dist.infoTarget?.potongan?.potonganTargetCustomer) || 0;
@@ -332,6 +334,12 @@ async function pilihKurirSlipGaji(uid, nama) {
   if (idxKlaimInsentif !== -1) {
     slipGajiData.potongan[idxKlaimInsentif].hari = "-";
     slipGajiData.potongan[idxKlaimInsentif].pembayaran = klaimInsentif;
+  }
+
+  const idxKlaimPay = slipGajiData.potongan.findIndex(i => i.key === "klaimPay");
+  if (idxKlaimPay !== -1) {
+    slipGajiData.potongan[idxKlaimPay].hari = "-";
+    slipGajiData.potongan[idxKlaimPay].pembayaran = klaimPay;
   }
 
   const idxKasbon = slipGajiData.potongan.findIndex(i => i.key === "kasbon");
@@ -367,7 +375,7 @@ function renderSlipGajiItems() {
           <input type="text" class="slip-gaji-input-nominal" value="${item.pembayaran ? item.pembayaran.toLocaleString("id-ID") : ""}" placeholder="0" ${item.readonly ? "readonly" : ""}>
         </div>
         ${item.fixed ? "" : `<button class="slip-gaji-remove-btn"><i class="fa-solid fa-trash"></i></button>`}
-      </div>${item.readonly ? `<div class="slip-gaji-item-note"><i class="fa-solid fa-circle-info"></i> Bonus pay sudah diserahkan langsung pada hari kerja saat itu juga — tidak dihitung ke total penerimaan dan tidak disimpan ke slip gaji.</div>` : ""}`).join("") + `
+      </div>`).join("") + `
       <div class="slip-gaji-item-row slip-gaji-jumlah-row">
         <div class="slip-gaji-item-fields">
           <span>Jumlah</span>
@@ -437,7 +445,7 @@ function hitungTotalPenerimaan() {
   // Total Pendapatan (UI only, tidak disimpan): sama kayak Total Penerimaan,
   // tapi Klaim Insentif & Kasbon tidak ikut mengurangi
   const potonganTanpaKlaimKasbon = slipGajiData.potongan.reduce((a, v) => {
-    if (v.readonly || v.key === "klaimInsentif" || v.key === "kasbon") return a;
+    if (v.readonly || v.key === "klaimInsentif" || v.key === "klaimPay" || v.key === "kasbon") return a;
     return a + (Number(v.pembayaran) || 0);
   }, 0);
   const totalPendapatanKotor = totalPendapatan + totalBonus - potonganTanpaKlaimKasbon;
@@ -468,7 +476,7 @@ async function simpanSlipGaji() {
     const totalPenerimaan = sum(slipGajiData.pendapatan) + sum(slipGajiData.bonus) - sum(slipGajiData.potongan);
 
     const potonganTanpaKlaimKasbon = slipGajiData.potongan.reduce((a, v) => {
-      if (v.readonly || v.key === "klaimInsentif" || v.key === "kasbon") return a;
+      if (v.readonly || v.key === "klaimInsentif" || v.key === "klaimPay" || v.key === "kasbon") return a;
       return a + (Number(v.pembayaran) || 0);
     }, 0);
     const totalPendapatan = sum(slipGajiData.pendapatan) + sum(slipGajiData.bonus) - potonganTanpaKlaimKasbon;
