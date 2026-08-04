@@ -301,7 +301,7 @@ async function simpanSoData(mode) {
       const obj = {};
       document.querySelectorAll(`.so-input-varian[data-field="${fieldKey}"]`).forEach(inp => {
         const val = Number(inp.value);
-        if (!isNaN(val) && val > 0) obj[inp.dataset.varian] = val;
+        if (!isNaN(val) && val >= 0) obj[inp.dataset.varian] = val;
       });
       return obj;
     };
@@ -956,7 +956,7 @@ async function simpanSoSaldoKemarin() {
     const saldo = {};
     document.querySelectorAll('#soPopupSaldoKemarinBody .so-input-varian').forEach(inp => {
       const val = Number(inp.value);
-      if (!isNaN(val) && val > 0) saldo[inp.dataset.varian] = val;
+      if (!isNaN(val) && val >= 0) saldo[inp.dataset.varian] = val;
     });
 
     const ref = window.doc(window.db, "users", adminUid, "saldoBulanKemarin", bulanKey);
