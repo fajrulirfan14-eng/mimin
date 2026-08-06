@@ -516,6 +516,8 @@ async function renderDhForm() {
       const selisih = bayar - totalTagihan;
       const status  = selisih === 0 ? "Lunas" : selisih < 0 ? "Kurang" : "Lebih";
 
+      const distribusi = dhOmsetAktif - totalTagihan;
+
       const laporanRef = window.doc(window.db, "users", activeKurirUid, "laporanMarketing", tanggal);
       await window.setDoc(laporanRef, {
         createdBy:   adminUid,
@@ -527,7 +529,8 @@ async function renderDhForm() {
         sisaBarang: hasil.sisabarang || {},
         pembayaran: {
           closing: { ...closingData, createdAt: window.serverTimestamp() },
-          nota: { bayar, keterangan: selisih, status }
+          nota: { bayar, keterangan: selisih, status },
+          distribusi
         },
         updatedAt: window.serverTimestamp()
       }, { merge: true });
@@ -570,7 +573,8 @@ async function renderDhForm() {
             sisaBarang: hasil.sisabarang || {},
             pembayaran: {
               closing: closingData,
-              nota: { bayar, keterangan: selisih, status }
+              nota: { bayar, keterangan: selisih, status },
+              distribusi
             },
             createdBy: adminUid
           }

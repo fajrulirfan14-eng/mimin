@@ -573,13 +573,20 @@ async function openKeuModal(tanggal) {
   }
   const bonus        = kantorCabang?.bonus || {};
 
-  // ambil infoTarget frozen dari Firestore jika ada
+  // ambil infoTarget frozen + pembayaran (closing) terbaru dari Firestore
   let it = null;
   try {
     const snapIt = await window.getDoc(
       window.doc(window.db, "users", user.uid, "laporanMarketing", tanggal)
     );
-    if (snapIt.exists()) it = snapIt.data()?.distribusi?.infoTarget || null;
+    if (snapIt.exists()) {
+      it = snapIt.data()?.distribusi?.infoTarget || null;
+      // window._lapCurrentData bisa basi kalau closing baru aja diupdate di tab Data Harian
+      const pembayaranFresh = snapIt.data()?.pembayaran;
+      if (pembayaranFresh && window._lapCurrentData) {
+        window._lapCurrentData = { ...window._lapCurrentData, pembayaran: pembayaranFresh };
+      }
+    }
   } catch {}
 
   const cl  = it?.customerLama     ?? data?.customerLama     ?? 0;
@@ -800,11 +807,11 @@ async function simpanKeuangan() {
       const k = Object.keys(v)[0];
       if (k) hargaMap[k] = Number(v[k]?.hargaProduksi) || 0;
     });
-    // closing dari data harian yang udah tersimpan (bukan dari DOM tab lain)
+    // totalTagihan dari closing yang udah tersimpan (bukan DOM), grossMargin pake inputOmset manual admin
     const closingData = { ...(data?.pembayaran?.closing || {}) };
     delete closingData.createdAt;
-    const jumlahUangClosing = Object.entries(closingData).reduce((acc, [k, v]) => acc + (Number(v) || 0) * (hargaMap[k] || 0), 0);
-    const grossMargin = inputOmset - jumlahUangClosing;
+    const totalTagihan = Object.entries(closingData).reduce((acc, [k, v]) => acc + (Number(v) || 0) * (hargaMap[k] || 0), 0);
+    const grossMargin  = inputOmset - totalTagihan;
 
     // hitung pay.margin dan expired.margin
     const hargaKonsumenMap = {};
