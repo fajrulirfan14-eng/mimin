@@ -493,7 +493,7 @@ async function renderDhForm() {
         const varian = input.dataset.varian;
         const val    = Number(input.value) || 0;
         if (!hasil[type]) hasil[type] = {};
-        if (val > 0) hasil[type][varian] = val;
+        if (val >= 0) hasil[type][varian] = val;
       });
 
       const bayarRaw = document.querySelector(".dh-input-bayar")?.value || "";
