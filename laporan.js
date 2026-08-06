@@ -573,10 +573,10 @@ async function openKeuModal(tanggal) {
   }
   const bonus        = kantorCabang?.bonus || {};
 
-  // ambil infoTarget frozen + pembayaran (closing) terbaru dari Firestore
+  // ambil infoTarget frozen + pembayaran (closing) terbaru — paksa dari server, jangan cache
   let it = null;
   try {
-    const snapIt = await window.getDoc(
+    const snapIt = await window.getDocFromServer(
       window.doc(window.db, "users", user.uid, "laporanMarketing", tanggal)
     );
     if (snapIt.exists()) {
