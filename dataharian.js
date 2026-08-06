@@ -686,7 +686,8 @@ function hitungClosing() {
     const get = type => Number(
       document.querySelector(`.dh-form-input[data-type="${type}"][data-varian="${v}"]`)?.value || 0
     );
-    el.textContent = get("order") - get("fee") - get("offflavor") - get("sisabarang") || "0";
+    const nilai = get("order") - get("fee") - get("offflavor") - get("sisabarang");
+    el.textContent = Math.max(0, nilai);
   });
   hitungTagihan();
   updateHunterSisaBarangDisplay();
