@@ -2322,11 +2322,23 @@ function konfirmasiNonAktif(customer, customers) {
 
 async function nonAktifkanCustomer(custId, customers) {
   try {
-    await window.setDoc(
-      window.doc(window.db, "customer", custId),
-      { status: false, updatedAt: window.serverTimestamp() },
-      { merge: true }
-    );
+    const customerData = (customers || []).find(c => c.id === custId);
+    const role = customerData?.role || custActiveUser?.role || "kurir";
+    const uid  = customerData?.hunterUid || custActiveUser?.uid;
+
+    if (role === "hunter") {
+      // hunter: gak ada nonaktif, langsung hapus dokumen
+      await window.deleteDoc(window.doc(window.db, "users", uid, "customerBaruHunter", custId));
+    } else {
+      const ref = role === "sales"
+        ? window.doc(window.db, "customerSales", custId)
+        : window.doc(window.db, "customer", custId);
+      await window.setDoc(
+        ref,
+        { status: false, updatedAt: window.serverTimestamp() },
+        { merge: true }
+      );
+    }
     // hapus card dari list
     const card = document.querySelector(`#custDetailList .cust-card[data-id="${custId}"]`);
     if (card) card.remove();
@@ -2339,6 +2351,7 @@ async function nonAktifkanCustomer(custId, customers) {
     if (custActiveUser) updateMarketingBadge(custActiveUser.uid, custActiveUser.role);
     window.showToast("Customer dinonaktifkan", "success");
   } catch (err) {
+    console.error("❌ nonAktifkanCustomer:", err, { role: custActiveUser?.role, uid: custActiveUser?.uid, custId });
     window.showToast("Gagal menonaktifkan", "error");
   }
 }
