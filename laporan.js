@@ -573,20 +573,13 @@ async function openKeuModal(tanggal) {
   }
   const bonus        = kantorCabang?.bonus || {};
 
-  // ambil infoTarget frozen + pembayaran (closing) terbaru — paksa dari server, jangan cache
+  // ambil infoTarget frozen dari Firestore jika ada
   let it = null;
   try {
-    const snapIt = await window.getDocFromServer(
+    const snapIt = await window.getDoc(
       window.doc(window.db, "users", user.uid, "laporanMarketing", tanggal)
     );
-    if (snapIt.exists()) {
-      it = snapIt.data()?.distribusi?.infoTarget || null;
-      // window._lapCurrentData bisa basi kalau closing baru aja diupdate di tab Data Harian
-      const pembayaranFresh = snapIt.data()?.pembayaran;
-      if (pembayaranFresh && window._lapCurrentData) {
-        window._lapCurrentData = { ...window._lapCurrentData, pembayaran: pembayaranFresh };
-      }
-    }
+    if (snapIt.exists()) it = snapIt.data()?.distribusi?.infoTarget || null;
   } catch {}
 
   const cl  = it?.customerLama     ?? data?.customerLama     ?? 0;
@@ -801,17 +794,15 @@ async function simpanKeuangan() {
     const kT         = kun - tgCust;
     const upahHarian = Number(kantorCabang?.upahHarian) || 0;
 
-    // harga produksi per varian dari kurir
+    // harga produksi per varian dari kurir (masih dipake buat payMargin/expiredMargin di bawah)
     const hargaMap = {};
     (user?.varian || []).forEach(v => {
       const k = Object.keys(v)[0];
       if (k) hargaMap[k] = Number(v[k]?.hargaProduksi) || 0;
     });
-    // totalTagihan dari closing yang udah tersimpan (bukan DOM), grossMargin pake inputOmset manual admin
-    const closingData = { ...(data?.pembayaran?.closing || {}) };
-    delete closingData.createdAt;
-    const totalTagihan = Object.entries(closingData).reduce((acc, [k, v]) => acc + (Number(v) || 0) * (hargaMap[k] || 0), 0);
-    const grossMargin  = inputOmset - totalTagihan;
+    // grossMargin = inputOmset (manual admin) - pembayaran.bayarProduksi
+    const bayarProduksi = Number(data?.pembayaran?.bayarProduksi) || 0;
+    const grossMargin   = inputOmset - bayarProduksi;
 
     // hitung pay.margin dan expired.margin
     const hargaKonsumenMap = {};
