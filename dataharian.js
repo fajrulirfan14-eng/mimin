@@ -503,7 +503,7 @@ async function renderDhForm() {
       document.querySelectorAll(".dh-form-closing").forEach(el => {
         const v = el.dataset.varian;
         const c = Number(el.textContent) || 0;
-        if (c !== 0) closingData[v] = c;
+        closingData[v] = c;
       });
 
       const hargaMap = {};
