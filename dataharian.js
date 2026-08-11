@@ -184,6 +184,116 @@ function renderCustomerBaruHunterList(body, list) {
     </div>`;
 }
 
+/* ── RINGKASAN SALES (dari inputHarian, sama sumbernya kayak yang dilihat sales sendiri) ── */
+async function renderSalesRingkasan(body, tanggal) {
+  const uid      = activeKurirUid;
+  const idCabang = window.currentUser?.idCabang || "";
+  const varianList = getVarianAktifCabang();
+
+  let entries = [];
+  try {
+    const snap = await window.getDocs(window.query(
+      window.collectionGroup(window.db, "inputHarian"),
+      window.where("pemilik",  "==", uid),
+      window.where("idCabang", "==", idCabang),
+      window.where("tanggal",  "==", tanggal)
+    ));
+    entries = snap.docs.map(d => d.data());
+  } catch (err) {
+    console.error("❌ renderSalesRingkasan (inputHarian):", err);
+  }
+
+  if (!entries.length) {
+    body.innerHTML = `<div class="dh-ringkasan-empty">Belum ada data input untuk tanggal ini</div>`;
+    dhOmsetAktif = 0;
+    return;
+  }
+
+  const returnMap = {}, expiredMap = {}, feeMap = {}, disableMap = {}, closingMap = {};
+  varianList.forEach(v => {
+    returnMap[v] = 0; expiredMap[v] = 0; feeMap[v] = 0; disableMap[v] = 0; closingMap[v] = 0;
+  });
+  let totalBayar = 0;
+  entries.forEach(e => {
+    varianList.forEach(v => {
+      returnMap[v]  += Number(e.return?.[v]  || 0);
+      expiredMap[v] += Number(e.expired?.[v] || 0);
+      feeMap[v]     += Number(e.fee?.[v]     || 0);
+      disableMap[v] += Number(e.disable?.[v] || 0);
+      closingMap[v] += Number(e.closing?.[v] || 0);
+    });
+    totalBayar += Number(e.pembayaran?.bayarKonsumen || 0);
+  });
+
+  // Penjualan Langsung
+  const plMap = {};
+  varianList.forEach(v => { plMap[v] = 0; });
+  try {
+    const snapPL = await window.getDoc(window.doc(window.db, "users", uid, "penjualanLangsung", tanggal));
+    if (snapPL.exists()) {
+      const pl = snapPL.data()?.penjualanLangsung || {};
+      varianList.forEach(v => { plMap[v] = Number(pl[v] || 0); });
+    }
+  } catch (err) {
+    console.error("❌ renderSalesRingkasan (penjualanLangsung):", err);
+  }
+
+  // Bawa — cuma buat hitung Saldo, gak ditampilin sebagai baris sendiri (udah ada di form Order)
+  const bawaMap = {};
+  varianList.forEach(v => { bawaMap[v] = 0; });
+  try {
+    const snapLap = await window.getDoc(window.doc(window.db, "users", uid, "laporanMarketing", tanggal));
+    if (snapLap.exists()) {
+      const orderData = snapLap.data()?.order || {};
+      varianList.forEach(v => { bawaMap[v] = Number(orderData[v] || 0); });
+    }
+  } catch (err) {
+    console.error("❌ renderSalesRingkasan (laporanMarketing):", err);
+  }
+
+  const saldoMap = {};
+  varianList.forEach(v => { saldoMap[v] = bawaMap[v] - closingMap[v]; });
+
+  dhOmsetAktif = totalBayar;
+
+  function row(label, map, cls = "") {
+    return `
+      <div class="dh-hunter-summary-row">
+        <span class="dh-hunter-summary-tag ${cls}">${label}</span>
+        <div class="dh-hunter-summary-varian">
+          ${varianList.map(v => `
+            <div class="dh-hunter-summary-box ${cls}">
+              <span>${esc(v)}</span>
+              <strong>${map[v] || 0}</strong>
+            </div>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  body.innerHTML = `
+    <div class="dh-hunter-summary">
+      <div class="dh-hunter-summary-total">
+        <span class="dh-hunter-summary-label">Jumlah Customer</span>
+        <span class="dh-hunter-summary-val">${entries.length}</span>
+      </div>
+      ${row("Return", returnMap)}
+      ${row("Expired", expiredMap)}
+      ${row("Fee", feeMap)}
+      ${row("Disable", disableMap)}
+      ${row("Penjualan Langsung", plMap)}
+      ${row("Closing", closingMap, "closing")}
+      ${row("Saldo", saldoMap, "sisa")}
+      <div class="dh-hunter-summary-row dh-hunter-summary-closing">
+        <span class="dh-hunter-summary-tag">Jumlah Pembayaran</span>
+        <div class="dh-hunter-summary-varian">
+          <div class="dh-hunter-summary-box closing" style="flex:1;">
+            <strong>Rp ${totalBayar.toLocaleString("id-ID")}</strong>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
 /* ── LOAD KURIR LIST ── */
 async function loadDhKurirList() {
   const listEl = document.getElementById("dhKurirList");
@@ -320,6 +430,8 @@ async function selectDhKurir(user) {
         if (!list.length) {
           window.showToast("Tidak ada customer baru untuk tanggal ini", "");
         }
+        await renderDhRingkasan();
+      } else if (activeKurirUser?.role === "sales") {
         await renderDhRingkasan();
       } else {
         await window.idb.clearDataHarian(activeKurirUid, tanggal);
@@ -715,6 +827,11 @@ async function renderDhRingkasan(forceReload = false) {
 
     dhOmsetAktif = 0;
     renderCustomerBaruHunterList(body, list);
+    return;
+  }
+  // khusus sales
+  if (activeKurirUser?.role === "sales") {
+    await renderSalesRingkasan(body, tanggal);
     return;
   }
   let data = await window.idb.getDataHarian(uidKurir, tanggal);
