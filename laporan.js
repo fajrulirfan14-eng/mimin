@@ -573,13 +573,21 @@ async function openKeuModal(tanggal) {
   }
   const bonus        = kantorCabang?.bonus || {};
 
-  // ambil infoTarget frozen dari Firestore jika ada
+  // ambil infoTarget + pembayaran (nota.bayar) langsung dari laporanAdmin — sumber yang bener
   let it = null;
   try {
-    const snapIt = await window.getDoc(
-      window.doc(window.db, "users", user.uid, "laporanMarketing", tanggal)
+    const adminUidFresh = window.auth?.currentUser?.uid;
+    const snapIt = await window.getDocFromServer(
+      window.doc(window.db, "users", adminUidFresh, "laporanAdmin", tanggal)
     );
-    if (snapIt.exists()) it = snapIt.data()?.distribusi?.infoTarget || null;
+    if (snapIt.exists()) {
+      const dataKurir = snapIt.data()?.[user.uid];
+      it = dataKurir?.distribusi?.infoTarget || null;
+      const pembayaranFresh = dataKurir?.pembayaran;
+      if (pembayaranFresh && window._lapCurrentData) {
+        window._lapCurrentData = { ...window._lapCurrentData, pembayaran: pembayaranFresh };
+      }
+    }
   } catch {}
 
   const cl  = it?.customerLama     ?? data?.customerLama     ?? 0;
@@ -800,7 +808,7 @@ async function simpanKeuangan() {
       const k = Object.keys(v)[0];
       if (k) hargaMap[k] = Number(v[k]?.hargaProduksi) || 0;
     });
-    // grossMargin = inputOmset (manual admin) - pembayaran.nota.bayar
+    // grossMargin = inputOmset (manual admin) - pembayaran.nota.bayar (dari laporanAdmin)
     const bayarProduksi = Number(data?.pembayaran?.nota?.bayar) || 0;
     const grossMargin   = inputOmset - bayarProduksi;
 

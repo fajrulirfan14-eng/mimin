@@ -6,7 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore,
-  doc, getDoc, collection, query, where,
+  doc, getDoc, getDocFromServer, collection, query, where,
   getDocs, addDoc, setDoc, updateDoc, deleteDoc,
   onSnapshot, serverTimestamp, deleteField,
   collectionGroup, orderBy, limit, Timestamp, writeBatch,
@@ -47,6 +47,7 @@ window.db              = db;
 window.storage         = storage;
 window.doc             = doc;
 window.getDoc          = getDoc;
+window.getDocFromServer = getDocFromServer;
 window.collection      = collection;
 window.collectionGroup = collectionGroup;
 window.query           = query;
