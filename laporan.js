@@ -800,8 +800,8 @@ async function simpanKeuangan() {
       const k = Object.keys(v)[0];
       if (k) hargaMap[k] = Number(v[k]?.hargaProduksi) || 0;
     });
-    // grossMargin = inputOmset (manual admin) - pembayaran.bayarProduksi
-    const bayarProduksi = Number(data?.pembayaran?.bayarProduksi) || 0;
+    // grossMargin = inputOmset (manual admin) - pembayaran.nota.bayar
+    const bayarProduksi = Number(data?.pembayaran?.nota?.bayar) || 0;
     const grossMargin   = inputOmset - bayarProduksi;
 
     // hitung pay.margin dan expired.margin
