@@ -408,6 +408,67 @@ function initSoPopupBehavior(overlayId, boxId, closeBtnId) {
 /* ── STOCK OPNAME VIEW (canvas table) ── */
 let soBulan = new Date().getMonth();
 let soTahun = new Date().getFullYear();
+
+/* ── PERSENTASE BARANG MATI (reuse field map & fungsi dari rekapproduksi.js) ── */
+async function loadPersenBarangMatiSo() {
+  const el = document.getElementById("soBarangMatiValue");
+  if (!el) return;
+
+  try {
+    const varianList = await loadRekapProdVarianList();
+    if (!varianList.length) { el.textContent = "0%"; return; }
+
+    // agregat stock opname (Input, Reject, Basi Freezer, Barang Hilang, Promosi)
+    const stockAgg = {};
+    Object.keys(REKAP_PROD_FIELD_MAP).forEach(jenis => { stockAgg[jenis] = {}; });
+    const filteredStock = await getStockOpnameBulanCached(soBulan, soTahun);
+    filteredStock.forEach(record => {
+      const data = record.data || {};
+      Object.entries(REKAP_PROD_FIELD_MAP).forEach(([jenis, field]) => {
+        const fieldMap = data[field] || {};
+        Object.entries(fieldMap).forEach(([varian, nilai]) => {
+          stockAgg[jenis][varian] = (stockAgg[jenis][varian] || 0) + Number(nilai || 0);
+        });
+      });
+    });
+
+    // agregat laporanAdmin (Fee, Off Flavor)
+    const laporanAgg = {};
+    Object.keys(REKAP_PROD_LAPORAN_FIELD_MAP).forEach(jenis => { laporanAgg[jenis] = {}; });
+    const filteredLaporan = await getLaporanAdminBulanCached(soBulan, soTahun);
+    filteredLaporan.forEach(record => {
+      const dataPerUid = record.data || {};
+      Object.values(dataPerUid).forEach(uidData => {
+        Object.entries(REKAP_PROD_LAPORAN_FIELD_MAP).forEach(([jenis, path]) => {
+          const fieldMap = getNestedField(uidData, path) || {};
+          Object.entries(fieldMap).forEach(([varian, nilai]) => {
+            laporanAgg[jenis][varian] = (laporanAgg[jenis][varian] || 0) + Number(nilai || 0);
+          });
+        });
+      });
+    });
+
+    let totalInput = 0, totalRugi = 0;
+    varianList.forEach(v => {
+      const input        = Number(stockAgg["Input"]?.[v])         || 0;
+      const reject        = Number(stockAgg["Reject"]?.[v])        || 0;
+      const basiFreezer   = Number(stockAgg["Basi Freezer"]?.[v])  || 0;
+      const barangHilang  = Number(stockAgg["Barang Hilang"]?.[v]) || 0;
+      const promosi       = Number(stockAgg["Promosi"]?.[v])       || 0;
+      const fee           = Number(laporanAgg["Fee"]?.[v])         || 0;
+      const offFlavor     = Number(laporanAgg["Off Flavor"]?.[v])  || 0;
+
+      totalInput += input;
+      totalRugi  += fee + reject + basiFreezer + offFlavor + promosi + barangHilang;
+    });
+
+    const persen = totalInput > 0 ? Math.round((totalRugi / totalInput) * 100) : 0;
+    el.textContent = `${persen}%`;
+  } catch (err) {
+    console.error("❌ loadPersenBarangMatiSo:", err);
+    el.textContent = "-";
+  }
+}
 let soSearchQuery = "";
 
 // varian default — nanti diganti dinamis dari data kantorCabang
@@ -671,6 +732,7 @@ window.hitungSaldoUntukTanggal = hitungSaldoUntukTanggal;
 
 /* ── LOAD DATA ── */
 async function loadSoData(forceReload = false) {
+  loadPersenBarangMatiSo();
   renderSoEmpty("Memuat...");
 
   try {
