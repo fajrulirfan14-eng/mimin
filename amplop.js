@@ -78,6 +78,11 @@ function renderAmplopList(docs) {
     const badgeText  = data.diterima ? "Diterima" : "Belum Diterima";
     const diserahkanClass = data.diserahkan ? "sent" : "pending";
     const diserahkanText  = data.diserahkan ? "Sudah Diserahkan" : "Belum Diserahkan";
+
+    const nilaiDistribusi = Number(data.distribusi?.amplop) || 0;
+    const nilaiProduksi   = Number(data.produksi?.amplop)   || 0;
+    const nilaiTotal      = nilaiDistribusi + nilaiProduksi;
+
     return `
       <div class="amplop-card" data-tanggal="${data.tanggal}">
         <div class="amplop-card-top">
@@ -89,11 +94,15 @@ function renderAmplopList(docs) {
         </div>
         <div class="amplop-card-row">
           <span class="amplop-card-label">Amplop Distribusi</span>
-          <span class="amplop-card-value">${window.formatRupiah(data.distribusi?.amplop)}</span>
+          <span class="amplop-card-value">${window.formatRupiah(nilaiDistribusi)}</span>
         </div>
         <div class="amplop-card-row">
           <span class="amplop-card-label">Amplop Produksi</span>
-          <span class="amplop-card-value">${window.formatRupiah(data.produksi?.amplop)}</span>
+          <span class="amplop-card-value">${window.formatRupiah(nilaiProduksi)}</span>
+        </div>
+        <div class="amplop-card-row amplop-card-row-total">
+          <span class="amplop-card-label">Total</span>
+          <span class="amplop-card-value">${window.formatRupiah(nilaiTotal)}</span>
         </div>
       </div>`;
   }).join("");
