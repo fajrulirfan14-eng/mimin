@@ -92,16 +92,18 @@ function renderCustomerBaruHunterList(body, list) {
 
   const totalKonsinyasi = {};
   const totalCash = {};
-  varianList.forEach(v => { totalKonsinyasi[v] = 0; totalCash[v] = 0; });
+  const totalTester = {};
+  varianList.forEach(v => { totalKonsinyasi[v] = 0; totalCash[v] = 0; totalTester[v] = 0; });
   list.forEach(c => {
     varianList.forEach(v => {
       totalKonsinyasi[v] += Number(c.konsinyasi?.[v]) || 0;
       totalCash[v] += Number(c.cash?.[v]) || 0;
+      totalTester[v] += Number(c.tester?.[v]) || 0;
     });
   });
 
   const totalClosing = {};
-  varianList.forEach(v => { totalClosing[v] = totalKonsinyasi[v] + totalCash[v]; });
+  varianList.forEach(v => { totalClosing[v] = totalKonsinyasi[v] + totalCash[v] + totalTester[v]; });
   _hunterVarianList = varianList;
   _hunterTotalClosing = totalClosing;
   
@@ -128,6 +130,16 @@ function renderCustomerBaruHunterList(body, list) {
             <div class="dh-hunter-summary-box cash">
               <span>${esc(v)}</span>
               <strong>${totalCash[v]}</strong>
+            </div>`).join("")}
+        </div>
+      </div>
+      <div class="dh-hunter-summary-row">
+        <span class="dh-hunter-summary-tag tester">Tester</span>
+        <div class="dh-hunter-summary-varian">
+          ${varianList.map(v => `
+            <div class="dh-hunter-summary-box tester">
+              <span>${esc(v)}</span>
+              <strong>${totalTester[v]}</strong>
             </div>`).join("")}
         </div>
       </div>
@@ -164,6 +176,7 @@ function renderCustomerBaruHunterList(body, list) {
           : `<span>${esc(inisial)}</span>`;
         const adaKonsinyasi = Object.values(c.konsinyasi || {}).some(v => Number(v) > 0);
         const adaCash       = Object.values(c.cash || {}).some(v => Number(v) > 0);
+        const adaTester     = Object.values(c.tester || {}).some(v => Number(v) > 0);
 
         return `
           <div class="dh-hunter-cust-item">
@@ -174,6 +187,7 @@ function renderCustomerBaruHunterList(body, list) {
                 <div class="dh-hunter-cust-badges">
                   ${adaKonsinyasi ? `<span class="dh-hunter-badge konsinyasi">Konsinyasi</span>` : ""}
                   ${adaCash ? `<span class="dh-hunter-badge cash">Cash</span>` : ""}
+                  ${adaTester ? `<span class="dh-hunter-badge tester">Tester</span>` : ""}
                 </div>
               </div>
               <div class="dh-hunter-cust-alamat">${esc(c.alamatCustomer || "-")}</div>
