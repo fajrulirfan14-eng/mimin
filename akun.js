@@ -71,7 +71,7 @@ function renderAkunList() {
     const isAktif    = u.status !== false;
     const badgeClass = isAktif ? "aktif" : "nonaktif";
     const badgeText  = isAktif ? "Aktif" : "Nonaktif";
-    const foto       = u.foto || "";
+    const foto       = u.fotoURL || u.foto || "";
     return `
       <div class="akun-card ${akunSelectedUid === u.uid ? "active" : ""}" data-uid="${u.uid}">
         <img class="akun-card-foto" src="${foto || "https://ui-avatars.com/api/?name="+encodeURIComponent(u.nama||"?")+"&background=random"}" alt="">
@@ -120,7 +120,7 @@ function openAkunDetail(user) {
   document.getElementById("akunPanelRight")?.classList.add("show");
 
   const isAktif = user.status !== false;
-  document.getElementById("akunDetailFoto").src    = user.foto || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama||"?")}&background=random`;
+  document.getElementById("akunDetailFoto").src    = user.fotoURL || user.foto || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.nama||"?")}&background=random`;
   document.getElementById("akunDetailNama").textContent  = user.nama || "-";
   document.getElementById("akunDetailRole").textContent  = user.role || "-";
 
@@ -134,6 +134,7 @@ function openAkunDetail(user) {
   document.getElementById("akunInputNik").value     = user.nik      || "";
   document.getElementById("akunInputAlamat").value  = user.alamat   || "";
   document.getElementById("akunInputMotivasi").value = user.motivasi || "";
+  renderAkunTrainingRow(user);
 
   const toggleBtn = document.getElementById("akunToggleStatusBtn");
   toggleBtn.textContent = isAktif ? "Nonaktifkan" : "Aktifkan";
@@ -165,6 +166,60 @@ function initAkunDetail() {
   document.getElementById("akunToggleStatusBtn")?.addEventListener("click", toggleAkunStatus);
   document.getElementById("akunHapusBtn")?.addEventListener("click", hapusAkunPermanen);
   document.getElementById("akunGantiPasswordBtn")?.addEventListener("click", gantiAkunPassword);
+}
+
+/* ── MASA TRAINING (users/{uid}/isTraining) ── */
+function renderAkunTrainingRow(user) {
+  let row = document.getElementById("akunTrainingRow");
+  if (!row) {
+    row = document.createElement("div");
+    row.id = "akunTrainingRow";
+    row.className = "akun-training-row";
+    row.innerHTML = `
+      <div class="akun-training-info">
+        <div class="akun-form-label">Masa Training</div>
+        <div class="akun-training-desc" id="akunTrainingDesc"></div>
+      </div>
+      <button type="button" class="akun-switch" id="akunTrainingSwitch" role="switch" aria-checked="false">
+        <span class="akun-switch-knob"></span>
+      </button>`;
+    const anchor = document.getElementById("akunInputMotivasi")?.closest(".akun-form-group");
+    if (anchor) anchor.insertAdjacentElement("afterend", row);
+    else document.querySelector("#akunDetail .akun-detail-body")?.appendChild(row);
+    document.getElementById("akunTrainingSwitch").addEventListener("click", toggleAkunTraining);
+  }
+  const isTraining = user?.isTraining === true;
+  const sw = document.getElementById("akunTrainingSwitch");
+  sw.classList.toggle("on", isTraining);
+  sw.setAttribute("aria-checked", String(isTraining));
+  document.getElementById("akunTrainingDesc").textContent =
+    isTraining ? "Sedang masa training" : "Tidak dalam masa training";
+}
+
+async function toggleAkunTraining() {
+  if (!akunSelectedUid) return;
+  const sw = document.getElementById("akunTrainingSwitch");
+  if (!sw || sw.disabled) return;
+  const idx = akunAllUsers.findIndex(u => u.uid === akunSelectedUid);
+  if (idx === -1) return;
+  const baru = !(akunAllUsers[idx].isTraining === true);
+
+  sw.disabled = true;
+  try {
+    await window.setDoc(
+      window.doc(window.db, "users", akunSelectedUid),
+      { isTraining: baru }, { merge: true }
+    );
+    akunAllUsers[idx].isTraining = baru;
+    window.usersCache = window.usersCache?.map(u => u.uid === akunSelectedUid ? { ...u, isTraining: baru } : u);
+    renderAkunTrainingRow(akunAllUsers[idx]);
+    window.showToast(baru ? "Masa training diaktifkan" : "Masa training dimatikan", "success");
+  } catch (err) {
+    console.error("❌ toggleAkunTraining:", err);
+    window.showToast("Gagal mengubah masa training", "error");
+  } finally {
+    sw.disabled = false;
+  }
 }
 
 /* ── SIMPAN DETAIL ── */
@@ -530,12 +585,12 @@ async function uploadAkunFoto(file) {
     await window.uploadBytes(ref, compressed);
     const url = await window.getDownloadURL(ref);
 
-    await window.setDoc(window.doc(window.db, "users", akunSelectedUid), { foto: url }, { merge: true });
+    await window.setDoc(window.doc(window.db, "users", akunSelectedUid), { fotoURL: url }, { merge: true });
 
     document.getElementById("akunDetailFoto").src = url;
     const idx = akunAllUsers.findIndex(u => u.uid === akunSelectedUid);
-    if (idx !== -1) akunAllUsers[idx].foto = url;
-    window.usersCache = window.usersCache?.map(u => u.uid === akunSelectedUid ? { ...u, foto: url } : u);
+    if (idx !== -1) akunAllUsers[idx].fotoURL = url;
+    window.usersCache = window.usersCache?.map(u => u.uid === akunSelectedUid ? { ...u, fotoURL: url } : u);
     renderAkunList();
     window.showToast("Foto berhasil diupload", "success");
   } catch (err) {
@@ -627,7 +682,7 @@ async function tambahAkun() {
       noTelpon:     document.getElementById("akunTambahTelpon").value.trim(),
       nik:          document.getElementById("akunTambahNik").value.trim(),
       alamat:       document.getElementById("akunTambahAlamat").value.trim(),
-      foto:         "",
+      fotoURL:      "",
       motivasi:     "",
       status:       true,
       varian:       adminVarian,
