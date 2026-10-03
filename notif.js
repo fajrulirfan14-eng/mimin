@@ -444,6 +444,7 @@ async function kirimNotifikasi() {
       pesan,
       foto: fotoUrl,
       type: "kurir",
+      idCabang: window.currentUser?.idCabang || "",
       createdBy: adminUid,
       createdAt: window.serverTimestamp(),
       dibaca,
