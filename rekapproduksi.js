@@ -294,12 +294,10 @@ function hitungJumlahRugi() {
   rekapProdVarianList.forEach(v => {
     const fee          = Number(rekapProdData["Fee"]?.[v])           || 0;
     const reject       = Number(rekapProdData["Reject"]?.[v])        || 0;
-    const basiFreezer  = Number(rekapProdData["Basi Freezer"]?.[v])  || 0;
-    const offFlavor    = Number(rekapProdData["Off Flavor"]?.[v])    || 0;
     const promosi      = Number(rekapProdData["Promosi"]?.[v])       || 0;
     const barangHilang = Number(rekapProdData["Barang Hilang"]?.[v])|| 0;
 
-    result[v] = fee + reject + basiFreezer + offFlavor + promosi + barangHilang;
+    result[v] = fee + reject + promosi + barangHilang;
   });
 
   return result;

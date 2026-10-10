@@ -27,11 +27,9 @@ async function hitungPersentaseBarangMatiSlip() {
   const totalRugi = varianList.reduce((a, v) => {
     const fee          = Number(laporanAgg["Fee"]?.[v])          || 0;
     const reject       = Number(stockAgg["Reject"]?.[v])         || 0;
-    const basiFreezer  = Number(stockAgg["Basi Freezer"]?.[v])   || 0;
-    const offFlavor    = Number(laporanAgg["Off Flavor"]?.[v])   || 0;
     const promosi      = Number(stockAgg["Promosi"]?.[v])        || 0;
     const barangHilang = Number(stockAgg["Barang Hilang"]?.[v])  || 0;
-    return a + fee + reject + basiFreezer + offFlavor + promosi + barangHilang;
+    return a + fee + reject + promosi + barangHilang;
   }, 0);
 
   return totalInput > 0 ? (totalRugi / totalInput) * 100 : 0;

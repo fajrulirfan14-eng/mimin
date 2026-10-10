@@ -452,14 +452,12 @@ async function loadPersenBarangMatiSo() {
     varianList.forEach(v => {
       const input        = Number(stockAgg["Input"]?.[v])         || 0;
       const reject        = Number(stockAgg["Reject"]?.[v])        || 0;
-      const basiFreezer   = Number(stockAgg["Basi Freezer"]?.[v])  || 0;
       const barangHilang  = Number(stockAgg["Barang Hilang"]?.[v]) || 0;
       const promosi       = Number(stockAgg["Promosi"]?.[v])       || 0;
       const fee           = Number(laporanAgg["Fee"]?.[v])         || 0;
-      const offFlavor     = Number(laporanAgg["Off Flavor"]?.[v])  || 0;
 
       totalInput += input;
-      totalRugi  += fee + reject + basiFreezer + offFlavor + promosi + barangHilang;
+      totalRugi  += fee + reject + promosi + barangHilang;
     });
 
     const persen = totalInput > 0 ? Math.round((totalRugi / totalInput) * 100) : 0;
