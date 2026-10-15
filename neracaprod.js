@@ -199,8 +199,8 @@ async function hitungNilaiAssetProd() {
     const produksiArr   = data.produksi   || [];
     const penyusutan    = data.penyusutanAset || {};
 
-    const sumHargaDistribusi = distribusiArr.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
-    const sumHargaProduksi   = produksiArr.reduce((sum, item) => sum + (Number(item.harga) || 0), 0);
+        const sumHargaDistribusi = distribusiArr.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.harga) || 0)), 0);
+    const sumHargaProduksi   = produksiArr.reduce((sum, item) => sum + ((Number(item.qty) || 0) * (Number(item.harga) || 0)), 0);
     const totalPenyusutan    = (Number(penyusutan.distribusi) || 0) + (Number(penyusutan.produksi) || 0);
 
     return sumHargaDistribusi + sumHargaProduksi - totalPenyusutan;
